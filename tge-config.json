@@ -1,0 +1,5 @@
+{
+    "ticksPerSecond" : 60,
+    "gameContainerId" : "game",
+    "zLayers" : 16
+}

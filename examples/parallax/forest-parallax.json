@@ -1,0 +1,52 @@
+{
+  "path": "img",
+  "repeat": "x",
+  "scale": { "x": 0.25, "y": 0.25 },
+  "speed": { "x": 0.1, "y": 0.1 },
+  "viewport": { "left":300, "top":200, "width":480, "height":270 },
+  "layers": [
+    { 
+      "filename": "10_Sky.png", 
+      "zIndex": 0 },
+    {
+      "filename": "09_Forest.png",
+      "zIndex": 1,
+      "increment": { "x": -1, "y": 0 }
+    },
+    {
+      "filename": "08_Forest.png",
+      "zIndex": 2,
+      "increment": { "x": -2, "y": 0 }
+    },
+    {
+      "filename": "07_Forest.png",
+      "zIndex": 3,
+      "increment": { "x": -3, "y": 0 }
+    },
+    {
+      "filename": "06_Forest.png",
+      "zIndex": 4,
+      "increment": { "x": -4, "y": 0 }
+    },
+    {
+      "filename": "05_Particles.png",
+      "zIndex": 5,
+      "increment": { "x": -5, "y": 0 }
+    },
+    {
+      "filename": "04_Forest.png",
+      "zIndex": 6,
+      "increment": { "x": -6, "y": 0 }
+    },
+    {
+      "filename": "03_Particles.png",
+      "zIndex": 7,
+      "increment": { "x": -7, "y": 0 }
+    },
+    {
+      "filename": "02_Bushes.png",
+      "zIndex": 8,
+      "increment": { "x": -8, "y": 0 }
+    }
+  ]
+}
