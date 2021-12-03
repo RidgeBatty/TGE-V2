@@ -14,9 +14,9 @@ class ParticleParams {
 	}
 }
 
-/*
-	prop : property name
-	o    : object where to look for the property
+/** 
+	@param {string=} prop - property name
+	@param {object} o - object where to look for the property
 */
 const calc = (prop, o) => {		
 	if (typeof o[prop] == 'object') {
@@ -33,7 +33,7 @@ class Emitter {
 		this.particles = [];
 		this._running  = false;
 				
-		this.init();
+		this.initEmitter();
 				
 		this._createParticles(params.maxDrawCount || 100);
 	}
@@ -42,7 +42,10 @@ class Emitter {
 		return this._running;
 	}
 	
-	init() {		
+	/*
+		Set initial state for this emitter
+	*/
+	initEmitter() {		
 		const params    = this.params;
 		
 		this.name	    = params.name;
@@ -78,6 +81,9 @@ class Emitter {
 		this.particles.forEach(p => p.lifeTime = p.maxLife);		
 	}
 	
+	/*
+		Initialize all drawable particles for this emitter
+	*/
 	_createParticles(count) {
 		this._maxDrawCount = count;
 		
@@ -87,9 +93,9 @@ class Emitter {
 				lifeTime     : 0,
 				maxLife      : 0,
 				pos          : Vector2.Zero(),
-				velocity     : Vector2.Zero(),
-				angle        : 0,
-				angularSpeed : 0,						// rate of 'angle' change
+				velocity     : Vector2.Zero(),			// travel direction
+				angle        : 0,						// initial travel direction (used to calculate velocity)
+				angularSpeed : 0,						// initial rate of 'angle' change
 				speed		 : 0,				
 				scale		 : 1,
 				active		 : false,
@@ -134,7 +140,10 @@ class Emitter {
 				case 'point': p.pos = Vector2.Zero();	
 			}
 			
-			if ('img' in init) p.img = init.img;
+			if ('img' in init) {
+				p.img = init.img;
+				p._cachedSize = new Vector2(p.img.naturalWidth, p.img.naturalHeight);
+			}
 			p.scaleX = 1;
 			p.scaleY = 1;
 
@@ -217,13 +226,12 @@ class Emitter {
 				let distSq = Math.max(dx * dx + dy * dy, 4000);
 				let f = pointG.mass / (distSq * Math.sqrt(distSq));
 				p.velocity.add(new Vector2(dx * f, dy * f));
-			}			
-							
-			
+			}													
 		}			
 	}
 	
 	update() {		
+		const ctx = this.surface.ctx;
 		const pos = Vector2.Zero();		
 		this.activeParticleCount = 0;
 		
@@ -233,26 +241,24 @@ class Emitter {
 
 			if (particle.active) {			
 				this.activeParticleCount++;
-				if (particle.img && particle.visible) {
-					const size = new Vector2(particle.img.naturalWidth, particle.img.naturalHeight);
-					pos.add(size.clone().mulScalar(-0.5 * particle.scale));			
-					this.surface.drawImageScale({ 
-						pos, 
-						size,
-						scale: particle.scale,
-						img: particle.img
-					});
-				}
-				// o:{ pos:Vector2, size:Vector2, img:HTMLImageElement, scale:Number, ?clip:Rect }
-				//this.surface.drawCircle(pos, 3, { fill:'white' });
+				if (particle.img && particle.visible) {						
+					ctx.setTransform(particle.scale, 0, 0, particle.scale, pos.x, pos.y);
+					ctx.rotate(particle.angle * Math.PI);
+					ctx.drawImage(particle.img, -particle._cachedSize.x / 2, -particle._cachedSize.y / 2);
+				}				
 			}
 		}		
+		ctx.setTransform(1,0,0,1,0,0); // reset transform
 	}
 }
 
 class ParticleSystem {
-	constructor(gameLoop) {
-		this.gameLoop = gameLoop;
+	/**
+	 * 
+	 * @param {Engine} Engine 
+	 */
+	constructor(Engine) {
+		this.gameLoop = Engine.gameLoop;
 		this.emitters = [];	
 	}
 	

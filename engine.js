@@ -19,7 +19,7 @@
  Note that creation and use of World object is optional. All components should work with or without a World.
  For example a space invaders, tetris, pong, asteroids, etc. might have no use of container for static World but a platformer game definitely has.
   
-*/
+**/
 const VersionNumber = '1.1';
 
 const engineCSS = AE.newElem(document.head, 'style');

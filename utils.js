@@ -6,12 +6,19 @@
 	
 */
 import './ext/random.js';
+import './ext/hjson.min.js';
 import * as Types from './types.js';
 const Vec2 = Types.Vector2;
 
 const delay = async (milliseconds) => { return await new Promise(resolve => { setTimeout(resolve, milliseconds); }); }
 
-const preloadImages = async (o) => { 	// o:{ urls:[String], path:String }
+/**
+ * Preloads a list of image files and returns a promise which resolves when all the images are completely loaded.
+ * @param {Object} o - Parameter object
+ * @param {string=} o.path - Path to files
+ * @param {string[]} o.urls - List of URLs
+ */
+const preloadImages = async (o) => { 	
 	return new Promise((resolve, reject) => { 
 		let c = 0, i = 0;
 		let images = [];
@@ -177,9 +184,17 @@ const randomInRange = (arr) => {
 
 const getJSON = (url, errorHandler) => {
 	return new Promise(async (resolve, reject) => {		
-		try {				
-			const o = await fetch(url).then(e => e.json());
-			resolve(o);
+		try {
+			if (url.split('.').pop() == 'hjson') {
+				const o = await fetch(url)
+					.then(response => response.text())
+					.then(text => Hjson.parse(text));
+				resolve(o);
+			} else {
+				const o = await fetch(url)
+					.then(e => e.json());
+				resolve(o);
+			}
 		} catch (e) {
 			reject(e, url);			
 		}
