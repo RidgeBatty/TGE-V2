@@ -8,6 +8,7 @@
 import { Actor } from './actor.js';
 import { Player } from './player.js';
 import { Projectile } from './projectile.js';
+import { preloadImages } from './utils.js';
 
 class GameLoop {	
 	constructor(o = {}) {
@@ -101,22 +102,36 @@ class GameLoop {
 		});		
 	}
 	
-	add(aType, o = {}) {		
+	/**
+	 * 
+	 * @param {*} aType 
+	 * @param {*} o 
+	 * @returns {Actor}
+	 */
+	async add(aType, o = {}) {		
 		o.owner = this;
 
 		switch (aType) {
+			case 'level'       	: { var a = new Level(o); this.levels.push(a); a._type = 16; return a; }
+
 			case 'player'      	: { var a = new Player(o); this.addHPSystem(a); this.players.push(a); a._type = 2; break; }
-			case 'projectile'  	: { var a = new Projectile(o); a._type = 8; break; }
-			case 'level'       	: { var a = new Level(o); this.levels.push(a); a._type = 16; break; }
+			case 'projectile'  	: { var a = new Projectile(o); a._type = 8; break; }			
 			case 'enemy' 	  	: { var a = new Actor(o); this.addHPSystem(a); a._type = 4; break; } 
 			case 'layer'        : { var a = new Actor(o); a._type = 32; break; }
 			case 'consumable'   : { var a = new Actor(o); a._type = 64; break; }
 			default 	  		: { var a = new Actor(o); a._type = 1; }
 		}
-		
+
 		a.actorType = aType;
 		this.actors.push(a);	
 		this.zLayers[a.zIndex].push(a);	
+
+		if ('imgUrl' in o) {
+			const images = await preloadImages({ urls:[o.imgUrl] });
+			a.img = images[0];
+			console.log(a.img.naturalWidth);
+			a.setSize(a.img.naturalWidth, a.img.naturalHeight);
+		}
 		
 		return a;
 	}

@@ -29,7 +29,7 @@ class Root {
 		this.createParams = o;
 				
 		this.position     = ('position' in o) ? o.position : Vector2.Zero();
-		this.rotation     = ('rotation' in o) ? o.rotation : 0;
+		this.rotation     = ('rotation' in o) ? o.rotation : 0;		
 		this.scale        = ('scale' in o) ? o.scale : 1;		
 		
 		this.velocity     = Vector2.Zero();		

@@ -284,13 +284,8 @@ class ParticleSystem {
 		for (let e of this.emitters) e.update();				
 	}
 	
-	loadFromFile(hjson, onLoad) {
-		fetch(hjson)
-			.then(response => response.text())
-			.then(text => {
-				let result = Hjson.parse(text);
-				if (AE.isFunction(onLoad)) onLoad(result, text);
-			});
+	loadFromFile(hjson) {
+		// TO-DO return a promise
 	}
 	
 	clear() {

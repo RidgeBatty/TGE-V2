@@ -20,7 +20,7 @@
  For example a space invaders, tetris, pong, asteroids, etc. might have no use of container for static World but a platformer game definitely has.
   
 **/
-const VersionNumber = '1.1';
+const VersionNumber = '2.0.0';
 
 const engineCSS = AE.newElem(document.head, 'style');
 const sheet     = engineCSS.sheet;
@@ -405,6 +405,12 @@ class TinyGameEngine {
 		this.start(this.gameLoop.onBeforeRender);
 	}
 
+	/**
+	 * 
+	 * @param {*} actorType 
+	 * @param {*} o 
+	 * @returns {Actor}
+	 */
 	addActor(actorType, o) {
 		return this.gameLoop.add(actorType, o);
 	}

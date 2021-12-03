@@ -3,6 +3,8 @@ import { Parallax }  from '../../parallax.js';
 const Engine = TGE.Engine;	
 
 const main = async () => {
+
+    // create a parallax effect from JSON data file
     try {
         const parallax = await Parallax.Make({ url:'forest-parallax.json' })            
     } catch (e) {
@@ -13,8 +15,8 @@ const main = async () => {
 
     console.log('Parallax loaded');
 
+    // set up and start engine
     Engine.setRootElement('game');
-    Engine.recalculateScreen();
     Engine.createRenderingSurface();
     Engine.start();
 }

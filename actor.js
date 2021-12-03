@@ -118,7 +118,15 @@ class Actor extends Root {
 		return null;
 	}
 	
-	setSize(v) {
+	/*
+		Sets actor dimensions, either using a Vector2 or x and y values.
+	*/
+	setSize(v, n) {
+		if (n) {
+			this.width  = v;
+			this.height = n;			
+			return;
+		}
 		this.width  = v.x;
 		this.height = v.y;		
 	}
@@ -173,37 +181,53 @@ class Actor extends Root {
 	update() {		
 		if (this.isVisible) {
 			const p = this.position.clone();				
+			const c = Engine.renderingSurface.ctx;
+			
+			let img = this.img;
 
-			p.x     = Math.floor(p.x + this.origin.x * this.width);
-			p.y     = Math.floor(p.y + this.origin.y * this.height);
-			
-			if (this.flipbook) this.flipbook.update();						// select a frame from a flipbook if the actor has one specified			
-			
-			Engine.renderingSurface.drawImage(p, this.flipbook.customRender.img);
+			if (this.flipbook) {
+				this.flipbook.update();						// select a frame from a flipbook if the actor has one specified			
+				img = this.flipbook.customRender.img;
+			}
+						
+			c.setTransform(this.scale, 0, 0, this.scale, p.x, p.y);
+			c.rotate(this.rotation);
+			c.drawImage(img, -this.width / 2, -this.height / 2);
+			c.setTransform(1,0,0,1,0,0); // reset transform
 		}		
 	}
 	
 	release() {
 		if (this.colliders) this.colliders.destroy();		
 	}
-	
-	moveBy(p, /* optional*/ y) {		
+
+	/**
+	 * 
+	 * @param {Number|Vector2} x 
+	 * @param {Number=} y 
+	 */	
+	moveBy(x, y) {		
 		if (arguments.length == 2) {
-			this.position.x += p;
+			this.position.x += x;
 			this.position.y += y;
 		} else {
-			this.position.x += p.x;
-			this.position.y += p.y;
+			this.position.x += x.x;
+			this.position.y += x.y;
 		}		
 	}
 	
-	moveTo(p, /* optional*/ y) {
+	/**
+	 * 
+	 * @param {Number|Vector2} x 
+	 * @param {Number=} y 
+	 */
+	moveTo(x, y) {
 		if (arguments.length == 2) {
-			this.position.x = p;
+			this.position.x = x;
 			this.position.y = y;
 		} else {
-			this.position.x = p.x;
-			this.position.y = p.y;
+			this.position.x = x.x;
+			this.position.y = x.y;
 		}		
 	}	
 
@@ -303,7 +327,6 @@ class Actor extends Root {
 		p.sub(this.pivot);		
 		
 		return p;
-
 	}
 }
 

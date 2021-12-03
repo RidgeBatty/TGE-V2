@@ -8,7 +8,6 @@ const main = async () => {
     
     // First let's set up the engine    
     Engine.setRootElement('game');
-    Engine.recalculateScreen();
     Engine.createRenderingSurface();
 
     try {

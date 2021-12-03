@@ -1,5 +1,6 @@
 {
     "ticksPerSecond" : 60,
     "gameContainerId" : "game",
-    "zLayers" : 16
+    "zLayers" : 16,
+    "createDefaultCanvas" : true
 }
