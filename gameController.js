@@ -14,6 +14,7 @@ const Vector2 = Types.Vector2;
 const AllGamepads = [];				// list of gamepads detected in the system
 const AllGamepadControllers = [];	// list of created controller objects
 const Events = ['keydown','keyup','keyreleased','keypressed'];
+const PointerEvents = ['start', 'move', 'end'];
 
 /**
   @desc Keyboard controller.
@@ -211,6 +212,8 @@ class PointerController {
 			cb_move   : null,
 		}
 		this.init();
+
+		AE.sealProp(this, '_events', { start : [], move : [], end : [] });				
 				
 		Controllers.all.push(this);
 	}	
@@ -252,7 +255,8 @@ class PointerController {
 			const p = e.changedTouches ? e.changedTouches[0] : e;			
 			m.rawPosition.set({ x:p.clientX, y:p.clientY });
 			const n = this.getNormalizedPosition(m.rawPosition);
-			m.position.set(n);						
+			m.position.set(n);
+			this._fireCustomEvent('move', { position:n });
 		}
 		
 		const onMouseDown = (e) => {
@@ -262,6 +266,7 @@ class PointerController {
 			m.position.set(n);
 			m.dragStart.set(n);
 			m.dragging = true;
+			this._fireCustomEvent('start', { position:n });
 		}
 		
 		const onMouseUp = (e) => { 
@@ -271,12 +276,25 @@ class PointerController {
 			m.position.set(n);			
 			m.direction = Math.atan2(m.rawPosition.x - m.rawDragStart.x, m.rawPosition.y - m.rawDragStart.y);
 			m.dragging  = false;
+			this._fireCustomEvent('end', { position:n });
 		}
 		
 		AE.addEvent(window, 'dragstart', (e) => { e.preventDefault(); });
 		window.addEventListener('touchmove', (e) => { e.preventDefault(); onMouseMove(e); }, { passive:false });	
 		AE.addEvent(window, 'touchstart', (e) => { onMouseDown(e); });
 		AE.addEvent(window, 'touchend', (e) => { onMouseUp(e); });
+	}
+
+	addEvent(name, func) {
+		if (typeof func != 'function') throw 'Second parameter must be a function.';
+		if ( !PointerEvents.includes(name) )  throw 'First parameter must be a pointer event name.';
+		
+		this._events[name].push({ name, func });		
+	}
+
+	_fireCustomEvent(name, data) {			
+		const e = this._events[name];									
+		if (e) for (var i = 0; i < e.length; i++) e[i].func({ instigator:this, name, data });		
 	}
 }
 
