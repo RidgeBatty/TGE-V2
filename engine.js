@@ -1,40 +1,26 @@
 /**
- @module Engine
- @author Ridge Batty
- @license <a href="https://creativecommons.org/licenses/by/4.0" target="_blank">CC BY 4.0 </a>
- @desc Tiny Game Engine main module.
- Importing this module into your project automatically initializes the engine and creates the Engine instance. 
- All common TGE classes, enumerations and libraries (and the Engine instance) are exported by default:
- - Engine
- - World
- - Scene
- - Actor
- - Collider
- - Root
- - Enum_HitTestMode
- - Enum_ActorTypes
- - Types
- - Utils
-
- Note that creation and use of World object is optional. All components should work with or without a World.
- For example a space invaders, tetris, pong, asteroids, etc. might have no use of container for static World but a platformer game definitely has.
-  
-**/
+* @module Engine
+* @author Ridge Batty
+* @license <a href="https://creativecommons.org/licenses/by/4.0" target="_blank">CC BY 4.0 </a>
+* @desc Tiny Game Engine main module.
+* Importing this module into your project automatically initializes the engine and creates the Engine instance. 
+* All common TGE classes, enumerations and libraries (and the Engine instance) are exported by default:
+* - Engine
+* - World
+* - Scene
+* - Actor
+* - Collider
+* - Root
+* - Enum_HitTestMode
+* - Enum_ActorTypes
+* - Types
+* - Utils
+*
+* Note that creation and use of World object is optional. All components should work with or without a World.
+* For example a space invaders, tetris, pong, asteroids, etc. might have no use of container for static World but a platformer game definitely has.
+*  
+*/
 const VersionNumber = '2.0.0';
-
-const engineCSS = AE.newElem(document.head, 'style');
-const sheet     = engineCSS.sheet;
-sheet.insertRule('.tge-collider-bg-blue { position:absolute; left:0; top:0; z-index:999; background:rgba(0,0,255,0.5); border:1px dotted black; box-sizing:border-box }', sheet.cssRules.length); 
-sheet.insertRule('.tge-collider-bg-red { position:absolute; left:0; top:0; z-index:999; background:rgba(255,0,0,0.5); border:1px dotted black; box-sizing:border-box }', sheet.cssRules.length); 
-sheet.insertRule('svg { position:fixed; left:0px; top:0px; bottom:0px; right:0px; width:100%; height:100% }', sheet.cssRules.length); 
-sheet.insertRule('polygon.tge-collider-blue { stroke-dasharray:1,1; stroke:black; fill:rgba(0,0,255,0.5) }', sheet.cssRules.length); 
-sheet.insertRule('polygon.tge-collider-red { stroke-dasharray:1,1; stroke:black; fill:rgba(255,0,0,0.5) }', sheet.cssRules.length); 
-
-sheet.insertRule('tge-effect { position:absolute; left:0; top:0; pointer-events:none }', sheet.cssRules.length); 
-sheet.insertRule('tge-bit { position:absolute; left:0; top:0; }', sheet.cssRules.length); 
-sheet.insertRule('tge-anim-container > video { position:absolute; left:0; top:0; }', sheet.cssRules.length); 
-
-sheet.insertRule('tge-ca { position:absolute; left:0; top:0; }', sheet.cssRules.length); 	// childActor
 
 import * as MultiCast from "./multicast.js";
 import * as Types from "./types.js";
@@ -42,7 +28,7 @@ import { Root, Enum_HitTestMode } from "./root.js";
 import { GameLoop } from "./gameLoop.js";
 import { Actor, Enum_ActorTypes } from "./actor.js";
 import { World, Scene } from "./world.js";
-import { Collider } from "./colliders.js";
+import { Collider } from "./collider.js";
 import { CanvasRenderer as Renderer } from './canvasRenderer.js';
 import * as Utils from "./utils.js";
 
@@ -100,7 +86,6 @@ class TinyGameEngine {
 		 */
 		this.audio		= null;
 
-		this._svg		= null;
 		this._rootElem  = document.body;
 		
 		this._mouse	    = {
@@ -184,14 +169,6 @@ class TinyGameEngine {
 		AE.addEvent(window, 'touchend', (e) => { onMouseUp(e); });
 		
 		this.updateFlags();		
-	}
-	
-	/**
-	Return engine's internal stylesheet
-	@type {CSSStyleSheet} 
-	*/
-	get styleSheet() {
-		return engineCSS.sheet;
 	}
 	
 	/**
@@ -363,23 +340,7 @@ class TinyGameEngine {
 	_onContextMenu(e) {
 		if (!this.flags.hasContextMenu) e.preventDefault();
 	}
-	
-	/*
-		Adds a new SVG element inside Engine._svg container. If the container does not exist, it is created.
-	*/	
-	addSVG(parentElem, tagName) {	// parentElem:SVGElement, tagName:string		
-		function makeElem(name) {
-			var e = document.createElementNS('http://www.w3.org/2000/svg', name);
-			parentElem.appendChild(e);
-			return e;
-		}
-		if (this._svg == null) { parentElem = this._rootElem; this._svg = makeElem('svg'); }
-		if (this._svg instanceof SVGElement) {
-			if (!(parentElem instanceof SVGElement)) parentElem = this._svg;
-			return makeElem(tagName);		
-		}
-	}
-		
+			
 	/*
 		Starts the GameLoop. Optional callback function may be supplied, which will be called prior to processing of each frame.
 		GameLoop updates physics (if enabled), updates the Actors and responds to Controller input.
@@ -390,16 +351,16 @@ class TinyGameEngine {
 	}
 	
 	/**
-	Pauses the GameLoop. Frames are not rendered and physics are not updated while in pause mode.
-	Player Controllers will remain enabled and respond to events. Otherwise the user would not be able to exit pause mode using her controller.
-	If this behavior is not desired, Controllers must be detached or deactivated.		
+	* Pauses the GameLoop. Frames are not rendered and physics are not updated while in pause mode.
+	* Player Controllers will remain enabled and respond to events. Otherwise the user would not be able to exit pause mode using her controller.
+	* If this behavior is not desired, Controllers must be detached or deactivated.		
 	*/	
 	pause() {
 		this.gameLoop.pause();
 	}
 	
 	/**
-	Resumes the execution of GameLoop. Previously defined onBeforeRender event is respected. 
+	* Resumes the execution of GameLoop. Previously defined onBeforeRender event is respected. 
 	*/
 	resume() {
 		this.start(this.gameLoop.onBeforeRender);
@@ -410,6 +371,7 @@ class TinyGameEngine {
 	 * @param {*} actorType 
 	 * @param {*} o 
 	 * @returns {Actor}
+	 * Creates a new Actor and returns it.
 	 */
 	addActor(actorType, o) {
 		return this.gameLoop.add(actorType, o);

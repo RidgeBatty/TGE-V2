@@ -1,6 +1,5 @@
 
 import * as Types from './types.js';	
-import { Engine } from './engine.js';	
 
 const Vector2     = Types.Vector2;
 const Zero        = Vector2.Zero();
@@ -14,6 +13,7 @@ const Enum_PhysicsShape = {
 	User   : 99,
 }
 
+const PI2 = Math.PI * 2;
 /*
 
 	PhysicsShape is the ultimate ancestor class for all physics shapes. 
@@ -35,9 +35,8 @@ class PhysicsShape {
 		this._angle = rad;
 	}
 	
-	get angle() {
-		const pi2 = Math.PI * 2;
-		return ((this._angle % pi2) + pi2) % pi2;
+	get angle() {	
+		return ((this._angle % PI2) + PI2) % PI2;
 	}	
 	
 /*
@@ -376,7 +375,8 @@ class Poly extends PhysicsShape {
 		} else result = this._projectedPointsCache;
 		return result;
 	}
-	/*
+
+	/**
 		Creates points of polygon from flat array of values [x0, y0, x1, y1, x2, y2...] converting them to Vector2
 	*/
 	fromArray(arr) { // arr:[number]
@@ -428,7 +428,7 @@ class Poly extends PhysicsShape {
 		for (var i = 0, j = vs.length - 1; i < vs.length; j = i++) {			
 			var ls = new LineSegment(vs[i], vs[j]);
 			this._linesCache.push(ls);
-			if (ls.intersectsCircle(center, circle.radius)) return true;
+			if (ls.intersectsCircle(center, circle.radius * circle.owner.scale)) return true;
 		}		
 		
 		return false;		

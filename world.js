@@ -9,7 +9,7 @@
 import { Engine, Root, Types } from "./engine.js";
 import { CanvasRenderer } from "./canvasRenderer.js";
 import * as MultiCast from "./multicast.js";
-import * as Colliders from "./colliders.js";
+import * as Colliders from "./collider.js";
 
 const Vector2 = Types.Vector2;
 const Rect    = Types.Rect;

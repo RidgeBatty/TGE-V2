@@ -1,16 +1,15 @@
-/*
-
-    Library of built-in Jflo types
-	Copyright (c) Ridge Batty
-	Updated:
-	24.5.2020, version 1.0
-	28.5.2020, version 1.01 added Color.mix()
-	1.7.2020, version 1.1 overhaul + added Matrix3D		
-	14.2.2021, version 1.11 added Rect.center()
-	28.6.2021, version 1.12 added VectorBase.ToInt()
-	10.8.2021, version 1.2 added Vector.RotateX(), nnnY, nnnZ
-	21.9.2021, version 1.21 Matrix3D renamed to Matrix4x4
-	
+/**
+*   Library of built-in Jflo types
+*	Copyright (c) Ridge Batty
+*	Updated:
+*	24.5.2020, version 1.0
+*	28.5.2020, version 1.01 added Color.mix()
+*	1.7.2020, version 1.1 overhaul + added Matrix3D		
+*	14.2.2021, version 1.11 added Rect.center()
+*	28.6.2021, version 1.12 added VectorBase.ToInt()
+*	10.8.2021, version 1.2 added Vector.RotateX(), nnnY, nnnZ
+*	21.9.2021, version 1.21 Matrix3D renamed to Matrix4x4
+*	30.11.2021, version 1.22 added Vector2.fma and static Vector2.Fma 	
 */
 
 /*
@@ -571,6 +570,37 @@ class VectorBase {
 			case 4: return new Vector4(Math.floor(v.x), Math.floor(v.y), Math.floor(v.z), Math.floor(v.w));
 		}
 	}
+
+	/**
+	 * @desc Returns a random vector with each component set to a number in 0>=n<1 range
+	 * @param {number} components 
+	 * @returns {Vector2|Vector|Vector4}
+	 */
+	static Random() {			
+		const p = Math.random() * Math.PI * 2; 	
+		switch (this.name) {
+			case 'Vector2' : return new Vector2(Math.random(), Math.random());
+			case 'Vector'  : return new Vector(Math.random(), Math.random(), Math.random());
+			case 'Vector4' : return new Vector4(Math.random(), Math.random(), Math.random(), Math.random());
+		}
+	}
+
+	/**
+	 * @desc Returns a random unit vector
+	 * @param {number} components 
+	 * @returns {Vector2|Vector}
+	 */
+	static RandomDir() {
+		const p = Math.random() * Math.PI * 2; 	
+		switch (this.name) {
+			case 'Vector2' : return new Vector2(Math.cos(p), Math.sin(p));		
+			case 'Vector'  : {
+				const cosTheta = 2 * random() - 1;
+				const sinTheta = Math.sqrt(1 - cosTheta ** 2);
+				return new Vector(sinTheta * Math.cos( p ), sinTheta * Math.sin( p ), cosTheta);				
+			}		
+		}
+	}
 }
 
 /*
@@ -825,6 +855,16 @@ class Vector2 extends VectorBase {
         return new Vector2(a.x / b, a.y / b);
     }
 	
+	static Rotate(v, angle) {
+		var vec = new Vector2(v.x, v.y);
+		var x0 = vec.x;
+        var y0 = vec.y;
+		const cos = Math.cos(angle);
+		const sin = Math.sin(angle);
+        vec.x = x0 * cos - y0 * sin;
+		vec.y = y0 * cos + x0 * sin;
+		return vec;
+	}
 	static Distance(a, b) {
 		return Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2);
 	}
@@ -1094,5 +1134,5 @@ export {
     IntToWord,
     IntToDWord,
 	LineSegment,
-	Text,
+	Text
 }

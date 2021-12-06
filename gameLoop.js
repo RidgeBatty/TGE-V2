@@ -5,16 +5,18 @@
 	
 
 */
-import { Actor } from './actor.js';
+import { Hitpoints } from './actor-hp.js';
 import { Player } from './player.js';
 import { Projectile } from './projectile.js';
+import { Actor, Enum_ActorTypes } from './actor.js';
 import { preloadImages } from './utils.js';
 
 class GameLoop {	
 	constructor(o = {}) {
 		this.engine      = 'engine' in o ? o.engine : null;
 		this.data        = {};	// user data
-		this.flags       = Object.seal({ isRunning:false, showColliders:false, collisionsEnabled:false });  // flags
+		this._flags		 = { isRunning:false, showColliders:false, collisionsEnabled:false };
+		this.flags       = Object.seal(this._flags);  // flags
 		
 		this.levels      = [];
 		this.players     = [];	
@@ -86,40 +88,25 @@ class GameLoop {
 	hideColliders() { this.flags.showColliders = false; }	
 	showColliders() { this.flags.showColliders = true; }
 	
-	addHPSystem(a) {
-		var _maxHP = 100;
-		var _HP    = 100;
-		
-		Object.defineProperty(a, 'HP', {
-			get()  { return _HP },
-			set(v) { _HP = AE.clamp(v, 0, _maxHP); },
-			enumerable:true,
-		});
-		Object.defineProperty(a, 'maxHP', {
-			get()  { return _maxHP; },
-			set(v) { _maxHP = v; _HP = v; },
-			enumerable:true,
-		});		
-	}
-	
 	/**
 	 * 
 	 * @param {*} aType 
 	 * @param {*} o 
-	 * @returns {Actor}
+	 * @returns {Actor|Player}
 	 */
 	async add(aType, o = {}) {		
 		o.owner = this;
 
 		switch (aType) {
-			case 'level'       	: { var a = new Level(o); this.levels.push(a); a._type = 16; return a; }
+			case 'level'       	: { var a = new Level(o); this.levels.push(a); a._type = 256; return a; }
 
-			case 'player'      	: { var a = new Player(o); this.addHPSystem(a); this.players.push(a); a._type = 2; break; }
-			case 'projectile'  	: { var a = new Projectile(o); a._type = 8; break; }			
-			case 'enemy' 	  	: { var a = new Actor(o); this.addHPSystem(a); a._type = 4; break; } 
-			case 'layer'        : { var a = new Actor(o); a._type = 32; break; }
-			case 'consumable'   : { var a = new Actor(o); a._type = 64; break; }
-			default 	  		: { var a = new Actor(o); a._type = 1; }
+			case 'player'      	: { var a = new Player(o); const hp = new Hitpoints(); hp.assignTo(a); this.players.push(a); a._type = Enum_ActorTypes.player; break; }
+			case 'projectile'  	: { var a = new Projectile(o); a._type = Enum_ActorTypes.projectile; break; }			
+			case 'enemy' 	  	: { var a = new Actor(o); a._type = Enum_ActorTypes.enemy; break; } 
+			case 'layer'        : { var a = new Actor(o); a._type = Enum_ActorTypes.layer; break; }
+			case 'consumable'   : { var a = new Actor(o); a._type = Enum_ActorTypes.consumable; break; }
+			case 'obstacle'     : { var a = new Actor(o); a._type = Enum_ActorTypes.obstacle; break; }
+			default 	  		: { var a = new Actor(o); a._type = Enum_ActorTypes.default; }
 		}
 
 		a.actorType = aType;
@@ -129,7 +116,6 @@ class GameLoop {
 		if ('imgUrl' in o) {
 			const images = await preloadImages({ urls:[o.imgUrl] });
 			a.img = images[0];
-			console.log(a.img.naturalWidth);
 			a.setSize(a.img.naturalWidth, a.img.naturalHeight);
 		}
 		
@@ -170,10 +156,7 @@ class GameLoop {
 		
 		for (const layer of this.zLayers) {			
 			for (const object of layer) {
-				object.update();		
-				if (object instanceof Actor) {
-					if (this.flags.showColliders && object.flags.hasColliders) object.colliders.show();
-				}
+				object.update();				
 			}			
 		}
 		
@@ -197,7 +180,7 @@ class GameLoop {
 
 		if (this.flags.collisionsEnabled) {
 			// reset the color of all colliders of all actors 
-			if (this.flags.showColliders) for (const actor of actorsArray) if (actor.flags.hasColliders) for (const c of actor.colliders.objects) actor.colliders._setHilite(c.elem, 'blue');			
+			//if (this.flags.showColliders) for (const actor of actorsArray) if (actor.flags.hasColliders) for (const c of actor.colliders.objects) actor.colliders._setHilite(c.elem, 'blue');			
 
 			// create hit test groups:		
 			var groups = {

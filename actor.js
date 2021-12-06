@@ -25,18 +25,20 @@ const Enum_ActorTypes = {
 	enemy      : 4,
 	projectile : 8,	
 	vehicle	   : 16,
+	layer 	   : 32,
+	consumable : 64,
+	obstacle   : 128,
 }
 
 /**
- @desc This class is the ancestor class for arcade game Objects.
- @extends Root
- */
+* @desc This class is the ancestor class for arcade game objects.
+* @extends {Root}
+*/
 class Actor extends Root { 
 	/**
-	 * 
-	 * @param {Object} o Parameter object.
-	 * @param {GameLoop} o.GameLoop Reference to GameLoop which owns this Actor.
-	 * @param {Types.Vector2} o.position Position of the Actor in screen coordinates.
+	 * @param {Object} [o={}] Parameter object.
+	 * @param {GameLoop} o.owner Reference to GameLoop which owns this Actor.
+	 * @param {Vector2} o.position Position of the Actor in screen coordinates.
 	 * @param {Number} o.rotation Rotation of the Actor (in degrees).
 	 * @param {Number} o.scale Scaling of the Actor.
 	 * @param {Function} o.onClick Event called when user clicks on the actor with a pointing device.
@@ -44,16 +46,36 @@ class Actor extends Root {
 	 * @param {Function} o.onBeginOverlap Event called when something starts to overlap this Actor.
 	 * @param {Function} o.onEndOverlap Event called when something ends overlap with this Actor.
 	 * @param {*} o.data Reference to user defined data. Defaults to an empty object.
-	 * @param {string} o.name User defined name for the object. Not managed. Please use unique names to make search function work correctly.
+	 * @param {string} o.name User defined name for the object. Not managed. Please use unique names to make search function work correctly.	 	  
 	 */
-	constructor(o = {}) { // o:{ ?owner:GameLoop, ?position:Vector2, ?rotation:number, ?scale:number, ?zIndex:number, ?onClick:function, ?onTick:function, ?onBeginOverlap:function, ?onEndOverlap:function, ?data:{}, ?name:string }	
+	constructor(o = {}) {
 		super(o);
-		
-		/** @member {Object} */
-		this.renderHints = { fixedScale:false, fixedRotation:false, showColliders:false, isStatic:false, mirrorY:false };
 
-		/** @member {Object} */
-		Object.assign(this.flags, { isDestroyed:false, isFlipbookEnabled:false, isGravityEnabled:false, isPhysicsEnabled:false, hasEdges:true });
+		/**
+		 * @type {Vector2}
+		 */
+		this.position;
+
+		/**
+		 * @type {number}
+		 */
+ 		this.rotation;
+		 
+		/**
+		 * @type {number}
+		 */
+ 		this.scale;
+
+		/** 
+		 * @member {Object} 
+		 */
+		this.renderHints = Object.assign(this.renderHints, { fixedScale:false, fixedRotation:false, isStatic:false, mirrorY:false });
+
+		/**
+		 * @member {Object} 
+		 * 
+		*/
+		this.flags = Object.assign(this.flags,{ isDestroyed:false, isFlipbookEnabled:false, isGravityEnabled:false, isPhysicsEnabled:false, hasEdges:true });
 				
 		/**
 		 *  @memberof Actor
@@ -78,10 +100,15 @@ class Actor extends Root {
 		this._zIndex     = ('zIndex' in o) ? o.zIndex : 1;		// render order
 		this.origin      = new Vector2(-0.5, -0.5);				// relative to img dims, normalized coordinates - i.e. { -0.5, -0.5 } = center of the image
 		this._renderPosition = Vector2.Zero();
+
+		/**
+		 * @type {boolean} Is the actor currently drawn on the screen or not?
+		 */
 		this.isVisible       = ('hidden' in o) ? !o.hidden : true;
 
 		if ('dims' in o) this.setSize(o.dims);		
 		if ('name' in o) this.name = o.name;
+		if ('hasColliders' in o) this.hasColliders = o.hasColliders;
 	}
 
 	get zIndex() {
@@ -175,7 +202,7 @@ class Actor extends Root {
 		
 		this.imageURL    = actor.imageURL;
 		this.data        = actor.data;						// by reference
-		this.visible     = actor.visible;				
+		this.isVisible   = actor.isVisible;				
 	}
 
 	update() {		
@@ -183,18 +210,21 @@ class Actor extends Root {
 			const p = this.position.clone();				
 			const c = Engine.renderingSurface.ctx;
 			
-			let img = this.img;
+			let img = this.img;			
 
 			if (this.flipbook) {
 				this.flipbook.update();						// select a frame from a flipbook if the actor has one specified			
 				img = this.flipbook.customRender.img;
 			}
-						
-			c.setTransform(this.scale, 0, 0, this.scale, p.x, p.y);
-			c.rotate(this.rotation);
-			c.drawImage(img, -this.width / 2, -this.height / 2);
-			c.setTransform(1,0,0,1,0,0); // reset transform
-		}		
+					
+			if (img) {										// if the Actor has an image attached, directly or via flipbook, display it
+				c.setTransform(this.scale, 0, 0, this.scale, p.x, p.y);
+				c.rotate(this.rotation);
+				c.drawImage(img, -this.width / 2, -this.height / 2);			
+			}
+
+			if (this.hasColliders && this.renderHints.showColliders && this.owner.flags.showColliders) this.colliders.update();
+		}
 	}
 	
 	release() {
@@ -207,7 +237,7 @@ class Actor extends Root {
 	 * @param {Number=} y 
 	 */	
 	moveBy(x, y) {		
-		if (arguments.length == 2) {
+		if (y != undefined) {
 			this.position.x += x;
 			this.position.y += y;
 		} else {
@@ -222,7 +252,7 @@ class Actor extends Root {
 	 * @param {Number=} y 
 	 */
 	moveTo(x, y) {
-		if (arguments.length == 2) {
+		if (y != undefined) {
 			this.position.x = x;
 			this.position.y = y;
 		} else {

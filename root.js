@@ -7,27 +7,57 @@
 	it may optionally contain colliders collection
 		
 */
-import * as Colliders from "./colliders.js";
+import { Collider } from "./collider.js";
 import * as Types from './types.js';	
 
 const Vector2 = Types.Vector2;
 
+/**
+ * @typedef HitTestMode
+ * @property {number} Overlap "1"
+ * @enum {HitTestMode}
+ */
 const Enum_HitTestMode = {
 	Overlap : 1,				// allow actors to overlap/pass through each other. fire beginoverlap and endoverlap events
 	Block   : 2,				// do not allow overlapping. collide actors. fire collide event
 	Ignore  : 3					// ignore hit testing altogether. does not fire any events
 }
+
+/**
+ * @typedef HitTestFlag
+ * @property {string} Player "player"
+ * @enum {HitTestFlag}
+ */
+const HitTestFlag = {
+	Player:			Enum_HitTestMode.Overlap,
+	Enemy:			Enum_HitTestMode.Overlap,
+	PlayerShot:		Enum_HitTestMode.Overlap,
+	EnemyShot:		Enum_HitTestMode.Overlap,
+	Obstacle:		Enum_HitTestMode.Block,
+	WorldStatic:	Enum_HitTestMode.Block,
+	WorldDynamic:	Enum_HitTestMode.Block,			
+	Decoration:   	Enum_HitTestMode.Ignore,
+	Environment:   	Enum_HitTestMode.Ignore,
+}
 	
 /**
- 	@desc Root class for Objects which have a transform and collisions
+ 	@desc Root class for Objects which have a transform and collisions	
  */
 class Root {
+	/**	
+	 * @param {Object} [o={}] Parameters object 
+	 * @param {GameLoop} o.owner Gameloop which owns this Root object
+	 * @param {Vector2} o.position Position of the Root
+	 */
 	constructor(o = {}) {
 		if ('scale' in o && !AE.isNumeric(o.scale)) throw 'Parameter "scale" must be a Number';
 		
 		this.owner        = o.owner;		
 		this.createParams = o;
 				
+		/**
+		 * @type {Vector2} Position of the Root
+		 */
 		this.position     = ('position' in o) ? o.position : Vector2.Zero();
 		this.rotation     = ('rotation' in o) ? o.rotation : 0;		
 		this.scale        = ('scale' in o) ? o.scale : 1;		
@@ -37,36 +67,33 @@ class Root {
 		
 		this.data         = ('data' in o) ? o.data : {}; // user data	
 		this.flags        = { hasColliders:false };
-		this.renderHints  = {};
+		this.renderHints  = { showColliders:false };
 				
 		this.world        = null;		
-		this.colliders    = null;  		// colliders object			
+
+		/**
+		 * @type {Collider} Collider object
+		 */
+		this.colliders    = null;  		// collider object			
 		this.overlaps     = [];			// this actor is currently overlapping all the other actors in the list
 		
 		this._defaultColliderType = 'WorldDynamic';	// override in descendant class to change the default		
 
 		AE.sealProp(this, 'name', ('name' in o) ? o.name : '');	
+
+		// if the GameLoop has showColliders flag enabled, make the colliders visible for all subsequently created Root objects
+		if (this.owner.flags.showColliders == true) this.renderHints.showColliders = true;
 	}
 	
 	_createCollisionChannels() {
 		this._hitTestGroup = this._defaultColliderType;				
-		this._hitTestFlag  = {
-			Player:			Enum_HitTestMode.Overlap,
-			Enemy:			Enum_HitTestMode.Overlap,
-			PlayerShot:		Enum_HitTestMode.Overlap,
-			EnemyShot:		Enum_HitTestMode.Overlap,
-			Obstacle:		Enum_HitTestMode.Block,
-			WorldStatic:	Enum_HitTestMode.Block,
-			WorldDynamic:	Enum_HitTestMode.Block,			
-			Decoration:   	Enum_HitTestMode.Ignore,
-			Environment:   	Enum_HitTestMode.Ignore,
-		};				
+		this._hitTestFlag  = Object.create(HitTestFlag);
 	}
 	
 	get hasColliders() { return this.flags.hasColliders; }		
 	set hasColliders(value) {		
 		if (value === true && this.flags.hasColliders == false) {
-			this.colliders = new Colliders.Collider({ owner:this });
+			this.colliders = new Collider({ owner:this });
 			this._createCollisionChannels();
 			this.flags.hasColliders = true;
 		}
@@ -87,8 +114,14 @@ class Root {
 		return this._hitTestFlag[otherActor._hitTestGroup];		
 	}
 	
-	setCollisionResponse(flagName, response) {
-		if (flagName in this._hitTestFlag && Object.values(Enum_HitTestMode).indexOf(response) > -1) this._hitTestFlag[flagName] = response;
+	/**
+	 * @desc Sets current collision response for this Actor. Example: actor.setCollisionResponse('Player', Enum_HitTestMode.Overlap);
+	 * @param {HitTestFlag} channelName string: Player, Enemy, PlayerShot, EnemyShot, Obstacle, WorldStatic, WorldDynamic, Decoration, Environment 
+	 * @param {HitTestMode} response property of Enum_HitTestMode: Overlap, Block, Ignore
+	 * 
+	 */
+	setCollisionResponse(channelName, response) {		
+		if (channelName in this._hitTestFlag && Object.values(Enum_HitTestMode).indexOf(response) > -1) this._hitTestFlag[channelName] = response;
 			else console.warn('Invalid parameters');
 	}
 }

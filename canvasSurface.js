@@ -53,6 +53,10 @@ class CanvasSurface {
 	get pixelSmooth() {
 		return this._pixelSmooth;
 	}
+
+	resetTransform() {
+		this.ctx.resetTransform();
+	}	
 	
 	/*
 		Define the width and height (in pixels) of the drawing surface.
@@ -204,7 +208,17 @@ class CanvasSurface {
 		this.ctx.fillStyle = color; 
 		for (var y = ~~top; y < ~~bottom; y++) this.ctx.fillRect(~~tlx, y, ~~trx, 1);		
 	}
-	
+
+	/**
+	 * @desc Draws a rectangle on the canvas
+	 * @param {number} x 
+	 * @param {number} y 
+	 * @param {number} w Width
+	 * @param {number} h Height 
+	 * @param {Object} [p={stroke="black"}] Parameters object { stroke, fill [optional]] }
+	 * @param {string} p.stroke Stroke (outline color)
+	 * @param {string=} p.fill Fill color	 
+	 */
 	drawRect(x, y, w, h, p = { stroke:'black' }) {
 		if (p.fill) { 
 			this.ctx.fillStyle = p.fill; 
@@ -216,9 +230,14 @@ class CanvasSurface {
 		}
 	}		
 	
-	/*
-		Draw a circle on World canvas
-	*/
+	/**
+	 * @desc Draws a circle on the canvas
+	 * @param {Vector2} center
+	 * @param {Number} radius
+	 * @param {Object} [p={stroke="black"}] Parameters object { stroke, fill [optional] }
+	 * @param {string} p.stroke Stroke (outline) color
+	 * @param {string=} p.fill Fill color 	 
+	 */			
 	drawCircle(center, radius, p = { stroke:'black' }) {		// center:Vector2, radius:Number, ?p:{ ?stroke:String, ?fill:String }
 		this.ctx.beginPath();		
 		this.ctx.arc(center.x, center.y, radius, 0, Math.PI * 2);			

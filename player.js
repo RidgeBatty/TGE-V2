@@ -3,8 +3,10 @@
 	Player
 
 */
-import { Actor, Engine, Types } from './engine.js';
+import { Actor } from './actor.js';
+import * as Types from './types.js';
 import { KeyController, GamepadController, PointerController } from './gameController.js';
+import { Hitpoints } from './actor-hp.js';
 
 const Vector2 = Types.Vector2;
 
@@ -29,8 +31,9 @@ class Player extends Actor {
 		this.controllers   = {};	
 		this._movementType = Enum_PlayerMovement.Default;
 		this._isMovementCancelled = false;
+		this.lives		   = 1;
 		
-		if (Engine.useWorld) this.world = Engine.world;
+		//if (Engine.useWorld) this.world = Engine.world;
 	}
 	
 	/*
@@ -75,6 +78,10 @@ class Player extends Actor {
 		this.controllers['gamepad'] = new GamepadController({ owner:this, index });		
 	}
 	
+	/**
+	 * 
+	 * @param {*} params 
+	 */
 	attachPointer(params) {
 		this.controllers['pointer'] = new PointerController({ owner:this }, params);		
 	}
