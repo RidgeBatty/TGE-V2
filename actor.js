@@ -204,28 +204,6 @@ class Actor extends Root {
 		this.data        = actor.data;						// by reference
 		this.isVisible   = actor.isVisible;				
 	}
-
-	update() {		
-		if (this.isVisible) {
-			const p = this.position.clone();				
-			const c = Engine.renderingSurface.ctx;
-			
-			let img = this.img;			
-
-			if (this.flipbook) {
-				this.flipbook.update();						// select a frame from a flipbook if the actor has one specified			
-				img = this.flipbook.customRender.img;
-			}
-					
-			if (img) {										// if the Actor has an image attached, directly or via flipbook, display it
-				c.setTransform(this.scale, 0, 0, this.scale, p.x, p.y);
-				c.rotate(this.rotation);
-				c.drawImage(img, -this.width / 2, -this.height / 2);			
-			}
-
-			if (this.hasColliders && this.renderHints.showColliders && this.owner.flags.showColliders) this.colliders.update();
-		}
-	}
 	
 	release() {
 		if (this.colliders) this.colliders.destroy();		
@@ -268,9 +246,34 @@ class Actor extends Root {
 			if (len > this.movement.maxVelocity) this.velocity.normalize().mulScalar(this.movement.maxVelocity);
 		}		
 	}
-	
-/* 
-	tick event applies all movement by forces, restrictions and collisions to the actor
+
+/**
+*	Update event draws all the graphics needed to display this actor with minimal overhead
+*/	
+	update() {		
+		if (this.isVisible) {
+			const p = this.position.clone();				
+			const c = Engine.renderingSurface.ctx;
+			
+			let img = this.img;			
+
+			if (this.flipbook) {
+				this.flipbook.update();						// select a frame from a flipbook if the actor has one specified			
+				img = this.flipbook.customRender.img;
+			}
+					
+			if (img) {										// if the Actor has an image attached, directly or via flipbook, display it
+				c.setTransform(this.scale, 0, 0, this.scale, p.x, p.y);
+				c.rotate(this.rotation);
+				c.drawImage(img, -this.width / 2, -this.height / 2);			
+			}
+
+			if (this.hasColliders && this.renderHints.showColliders && this.owner.flags.showColliders) this.colliders.update();
+		}
+	}
+
+/**
+*	Tick event applies all movement by forces, restrictions and collisions to the actor
 */
 	tick() {
 		if (this.flags.isDestroyed) return;

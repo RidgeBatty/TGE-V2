@@ -875,7 +875,16 @@ class Vector2 extends VectorBase {
         return a.x * b.x + a.y * b.y;
     } 
 	static Fma(m1, m2, a) {
-		return new Vector(m1.x * m2.x + a.x, m1.y * m2.y + a.y);
+		return new Vector2(m1.x * m2.x + a.x, m1.y * m2.y + a.y);
+	}
+	/**
+	 * Returns angle between two vectors.
+	 * @param {Vector2} v1 
+	 * @param {Vector2} v2 
+	 * @returns {number} Angle in radians
+	 */
+	static AngleBetween(v1, v2) {
+		return Math.acos(Vector2.Dot(v1.clone().normalize(), v2.clone().normalize()));
 	}
     static Zero() { return new Vector2(0, 0); }
 	static Down() { return new Vector2(0, -1); }
