@@ -15,7 +15,10 @@
 	Sequence		Single animation sequence (i.e. walk, jump, shoot, run). 	
 
 **/
+import * as MultiCast from "./multicast.js";
 import { preloadImages } from './utils.js';
+
+const Events = ['End'];
 
 class Sequence {
 	constructor(flipbook, name, start, end, loop = true) {
@@ -35,11 +38,11 @@ class Sequence {
 		this._isPaused   = true;
 	}
 	
-	clone() {
-		const s = new Sequence(this.flipbook, this.name, this.start, this.end, this._iterationCount == Infinity);
+	clone(ownerFlipbook) {
+		const s = new Sequence(ownerFlipbook, this.name, this.start, this.end, this._iterationCount == Infinity);
 		
-		s.index     = this.index;
-		s.direction = this.direction;
+		s.index           = this.index;
+		s.direction       = this.direction;
 		
 		s._iterationCount = this._iterationCount;
 		s._iterations     = this._iterations;
@@ -156,7 +159,7 @@ class Sequence {
 			else {
 				this._cycle = 'ended';			
 				if (AE.isFunction(this.onComplete))     this.onComplete(this);
-				if (AE.isFunction(this.flipbook.onEnd)) this.flipbook.onEnd(this);														
+				this.flipbook._fireEvent('end', { sequence:this });														
 			} 
 	}		
 	
@@ -172,10 +175,18 @@ class Sequence {
 }
 
 class Flipbook {
-	constructor(o = {}) { // ?o:{ actor:Actor, ?dims:{x:Number,y:Number}, ?fps:Number }		
+	/**
+	 * 
+	 * @param {object} o 
+	 * @param {Actor} o.actor Actor to assign this animation to
+	 * @param {Vector2} o.dims For Atlas only! Number of frames in vertical and horizontal direction
+	 * @param {number} o.fps Playback speed in frames per second
+	 */
+
+	constructor(o = {}) { 
 		if (o.actor) this.assignTo(o.actor);
 	
-		this.dims         = ('dims' in o) ? o.dims : { x:0, y:0 };	// specify this for Atlas, it cannot be known
+		this.dims         = ('dims' in o) ? o.dims : { x:0, y:0 };	// number of frames in x and y direction. MUST be specified for Atlas, it cannot be known
 		this.size         = this.dims.y * this.dims.x;
 		this.images       = [];
 		this.sequences    = {};
@@ -183,12 +194,30 @@ class Flipbook {
 		
 		this._fps         = ('fps' in o && !isNaN(o.fps)) ? AE.clamp(o.fps, 0, 60) : 60;
 		this._isAtlas     = true;		
+		this._atlasOrder  = 'left-to-right';			// frame ordering in atlas
 		this._lastFrame   = -1;
 		
-		this.onEnd        = null;		// callback for sequence end (does not fire if looped)		
-		this.customRender = {};			// optional custom render data
+		const events = {};
+		for (const e of Events) events[e.toLowerCase()] = [];
+		AE.sealProp(this, '_events', events);
+
+		this.customRender = {};			// optional custom render data	
+	}
+
+	addEvent(name, func) {
+		if (typeof func != 'function') throw 'Second parameter must be a function';
+		if (name in this._events) this._events[name].push({ name, func });			
 	}
 	
+	_fireEvent(name, data) {
+		const e = this._events[name];													
+		if (e) for (var i = 0; i < e.length; i++) e[i].func(this, name, data);
+	}
+	
+	/**
+	 * Clones the Flipbook and all Sequences. Events are not cloned. Image data is not cloned.
+	 * @returns {Flipbook}
+	 */
 	clone() {
 		const c     = new Flipbook({ actor:this.actor, dims:this.dims, fps:this._fps });
 		c.images    = this.images;
@@ -196,8 +225,7 @@ class Flipbook {
 		for (const [k, v] of Object.entries(this.sequences)) c.sequences[k] = v.clone(c);		// clone Sequences, and make the cloned Flipbook their owner
 		
 		c._isAtlas   = this._isAtlas;
-		c.sequence   = this.sequence;		
-		c.onEnd      = this.onEnd;
+		c.sequence   = this.sequence;				
 		c._lastFrame = this._lastFrame;
 		
 		return c;
@@ -242,6 +270,11 @@ class Flipbook {
 		return this._isAtlas;
 	}
 	
+	/**
+	 * @async
+	 * @param {string} url 
+	 * @returns {HTMLImageElement} <Promise>
+	 */
 	async loadAsAtlas(url) {
 		this._isAtlas = true;
 		return new Promise((resolve, reject) => {
@@ -251,7 +284,14 @@ class Flipbook {
 			img.src = url;
 		});
 	}
-	
+
+	/**
+	 * 
+	 * @param {[string]} urls 
+	 * @param {string} path 
+	 * @param {boolean} append 
+	 * @returns 
+	 */
 	async loadAsFrames(urls, path, append = false) {	// urls:[String], ?path:string, ?append:Boolean
 		this._isAtlas = false;
 		if (append) this.images.push(...await preloadImages({ urls, path })); 
@@ -259,6 +299,15 @@ class Flipbook {
 		return this.images;
 	}	
 	
+	/**
+	 * 
+	 * @param {object} o 
+	 * @param {string} o.name
+	 * @param {number} o.startFrame
+	 * @param {number} o.endFrame
+	 * @param {boolean} o.loop
+	 * @returns 
+	 */
 	addSequence(o) {		
 		var name 		= o.name;
 		var startFrame 	= o.startFrame || 0;
@@ -285,11 +334,11 @@ class Flipbook {
 	/*
 		Automatically called from Actor.update()
 	*/
-	update() {		
-		if (this.sequence == null || this.actor == null) return;
+	update() {			
+		if (this.sequence == null || this.actor == null) return;		
 		
 		const seq   = this.sequences[this.sequence];
-		if (seq == null) return;
+		if (seq == null || seq._cycle == 'ended') return;
 						
 		const frame = seq.next();
 		const img   = this.isAtlas ? this.images[0] : this.images[frame];
@@ -297,13 +346,18 @@ class Flipbook {
 		if (img == null) return;
 					
 		if (this.isAtlas) {			
-			var a = Math.floor(frame / this.dims.x);
-			var b = Math.floor(frame % this.dims.x);
-			var w = img.naturalWidth  - img.naturalWidth  / this.dims.x * b;
-			var h = img.naturalHeight - img.naturalHeight / this.dims.y * a;					
+			if (this._atlasOrder == 'left-to-right') {
+				var a = Math.floor(frame % this.dims.x);
+				var b = Math.floor(frame / this.dims.x);
+			} else {
+				var a = Math.floor(frame / this.dims.x);
+				var b = Math.floor(frame % this.dims.x);
+			}
+			var w = Math.floor(img.naturalWidth  / this.dims.x);
+			var h = Math.floor(img.naturalHeight / this.dims.y);						
 		} else {
-			var w = Math.floor(img.naturalWidth  / 2);
-			var h = Math.floor(img.naturalHeight / 2);				
+			var w = img.naturalWidth;
+			var h = img.naturalHeight;
 		}
 						
 		this.customRender = { img, a, b, w, h };

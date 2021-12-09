@@ -10,7 +10,7 @@ import { Player } from './player.js';
 import { Projectile } from './projectile.js';
 import { Actor, Enum_ActorTypes } from './actor.js';
 import { preloadImages } from './utils.js';
-
+import { Vector2 } from './types.js';
 class GameLoop {	
 	constructor(o = {}) {
 		this.engine      = 'engine' in o ? o.engine : null;
@@ -51,8 +51,18 @@ class GameLoop {
 		this._tickRate = 1000 / AE.clamp(fps, 1, 1000);
 	}
 
-	addTimer(o) {				// o:{ name:String, duration:Number, onTick:Function, onComplete:Function }
-		const timerObj = Object.assign({ ticksLeft : o.duration }, o);
+	/**
+	 * 
+	 * @param {object} o 
+	 * @param {string=} o.name
+	 * @param {number} o.duration
+	 * @param {number} o.repeat
+	 * @param {function=} o.onTick
+	 * @param {function=} o.onComplete	 
+	 */
+	addTimer(o) {
+		if (!('repeat' in o)) o.repeat = 1;
+		const timerObj = Object.assign({ ticksLeft : o.duration, repeatsLeft : o.repeat }, o);
 		this.timers.push(timerObj);
 	}
 
@@ -76,9 +86,11 @@ class GameLoop {
 		return list;
 	}	
 
-	/*
-		Loops through all actors and returns an array of actors based on their flag values
-	*/
+	/**
+	 * Loops through all actors and returns an array of actors based on their flag values	
+	 * @param {string} name 
+	 * @returns {Actor}
+	 */
 	findActorByName(name) {		
 		for (const actor of this.actors) if (actor.name == name) return actor;
 		return null;
@@ -89,12 +101,20 @@ class GameLoop {
 	showColliders() { this.flags.showColliders = true; }
 	
 	/**
-	 * 
-	 * @param {*} aType 
-	 * @param {*} o 
-	 * @returns {Actor|Player}
+	 * Creates a new Actor instance and adds it in the GameLoop
+	 * @param {String} aType Actor type to create, one of level|player|projectile|enemy|layer|consumable|obstacle
+	 * @param {object} o Actor parameter object
+	 * @param {string} o.name User defined name
+	 * @param {image} o.img HTMLImageElement or Canvas
+	 * @param {string} o.imgUrl URL to image
+	 * @param {Vector2} o.position
+	 * @param {Vector2} o.rotation
+	 * @param {number} o.scale
+	 * @param {Vector2} o.dims Image dimensions
+	 * @param {boolean} o.hasColliders Image dimensions
+	 * @returns {Actor|Player|Projectile|Level}
 	 */
-	async add(aType, o = {}) {		
+	add(aType, o = {}) {		
 		o.owner = this;
 
 		switch (aType) {
@@ -114,9 +134,10 @@ class GameLoop {
 		this.zLayers[a.zIndex].push(a);	
 
 		if ('imgUrl' in o) {
-			const images = await preloadImages({ urls:[o.imgUrl] });
-			a.img = images[0];
-			a.setSize(a.img.naturalWidth, a.img.naturalHeight);
+			preloadImages({ urls:[o.imgUrl] }).then((images) => {
+				a.img = images[0];
+				a.setSize(a.img.naturalWidth, a.img.naturalHeight);
+			})			
 		}
 		
 		return a;
@@ -209,7 +230,7 @@ class GameLoop {
 					if (actor._hitTestFlag[g] < 3) {
 						for (const o of groups[g]) {
 							if (o != actor && !actor.flags.isDestroyed && !o.flags.isDestroyed) actor.testOverlaps(o);
-							if (o.flags.isDestroyed)  destroyed.push(o);
+							if (o.flags.isDestroyed) destroyed.push(o);
 						}				
 					}
 				}
@@ -222,18 +243,34 @@ class GameLoop {
 		for (const actor of destroyed) {
 			// signal 'endoverlap' to all actors which this actor overlaps with:
 			for (const olap of actor.overlaps) actor._fireEvent('endoverlap', { actor, otherActor:olap });		
+
+			// remove from zLayers:
+			const layer = this.zLayers[actor.zIndex];
+			for (let i = layer.length; i--;) if (layer[i] === actor) layer.splice(i, 1);
 			
 			// clean up:
 			actor.release();
-			this.actors = actorsArray.filter(e => e != actor);	// probably not efficient to replace the whole actors array, but rarely called		
+			this.actors = actorsArray.filter(e => e != actor);	// probably not efficient to replace the whole actors array, but rarely called					
 		}
 
 		// tick timers:
 		for (let i = this.timers.length; i--;) {
 			const evt = this.timers[i];
-			evt.ticksLeft--;
+			
 			if ('onTick' in evt) evt.onTick(evt); 
-			if (evt.ticksLeft == 0) { this.timers.splice(i, 1); if ('onComplete' in evt) evt.onComplete(evt); }
+
+			evt.ticksLeft--;			
+			if (evt.ticksLeft == 0) { 						
+				if ('onRepeat' in evt) evt.onRepeat(evt); 					
+				
+				evt.repeatsLeft--;		
+				evt.ticksLeft = evt.duration;
+				
+				if (evt.repeatsLeft == 0 && evt.ticksLeft) {
+					this.timers.splice(i, 1); 
+					if ('onComplete' in evt) evt.onComplete(evt); 
+				}
+			}
 		}
 		
 		this.tickCount++;

@@ -10,8 +10,9 @@
 *	10.8.2021, version 1.2 added Vector.RotateX(), nnnY, nnnZ
 *	21.9.2021, version 1.21 Matrix3D renamed to Matrix4x4
 *	30.11.2021, version 1.22 added Vector2.fma and static Vector2.Fma 	
+*	8.12.2021, version 1.23 added static Vector2|Vector.Lerp
 */
-
+const lerp = (s, e, t) => { return s + (e - s) * t; }
 /*
 
     Text
@@ -323,8 +324,7 @@ class LinearColor extends BaseColor {
 	/*
 		Mix this color with other LinearColor
 	*/
-	mix(other, delta, alpha) {	// other:LinearColor, delta:number, alpha:number (0..1 for intensity, null to ignore alpha, negative number to mix)
-		const lerp = (s, e, t) => { return s + (e - s) * t; }
+	mix(other, delta, alpha) {	// other:LinearColor, delta:number, alpha:number (0..1 for intensity, null to ignore alpha, negative number to mix)		
 		this.r = lerp(this.r, other.r, delta);
 		this.g = lerp(this.g, other.g, delta);
 		this.b = lerp(this.b, other.b, delta);
@@ -737,6 +737,17 @@ class Vector extends VectorBase {
     static Zero() { return new Vector(0,0,0); }
     static FromStruct(a) { return new Vector2(a.x, a.y, a.z) }
 	static IsVector(a) { return (AE.isObject(a) && a.constructor === Vector.prototype.constructor); }
+	
+	/**
+	 * 
+	 * @param {Vector} v1 
+	 * @param {Vector} v2 
+	 * @param {Number} f Factor
+	 * @returns {Vector} New Vecto
+	 */
+	 static Lerp(v1, v2, f) {
+		return new Vector(lerp(v1.x,v2.x, f), lerp(v1.y,v2.y, f), lerp(v1.z,v2.z, f));		
+	}
 }
 
 /*
@@ -884,7 +895,7 @@ class Vector2 extends VectorBase {
 	 * @returns {number} Angle in radians
 	 */
 	static AngleBetween(v1, v2) {
-		return Math.acos(Vector2.Dot(v1.clone().normalize(), v2.clone().normalize()));
+		return Math.atan2(v2.y, v2.x) - Math.atan2(v1.y, v1.x);
 	}
     static Zero() { return new Vector2(0, 0); }
 	static Down() { return new Vector2(0, -1); }
@@ -892,7 +903,26 @@ class Vector2 extends VectorBase {
 	static Left() { return new Vector2(1, 0); }
 	static Right() { return new Vector2(-1, 0); }
     static FromStruct(a) { return new Vector2(a.x, a.y) }	
+
+	/**
+	 * 
+	 * @param {number} angle 
+	 * @param {number=1} scale 
+	 * @returns {Vector2}
+	 */
+	static FromAngle(angle, scale = 1) { return new Vector2(Math.sin(angle) * scale, -Math.cos(angle) * scale); }
 	static IsVector2(a) { return (AE.isObject(a) && a.constructor === Vector2.prototype.constructor); }
+
+	/**
+	 * Lineraly interpolates the components of two vectors
+	 * @param {Vector2} v1 
+	 * @param {Vector2} v2 
+	 * @param {number} f Factor
+	 * @returns {Vector2}
+	 */
+	static Lerp(v1, v2, f) {
+		return new Vector2(lerp(v1.x,v2.x, f), lerp(v1.y,v2.y, f));
+	}
 }
 
 /*

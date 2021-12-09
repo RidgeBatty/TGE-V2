@@ -10,10 +10,17 @@ import './ext/hjson.min.js';
 import * as Types from './types.js';
 const Vec2 = Types.Vector2;
 
+/**
+ * Halts execution of current Javascript context for n milliseconds without blocking other asynchronous tasks.
+ * @async
+ * @param {number} milliseconds 
+ * @returns {Promise}
+ */
 const delay = async (milliseconds) => { return await new Promise(resolve => { setTimeout(resolve, milliseconds); }); }
 
 /**
  * Preloads a list of image files and returns a promise which resolves when all the images are completely loaded.
+ * @async
  * @param {Object} o - Parameter object
  * @param {string=} o.path - Path to files
  * @param {string[]} o.urls - List of URLs

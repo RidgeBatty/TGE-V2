@@ -300,13 +300,14 @@ class TinyGameEngine {
 		}
 	}
 
-	/*
-		Set multiple flags at once by providing an object, for example: 
-		engine.setFlags({ hasWorld:true, hasEdges:true });
-		If a defined flag does not exist in the engine, the parameter is silently ignored.
-	*/
-	setFlags(o) {	// o:{}
-		if (AE.isObject(o)) Object.keys(o).forEach( key => { if (key in _this.flags) _this.flags[key] = o[key]} );
+	/**
+	 * 	Set multiple flags at once by providing an object, for example: 
+	 *	engine.setFlags({ hasWorld:true, hasEdges:true });
+     *	If a defined flag does not exist in the engine, the parameter is silently ignored.
+	 *	@param {object} o Key Value object where key is the flag name (string) and value is boolean.
+	 */		
+	setFlags(o) {	// o:{}		
+		if (AE.isObject(o)) Object.keys(o).forEach( key => { if (key in this.flags) this.flags[key] = o[key]} );
 	}
 	
 	/*
@@ -365,18 +366,6 @@ class TinyGameEngine {
 	resume() {
 		this.start(this.gameLoop.onBeforeRender);
 	}
-
-	/**
-	 * 
-	 * @param {*} actorType 
-	 * @param {*} o 
-	 * @returns {Actor}
-	 * Creates a new Actor and returns it.
-	 */
-	addActor(actorType, o) {
-		return this.gameLoop.add(actorType, o);
-	}
-
 	/**
 	 * Creates a new World instance and saves the reference to Engine.world property.
 	 * @param {*} o 	
@@ -401,6 +390,17 @@ class TinyGameEngine {
 				this.renderingSurface.drawRect(0, 0, Engine.renderingSurface.width, Engine.renderingSurface.height, { fill });
 			}, onComplete:() => { resolve(); } });
 		});
+	}
+
+	/*
+	 * 
+	 * @param {string} actorType 
+	 * @param {*} o 
+	 * @returns {Actor}	 
+	 * Creates a new Actor and returns it.
+	 */
+	 addActor(actorType, o) {
+		return this.gameLoop.add(actorType, o);
 	}
 
 	/**

@@ -9,7 +9,7 @@ import { ChildActor } from "./childActor.js";
 import * as MultiCast from "./multicast.js";
 
 const Vector2 = Types.Vector2;
-const Events  = ['Click','Tick','BeginOverlap','EndOverlap', 'Collide'];
+const Events  = ['Click','Tick','BeginOverlap','EndOverlap', 'Collide','Destroy'];
 
 /**
  * @readonly
@@ -88,7 +88,11 @@ class Actor extends Root {
 		});
 						
 		// create arrays for eventhandlers
-		AE.sealProp(this, '_events', { tick : [], beginoverlap : [], endoverlap : [], collide : [] });				
+		const events = {};
+		for (const e of Events) events[e.toLowerCase()] = [];
+		AE.sealProp(this, '_events', events);
+
+		// container custom user data
 		AE.sealProp(this, 'data', ('data' in o) ? o.data : {});		
 		
 		// install (optional) event handlers given in parameters object
@@ -107,8 +111,13 @@ class Actor extends Root {
 		this.isVisible       = ('hidden' in o) ? !o.hidden : true;
 
 		if ('dims' in o) this.setSize(o.dims);		
-		if ('name' in o) this.name = o.name;
 		if ('hasColliders' in o) this.hasColliders = o.hasColliders;
+
+		if ('img' in o) {						
+			this.img = o.img;	
+			if (o.img instanceof HTMLImageElement) this.setSize(o.img.naturalWidth, o.img.naturalHeight);
+				else if (o.img instanceof HTMLCanvasElement/* || o.img.constructor.name == 'CanvasSurface'*/) this.setSize(o.img.width, o.img.height);
+		}
 	}
 
 	get zIndex() {
@@ -174,7 +183,12 @@ class Actor extends Root {
 		if (e) for (var i = 0; i < e.length; i++) e[i].func(this, name, data);
 	}
 	
-	destroy() { this.flags.isDestroyed = true; }	
+	destroy() { 		
+		if (!this.flags.isDestroyed) {
+			this.flags.isDestroyed = true;
+			this._fireEvent('destroy');			
+		}
+	}	
 	
 	setVelocity(v) {	// v:Vector2
 		this.velocity.set(v);
@@ -260,6 +274,14 @@ class Actor extends Root {
 			if (this.flipbook) {
 				this.flipbook.update();						// select a frame from a flipbook if the actor has one specified			
 				img = this.flipbook.customRender.img;
+				if (img && this.flipbook.isAtlas) {
+					const n = this.flipbook.customRender;
+					c.setTransform(this.scale, 0, 0, this.scale, p.x, p.y);
+					c.rotate(this.rotation);
+					c.drawImage(img, n.a * n.w, n.b * n.h, n.w, n.h, -256 / 2, -256 / 2, 256, 256);	
+
+					img = null;	
+				}
 			}
 					
 			if (img) {										// if the Actor has an image attached, directly or via flipbook, display it
