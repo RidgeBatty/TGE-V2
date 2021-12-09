@@ -61,19 +61,17 @@ const main = async () => {
     Engine.setRootElement('game');                                                                              // First let's set up the engine
     Engine.createRenderingSurface();
 
-    const plr = await Engine.addActor('player');                     // create actor with "hasColliders" flag set to true
-    console.log(plr);
+    Engine.gameLoop.flags.collisionsEnabled = true;                                                                 // enable colliders
+    Engine.gameLoop.flags.showColliders     = true;                                                                 // visualize colliders        
+    
+    const plr = Engine.addActor('player');                                                                // create actor with "hasColliders" flag set to true    
 
-    try {        
-        Engine.gameLoop.flags.collisionsEnabled = true;                                                             // enable colliders
-        Engine.gameLoop.flags.showColliders     = true;                                                             // visualize colliders        
-                
+    try {                        
         for (let i = 0; i < 6; i++) {                                                                               // create 6 actors        
             const name = (i == 0) ? 'star' : 'circle';
 
-            const a = await Engine.addActor('actor', { hasColliders:true, name });                     // create actor with "hasColliders" flag set to true
-            a.setCollisionResponse('WorldDynamic', TGE.Enum_HitTestMode.Overlap);              // set collision response channel to respond to overlap events with other 'WorldDynamic' objects 
-            
+            const a = Engine.addActor('actor', { hasColliders:true, name });                           // create actor with "hasColliders" flag set to true            
+            a.setCollisionResponse('WorldDynamic', TGE.Enum_HitTestMode.Overlap);                                   // set collision response channel to respond to overlap events with other 'WorldDynamic' objects 
             a.scale = 0.05 + Math.random() * 0.05;                    
             a.position.add(origin).addScalar(512 * a.scale);                                                        // move the actor to "topLeftCorner"            
             a.position.add(Vec2.Random().mul(viewportSize.clone().subScalar(1024 * a.scale)));              // add a random position inside the viewport (box with red outlines)

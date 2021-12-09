@@ -11,6 +11,7 @@
 *	21.9.2021, version 1.21 Matrix3D renamed to Matrix4x4
 *	30.11.2021, version 1.22 added Vector2.fma and static Vector2.Fma 	
 *	8.12.2021, version 1.23 added static Vector2|Vector.Lerp
+*   9.12.2021, version 1.24 added Rect.isPointInside()
 */
 const lerp = (s, e, t) => { return s + (e - s) * t; }
 /*
@@ -476,6 +477,17 @@ class Rect {
         Object.keys(me).forEach((key) => { arr.push(key + ': ' + me[key]); });
         return '{ ' + arr.join(', ') + ' }';
 	}
+
+	/**
+	 * Check if a point (vector2) is inside this rectangle.
+	 * @param {Vector2} v The point
+	 * @param {boolean} includeEdges Pass test if the point is on the edge of the rectangle
+	 * @returns {boolean}
+	 */
+	isPointInside(v, includeEdges) {
+		if (includeEdges) return !(v.x <= this.left || v.y <= this.top || v.x >= this.right || v.y >= this.bottom);
+		return !(v.x < this.left || v.y < this.top || v.x > this.right || v.y > this.bottom);
+	}
 }
 
 /*
@@ -898,12 +910,12 @@ class Vector2 extends VectorBase {
 		return Math.atan2(v2.y, v2.x) - Math.atan2(v1.y, v1.x);
 	}
     static Zero() { return new Vector2(0, 0); }
-	static Down() { return new Vector2(0, -1); }
-	static Up() { return new Vector2(0, 1); }
-	static Left() { return new Vector2(1, 0); }
-	static Right() { return new Vector2(-1, 0); }
+	static Down() { return new Vector2(0, 1); }
+	static Up() { return new Vector2(0, -1); }
+	static Left() { return new Vector2(-1, 0); }
+	static Right() { return new Vector2(1, 0); }
     static FromStruct(a) { return new Vector2(a.x, a.y) }	
-
+	
 	/**
 	 * 
 	 * @param {number} angle 
@@ -1161,6 +1173,11 @@ function IntToDWord(i) {
     return { byte0, byte1, byte2, byte3 }
 }    
 
+// Convenience functions to avoid 'new' keyword cluttering the code. If mapped to local context with 'const { CreateVector2:Vec2 } = Types;' the code can be made very compact.
+const CreateVector2 = (x, y) => { return new Vector2(x, y); }
+const CreateVector = (x, y, z) => { return new Vector(x, y, z); }
+const CreateVector4 = (x, y, z, w) => { return new Vector4(x, y, z, w); }
+
 export {
     Rect,
 	Matrix4x4,
@@ -1173,5 +1190,8 @@ export {
     IntToWord,
     IntToDWord,
 	LineSegment,
-	Text
+	Text,
+	CreateVector2,
+	CreateVector,
+	CreateVector4
 }
