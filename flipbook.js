@@ -216,10 +216,11 @@ class Flipbook {
 	
 	/**
 	 * Clones the Flipbook and all Sequences. Events are not cloned. Image data is not cloned.
+	 * @param {Actor=} attachToActor [Optional] Replace the cloned actor reference.
 	 * @returns {Flipbook}
 	 */
-	clone() {
-		const c     = new Flipbook({ actor:this.actor, dims:this.dims, fps:this._fps });
+	clone(attachToActor) {
+		const c     = new Flipbook({ actor:(typeof attachToActor == 'object') ? attachToActor : this.actor, dims:this.dims, fps:this._fps });
 		c.images    = this.images;
 						
 		for (const [k, v] of Object.entries(this.sequences)) c.sequences[k] = v.clone(c);		// clone Sequences, and make the cloned Flipbook their owner
@@ -318,6 +319,10 @@ class Flipbook {
 		this.sequences[name] = s;
 		
 		return s;
+	}
+
+	appendSequence(name, images, loop) {
+		return this.addSequence({ name, startFrame : this.frameCount, endFrame : this.frameCount + images.length, loop });
 	}
 	
 	removeSequence(name) {

@@ -90,12 +90,14 @@ class Emitter {
 		for (let i = count; i--;) {
 			const p = new ParticleParams({
 				img          : null,
+				opacity		 : 1,
 				lifeTime     : 0,
 				maxLife      : 0,
 				pos          : Vector2.Zero(),
 				velocity     : Vector2.Zero(),			// travel direction
 				angle        : 0,						// initial travel direction (used to calculate velocity)
 				angularSpeed : 0,						// initial rate of 'angle' change
+				rotation     : 0,						// rotation of the particle image - independent of travel angle!
 				speed		 : 0,				
 				scale		 : 1,
 				active		 : false,
@@ -157,10 +159,11 @@ class Emitter {
 			p.lifeTime     = calc('life', init);
 			p.maxLife      = p.lifeTime;
 			p.angle        = calc('angle', init);				
+			p.rotation     = ('rotation' in init) ? calc('rotation', init) : 0;
 			p.angularSpeed = calc('angularSpeed', init);
 			p.speed        = calc('speed', init);
 			p.velocity     = new Vector2(Math.sin(p.angle * Math.PI * 2) * p.speed, Math.cos(p.angle * Math.PI * 2) * p.speed);
-			p.opacity      = calc('opacity', init);
+			p.opacity      = ('opacity' in init) ? calc('opacity', init) : 1;
 			
 			// initial color and opacity:				
 			if (this.params.initColor) {
@@ -200,7 +203,8 @@ class Emitter {
 		// point gravity
 		const pointG  = this.params.pointGravity;
 		if (pointG) pointG.offset = Vector2.FromStruct(pointG.offset);		
-						
+
+		// delayed spawn
 		for (const p of this.particles) if (p.delay > 0) p.delay--; 
 					
 		if ( this.emitterActive ) this.spawn();						// if emitter is active, spawn new particle(s) 
@@ -210,9 +214,11 @@ class Emitter {
 			p.lifeTime--;
 			if (p.lifeTime < 1) p.active = false;
 			if ( !p.active ) continue;
+
+			// opacity follows lifetime?
+			if (p.opacity == 'lifetime') p.alpha = p.lifeTime / p.maxLife;					
 				
 			// apply forces
-			p.pos.add(p.velocity);
 			if (force)  p.velocity.add(force);
 			if (scalar) p.velocity.mulScalar(scalar);
 			if (func)   func(p);
@@ -226,7 +232,9 @@ class Emitter {
 				let distSq = Math.max(dx * dx + dy * dy, 4000);
 				let f = pointG.mass / (distSq * Math.sqrt(distSq));
 				p.velocity.add(new Vector2(dx * f, dy * f));
-			}													
+			}								
+
+			p.pos.add(p.velocity);			
 		}			
 	}
 	
@@ -235,19 +243,22 @@ class Emitter {
 		const pos = Vector2.Zero();		
 		this.activeParticleCount = 0;
 		
+		const alpha = ctx.globalAlpha;
 		for (const particle of this.particles) {
 			pos.set(particle.pos);
 			pos.add(this.pos);
 
 			if (particle.active) {			
 				this.activeParticleCount++;
-				if (particle.img && particle.visible) {						
+				if (particle.img && particle.visible) {
+					ctx.globalAlpha = particle.alpha;					
 					ctx.setTransform(particle.scale, 0, 0, particle.scale, pos.x, pos.y);
-					ctx.rotate(particle.angle * Math.PI);
+					ctx.rotate((particle.angle + particle.rotation) * Math.PI);
 					ctx.drawImage(particle.img, -particle._cachedSize.x / 2, -particle._cachedSize.y / 2);
 				}				
 			}
-		}		
+		}	
+		ctx.globalAlpha = alpha;	
 		ctx.setTransform(1,0,0,1,0,0); // reset transform
 	}
 }

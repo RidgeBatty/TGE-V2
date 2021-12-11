@@ -10,7 +10,14 @@ import * as Engine from "./engine.js";
 const { Rect, Vector2, Color } = Engine.Types;
 
 class CanvasSurface {
-	constructor(o = {}) {		// o:{ ?dims:Vector2, ?flags:{}, ?name:String }
+	/**
+	 * 
+	 * @param {object} o 
+	 * @param {Vector2=} o.dims
+	 * @param {object=} o.flags
+	 * @param {string=} o.name
+	 */
+	constructor(o = {}) {	
 		const canvas  = document.createElement('canvas');		
 		
 		if ('dims' in o) {
@@ -58,13 +65,14 @@ class CanvasSurface {
 		this.ctx.resetTransform();
 	}	
 	
-	/*
-		Define the width and height (in pixels) of the drawing surface.
+	/**
+	*	Define the width and height (in pixels) of the drawing surface.
 	*/
 	setCanvasSize(w, h) {
-		const canvas = this.canvas;
+		const canvas = this.canvas;		
 		canvas.width = w;
 		canvas.height = h;
+		
 		if (this._pixelSmooth) {
 			canvas.style.imageRendering = 'pixelated crisp-edges';			
 		} else {

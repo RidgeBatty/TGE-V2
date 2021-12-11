@@ -237,6 +237,13 @@ class AABB extends PhysicsShape {
 	
 */
 class Box extends AABB {
+	/**
+	 * 
+	 * @param {Vector2} position 
+	 * @param {Vector2} size 
+	 * @param {number} angle 
+	 */
+	
 	constructor(position, size, angle = 0) { // position:Vector2, size:Vector2, angle:number
 		super(position, size);
 		

@@ -40,7 +40,9 @@ class Player extends Actor {
 		Sets the default movement type of player
 		Movement object is inherited from Actor class
 	*/	
-	set movementType(value) {		
+	set movementType(value) {	
+		if (typeof value == 'string') value = Enum_PlayerMovement[value.toLowerCase()];
+		
 		if (value == Enum_PlayerMovement.Arcade) {					
 			this.movement.acceleration = 1;		
 			this.movement.friction     = 1;

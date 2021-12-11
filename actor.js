@@ -69,7 +69,7 @@ class Actor extends Root {
 		/** 
 		 * @member {Object} 
 		 */
-		this.renderHints = Object.assign(this.renderHints, { fixedScale:false, fixedRotation:false, isStatic:false, mirrorY:false });
+		this.renderHints = Object.assign(this.renderHints, { fixedScale:false, fixedRotation:false, isStatic:false, mirrorY:false, mirrorX:false });
 
 		/**
 		 * @member {Object} 
@@ -277,8 +277,9 @@ class Actor extends Root {
 				if (img && this.flipbook.isAtlas) {
 					const n = this.flipbook.customRender;
 					c.setTransform(this.scale, 0, 0, this.scale, p.x, p.y);
-					c.rotate(this.rotation);
-					c.drawImage(img, n.a * n.w, n.b * n.h, n.w, n.h, -256 / 2, -256 / 2, 256, 256);	
+					c.scale(this.renderHints.mirrorX ? -1 : 1, this.renderHints.mirrorY ? -1 : 1);
+					c.rotate(this.rotation);					
+					c.drawImage(img, n.a * n.w, n.b * n.h, n.w, n.h, -n.w / 2, -n.h / 2, n.w, n.h);	
 
 					img = null;	
 				}
@@ -286,6 +287,7 @@ class Actor extends Root {
 					
 			if (img) {										// if the Actor has an image attached, directly or via flipbook, display it
 				c.setTransform(this.scale, 0, 0, this.scale, p.x, p.y);
+				c.scale(this.renderHints.mirrorX ? -1 : 1, this.renderHints.mirrorY ? -1 : 1);
 				c.rotate(this.rotation);
 				c.drawImage(img, -this.width / 2, -this.height / 2);			
 			}

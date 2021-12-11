@@ -27,8 +27,7 @@ const tick = () => {                                                            
 
 const main = async () => {            
     Engine.setRootElement('game');                                                    // First let's set up the engine    
-    Engine.createRenderingSurface();    
-    Engine.setFlags({ hasEdges:false });
+    Engine.setFlags({ hasEdges:false, hasRenderingSurface:true });
     
     const mInfo = CreateMissileInfo({ homingSpeed:0.01, initialFlightTicks:180 }); // init a MissileInfo object    
         
@@ -52,17 +51,16 @@ const main = async () => {
         return;
     }
     
-    GameLoop.addTimer({ name:'launch_missile', duration:80, repeat:Infinity,            // create an infinitely repeating timer which launches missiles every 60 ticks (~once a second)
-        onRepeat:(e) => { 
+    GameLoop.addTimer({ name:'launch_missile', duration:80, repeat:Infinity,           // create an infinitely repeating timer which launches missiles every 60 ticks (~once a second)
+        onRepeat:() => { 
             const missile     = GameLoop.add('projectile', { img:images[0], zIndex:1, position:game.turret.position.clone(), rotation:game.turret.rotation + 0.75, scale:0.4, lifeTime:60 * 9 });                              
             missile.target    = game.tank;
             missile.info      = mInfo;                   
 
             missile.addEvent('destroy', (instigator) => { 
                 const eActor  = GameLoop.add('actor', { name:'explosion', scale:1, position:missile.position.clone(), rotation:instigator.rotation + Math.PI * 1.5 });
-                const exp     = expAnim.clone();                                           // clone the explosion animation flipbook (we may have multiple explosions)
-                exp.assignTo(eActor);                                                         
-                exp.addEvent('end', (e) => { eActor.destroy(); });  // add 'end' event to the flipbook. When the flipbook sequence ends, destroy the Actor (the flipbook loses reference and is destroyed with it)   
+                const exp     = expAnim.clone(eActor);                      // clone the explosion animation flipbook (we may have multiple explosions) and replace the Actor reference
+                exp.addEvent('end', _ => eActor.destroy());  // add 'end' event to the flipbook. When the flipbook sequence ends, destroy the Actor (the flipbook loses reference and is destroyed with it)   
                 exp.sequences['explosion'].play();
             });
         }

@@ -20,7 +20,7 @@
 * For example a space invaders, tetris, pong, asteroids, etc. might have no use of container for static World but a platformer game definitely has.
 *  
 */
-const VersionNumber = '2.0.0';
+const VersionNumber = '2.0.1';
 
 import * as MultiCast from "./multicast.js";
 import * as Types from "./types.js";
@@ -43,6 +43,7 @@ const DefaultFlags = {
 	'preserveAspectRatio' : true,
 	'hasContextMenu' : false,
 	'mouseEnabled' : false,
+	'hasRenderingSurface' : false,
 }
 
 /**
@@ -168,7 +169,7 @@ class TinyGameEngine {
 		AE.addEvent(window, 'touchstart', (e) => { onMouseDown(e); });
 		AE.addEvent(window, 'touchend', (e) => { onMouseUp(e); });
 		
-		this.updateFlags();		
+		this._onResizeWindow();
 	}
 	
 	/**
@@ -307,19 +308,20 @@ class TinyGameEngine {
 	 *	@param {object} o Key Value object where key is the flag name (string) and value is boolean.
 	 */		
 	setFlags(o) {	// o:{}		
-		if (AE.isObject(o)) Object.keys(o).forEach( key => { if (key in this.flags) this.flags[key] = o[key]} );
-	}
-	
-	/*
-		Updates the engine state to match flags register state
-	*/
-	updateFlags() {
-		if (this.flags.hasAutoAdjustScreen) this._onResizeWindow();
+		const _this = this;
+		if (AE.isObject(o)) Object.keys(o).forEach( key => { 
+			if (key in this.flags) {
+				if (key == 'hasRenderingSurface' && o[key] == true) _this.createRenderingSurface();
+
+				this.flags[key] = o[key];				// after the create functions are called!
+			}
+		});
 	}
 	
 	recalculateScreen() {
 		const pos = AE.getPos(this._rootElem);		
 		this.screen = new Rect(pos.left, pos.top, pos.left + pos.width, pos.top + pos.height);
+		this.edges  = new Rect(0, 0, pos.width, pos.height);
 	}
 
 	setRootElement(el) {
@@ -371,15 +373,19 @@ class TinyGameEngine {
 	 * @param {*} o 	
 	 */	
 	createWorld(o) {		
-		this.world = new World(o);
-		this.flags.hasWorld = true;
+		if (this.flags.hasWorld == false) {
+			this.world = new World(o);
+			this.flags.hasWorld = true;
+		}
 	}
 	
 	createRenderingSurface(parentElem) {		// ?parentElem:HTMLElement|String
-		let s = parentElem ? parentElem : this._rootElem;
-		s = (typeof s == 'string') ? ID(s) : s;
-		
-		this.renderingSurface = new Renderer(s);
+		if (this.flags.hasRenderingSurface == false) {
+			let s = parentElem ? parentElem : this._rootElem;
+			s = (typeof s == 'string') ? ID(s) : s;		
+			this.renderingSurface = new Renderer(s);
+			this.flags.hasRenderingSurface = true;
+		}
 	}
 
 	fadeOut(duration = 60) {

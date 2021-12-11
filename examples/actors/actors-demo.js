@@ -13,7 +13,8 @@ import * as TGE from '../../engine.js';
 const Engine = TGE.Engine;	
 const { Vector2:Vec2 } = TGE.Types;
 
-const tick = (ship) => {
+const tick = () => {
+    const ship = Engine.gameLoop.findActorByName('plr');
     ship.moveBy(1, 0);
     ship.rotation += 0.05;
 
@@ -26,19 +27,15 @@ const main = async () => {
     Engine.setRootElement('game');
     Engine.createRenderingSurface();    
 
-    let ship;
     try {        
-        await Engine.addActor('actor', { imgUrl:'img/level1.jpg', scale:0.5, position:new Vec2(556, 330) });                
+        Engine.addActor('actor', { imgUrl:'img/level1.jpg', scale:0.5, position:new Vec2(556, 330) });                
 
-        ship = await Engine.addActor('actor', { imgUrl:'img/spaceship.png' });
+        const ship = Engine.addActor('actor', { name:'plr', imgUrl:'img/spaceship.png', scale:0.125, rotation:Math.PI / 2 });   
 
-        ship.scale = 0.125;
-        ship.rotation = Math.PI / 2;
-
-        const offset = new Vec2(300, 200 + 50);
-        ship.moveBy(offset);
+        const offset = new Vec2(300, 200 + 50);           // create new Vector2
+        ship.moveBy(offset);                                    // set position of Player by moving it by offset (Vector2)
     
-        console.log(ship);
+        console.log(ship);                              // print contents of Player Actor into the developer console
     } catch (e) {
         console.log('Failed to run actors demo!');
         console.log(e);
@@ -46,7 +43,7 @@ const main = async () => {
     }
 
     // start the engine
-    Engine.start(_ => tick(ship)); 
+    Engine.start(tick); 
 }
 
 main();

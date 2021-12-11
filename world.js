@@ -185,11 +185,10 @@ class World {
 		this.owner        = o.owner;
 		this.owner.world  = this;
 		
-		this.container    = ('container' in o && o.container instanceof HTMLElement) ? o.container : document.body;
 		this.createParams = o;
 		this.gravity      = new Vector2(0, 0.2);		
 		
-		this.surface  	  = new CanvasRenderer(this.container);
+		this.surface  	  = o.owner.renderingSurface || new CanvasRenderer({ dims:o.dims || o.owner.dims });
 		this.objects      = [];										// list of additional objects to render (per frame). May be actors or static elements
 		
 		this.rescaleWindow();
@@ -240,7 +239,7 @@ class World {
 		Called automatically in Engine.resize event stack
 	*/
 	rescaleWindow() {
-		this.surface.setCanvasSize(this.container.clientWidth, this.container.clientHeight);		
+		this.surface.setCanvasSize(this.owner.dims.x, this.owner.dims. y);		
 	}
 	
 	onMouseDown(e) {		

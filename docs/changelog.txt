@@ -1,0 +1,15 @@
+-----------------------------------------------------------------
+Version 2.0.0
+=============
+- Series of initial 'alpha' releases
+
+-----------------------------------------------------------------
+Version 2.0.1
+
+Major changes:
+- Added examples/controllers
+
+Minor changes:
+- Changelog added
+- Fixed issues with Engine 'edges'
+- Minor updates and fixes in Actors and Projectiles demos
