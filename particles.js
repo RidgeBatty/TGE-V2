@@ -38,33 +38,41 @@ class Emitter {
 		this._createParticles(params.maxDrawCount || 100);
 	}
 	
-	get isRunning() {
+	get isActive() {
 		return this._running;
+	}
+
+	set isActive(state) {
+		if (state === true || state === false) this._running = state;
 	}
 	
 	/*
 		Set initial state for this emitter
 	*/
 	initEmitter() {		
-		const params    = this.params;
+		const params     = this.params;
 		
-		this.name	    = params.name;
+		this.name	     = params.name;
 		
-		this.emitSpeed  = params.emitSpeed || 1;		// how many particles to emit per tick?	1 = 60/second
-		this.emitFrac   = 0;							// helper to keep track of the fractinal part of emitted particles	
-
-		this.pos		= Vector2.FromStruct(params.position || { x:0, y:0});
-		this.angle 	 	= params.angle || 0;
-		this.delay	    = calc('delay', params);
-		this.maxDelay   = params.delay || 0;
-		this.image 		= params.image || null;
-		
-		this.textContent= params.textContent || '';
-		
-		this.emitCount  = params.emitCount || 0;		// 0 = emit unlimited number of particles
-		this.emitLeft   = this.emitCount;				// counter for emitted particles
-		this.emitterActive = ('emitterActive' in params) ? params.emitterActive : true;
+		this.emitSpeed   = params.emitSpeed || 1;				// how many particles to emit per tick?	1 = 60/second
+		this.emitFrac    = 0;									// helper to keep track of the fractinal part of emitted particles	
+		this.pos		 = Vector2.FromStruct(params.position || { x:0, y:0});
+		this.angle 	 	 = params.angle || 0;
+		this.delay	     = calc('delay', params);		   // emitter start delay
+		this.maxDelay    = params.delay || 0;
+		this.image 		 = params.image || null;		
+		this.textContent = params.textContent || '';		
+		this.emitCount   = params.emitCount || 0;				// 0 = emit unlimited number of particles
+		this.emitLeft    = this.emitCount;						// counter for emitted particles
 		this.activeParticleCount = 0;
+		this.compositeOperation  = params.compositeOperation;
+		this.emitMax          = ('emitMax' in params) ? params.emitMax : Infinity;	// how many particles to emit total?
+		this.emitCount        = 0;															// how many particles emitted so far?
+		this.onComplete		  = null;							// callback to be fired when emitCount = emitMax and all particles are dead
+
+		// different from emitter.isActive, which, when turned off, shuts down everything (including living particles)
+		// this controls whether new particles are being spawned during tick or not
+		this.spawnParticles   = ('spawnParticles' in params) ? params.spawnParticles : true;	
 		
 		if (params.type == 'box') {
 			this.size   = params.size || { x:0, y:0 };
@@ -75,10 +83,11 @@ class Emitter {
 		}
 	}
 	
-	start(onBeforeUpdate) {		
+	start(onBeforeTick) {		
 		this._running = true;
-		this.onBeforeUpdate = (typeof onBeforeUpdate == 'function') ? onBeforeUpdate : null;
-		this.particles.forEach(p => p.lifeTime = p.maxLife);		
+		this.onBeforeTick = (typeof onBeforeTick == 'function') ? onBeforeTick : null;
+		this.initEmitter();
+		this.particles.forEach(p => p.lifeTime = p.maxLife);
 	}
 	
 	/*
@@ -97,10 +106,12 @@ class Emitter {
 				velocity     : Vector2.Zero(),			// travel direction
 				angle        : 0,						// initial travel direction (used to calculate velocity)
 				angularSpeed : 0,						// initial rate of 'angle' change
+				angularWeight: 0.1,
 				rotation     : 0,						// rotation of the particle image - independent of travel angle!
 				speed		 : 0,				
 				scale		 : 1,
 				active		 : false,
+				delay        : 0,
 				visible      : true
 			});						
 			this.particles.push(p);
@@ -124,13 +135,15 @@ class Emitter {
 		let emit     = this.emitParticles();		
 				
 		for (const p of this.particles) if (!p.active && emit > 0) {			
+			if (this.emitCount >= this.emitMax) break;
+
 			switch (this.params.type) {	// using emitter parameters:
-				case 'box': {						
+				case 'box': {																	// size:vector2
 					p.pos.x = Math.random() * this.size.x - this.size.x / 2;
 					p.pos.y = Math.random() * this.size.y - this.size.y / 2;
 					break;
 				}
-				case 'circle': {
+				case 'circle': {																// angle, innerRadius, radius
 					let angle  = Math.random() * Math.PI * 2;						
 					let r      = Math.random() * (this.radius - this.innerRadius) ** 2;
 					let ir     = this.innerRadius ** 2;
@@ -161,8 +174,9 @@ class Emitter {
 			p.angle        = calc('angle', init);				
 			p.rotation     = ('rotation' in init) ? calc('rotation', init) : 0;
 			p.angularSpeed = calc('angularSpeed', init);
+			p.angularWeight= calc('angularWeight', init);
 			p.speed        = calc('speed', init);
-			p.velocity     = new Vector2(Math.sin(p.angle * Math.PI * 2) * p.speed, Math.cos(p.angle * Math.PI * 2) * p.speed);
+			p.velocity     = Vector2.FromAngle(p.angle * Math.PI, p.speed);
 			p.opacity      = ('opacity' in init) ? calc('opacity', init) : 1;
 			
 			// initial color and opacity:				
@@ -178,13 +192,15 @@ class Emitter {
 			if (AE.isFunction(init.func)) init.func(p);
 				
 			p.active = true;
-			emit--;			// decrement emitted particles counter	
+			emit--;					// decrement emitted particles counter	
+
+			this.emitCount++;		// add total emitted counter
 		}
 	}
 	
 	tick() {
 		if (!this._running) return;
-		if (this.onBeforeUpdate) this.onBeforeUpdate(this);
+		if (this.onBeforeTick) this.onBeforeTick(this);
 		
 		// delay the update by "delay" frames (comes from emitter)
 		if (this.delay > 0) { this.delay--; return }		
@@ -207,13 +223,17 @@ class Emitter {
 		// delayed spawn
 		for (const p of this.particles) if (p.delay > 0) p.delay--; 
 					
-		if ( this.emitterActive ) this.spawn();						// if emitter is active, spawn new particle(s) 
+		if ( this.spawnParticles ) this.spawn();					// if emitter is active, spawn new particle(s) 
 				
+		let deadParticles = 0;
 		for (const p of this.particles) {							// apply transforms to spawned bits					
 			// decrement lifetime and inactivate dead particles			
 			p.lifeTime--;
 			if (p.lifeTime < 1) p.active = false;
-			if ( !p.active ) continue;
+			if ( !p.active ) {
+				deadParticles++;
+				continue;
+			}
 
 			// opacity follows lifetime?
 			if (p.opacity == 'lifetime') p.alpha = p.lifeTime / p.maxLife;					
@@ -222,8 +242,9 @@ class Emitter {
 			if (force)  p.velocity.add(force);
 			if (scalar) p.velocity.mulScalar(scalar);
 			if (func)   func(p);
-			
+						
 			if (p.angularSpeed) p.angle += p.angularSpeed;
+			p.velocity.add(Vector2.FromAngle(p.angle,  p.angularWeight));
 
 			// point gravity
 			if (pointG) {				
@@ -235,30 +256,45 @@ class Emitter {
 			}								
 
 			p.pos.add(p.velocity);			
-		}			
+		}
+
+		// condition met for stopping the emitter?
+		if (this.emitCount == this.emitMax && deadParticles == this.particles.length) {
+			this._running = false;
+			if (AE.isFunction(this.onComplete)) this.onComplete(this);
+		}
 	}
 	
 	update() {		
+		if (!this._running) return;
+
 		const ctx = this.surface.ctx;
 		const pos = Vector2.Zero();		
 		this.activeParticleCount = 0;
 		
-		const alpha = ctx.globalAlpha;
+		const savedCompositeState = ctx.globalCompositeOperation;
+		if (this.compositeOperation) ctx.globalCompositeOperation = this.compositeOperation;		
+		const alpha = ctx.globalAlpha;		
+
 		for (const particle of this.particles) {
 			pos.set(particle.pos);
-			pos.add(this.pos);
+			if (this.angle != 0) pos.rotate(this.angle * Math.PI);
+			pos.add(this.pos);			
 
 			if (particle.active) {			
 				this.activeParticleCount++;
 				if (particle.img && particle.visible) {
 					ctx.globalAlpha = particle.alpha;					
 					ctx.setTransform(particle.scale, 0, 0, particle.scale, pos.x, pos.y);
-					ctx.rotate((particle.angle + particle.rotation) * Math.PI);
+					ctx.rotate((particle.rotation + particle.angle) * Math.PI);
 					ctx.drawImage(particle.img, -particle._cachedSize.x / 2, -particle._cachedSize.y / 2);
 				}				
 			}
 		}	
+
+		if (this.compositeOperation) ctx.globalCompositeOperation = savedCompositeState;		
 		ctx.globalAlpha = alpha;	
+
 		ctx.setTransform(1,0,0,1,0,0); // reset transform
 	}
 }
@@ -300,7 +336,7 @@ class ParticleSystem {
 	}
 	
 	clear() {
-		for (let e of this.emitters) AE.removeElement(e.layer);
+		//for (let e of this.emitters) AE.removeElement(e.layer);
 		this.emitters = [];
 	}
 }

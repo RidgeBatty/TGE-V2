@@ -15,7 +15,7 @@ class GameLoop {
 	constructor(o = {}) {
 		this.engine      = 'engine' in o ? o.engine : null;
 		this.data        = {};	// user data
-		this._flags		 = { isRunning:false, showColliders:false, collisionsEnabled:false };
+		this._flags		 = { isRunning:false, showColliders:false, collisionsEnabled:false, showBoundingBoxes:false };
 		this.flags       = Object.seal(this._flags);  // flags
 		
 		this.levels      = [];
@@ -28,6 +28,7 @@ class GameLoop {
 		
 		// events:
 		this.onBeforeRender = ('onBeforeRender' in o && typeof o.onBeforeRender == 'function') ? o.onBeforeRender : null; 
+		this.onBeforeTick   = ('onBeforeTick' in o && typeof o.onBeforeTick == 'function') ? o.onBeforeTick : null; 
 		this.timers		    = [];
 		
 		// other:
@@ -97,6 +98,8 @@ class GameLoop {
 	}	
 
 	get isRunning() { return this.flags.isRunning; }
+	set isRunning(b) { this.flags.isRunning = (b === true) ? true : false; }
+
 	hideColliders() { this.flags.showColliders = false; }	
 	showColliders() { this.flags.showColliders = true; }
 	
@@ -118,7 +121,7 @@ class GameLoop {
 		o.owner = this;
 
 		switch (aType) {
-			case 'level'       	: { var a = new Level(o); this.levels.push(a); a._type = 256; return a; }
+			case 'level'       	: { var a = new Level(o); this.levels.push(a); a._type = 256; return a; }			// not an actor, return without running actor code
 
 			case 'player'      	: { var a = new Player(o); const hp = new Hitpoints(); hp.assignTo(a); this.players.push(a); a._type = Enum_ActorTypes.player; break; }
 			case 'projectile'  	: { var a = new Projectile(o); a._type = Enum_ActorTypes.projectile; break; }			
@@ -137,8 +140,10 @@ class GameLoop {
 			preloadImages({ urls:[o.imgUrl] }).then((images) => {
 				a.img = images[0];
 				a.setSize(a.img.naturalWidth, a.img.naturalHeight);
-			})			
+			})						
 		}
+
+		a.renderHints.showBoundingBox = this.flags.showBoundingBoxes;			// copy the Gameloop boundingbox state to the created actor
 		
 		return a;
 	}
@@ -147,8 +152,15 @@ class GameLoop {
 		This is called internally!
 	*/
 	_render(timeStamp) {
-		// queue frame
+
+		// schedule frame
 		this.requestID       = window.requestAnimationFrame(t => this._render(t));
+
+		if (!this._flags.isRunning && this._oneShotRender == false) {	   // frame processing cannot be cancelled when isRunning is false - otherwise debugger will not be able to run its injected code
+			this._lastTickLen    = performance.now();
+			this._frameStart     = this._lastTick;
+			return;		
+		}
 		
 		// tick
 		const nextTick = this._lastTickLen + this._tickRate;
@@ -185,6 +197,7 @@ class GameLoop {
 		this.frameTimes[this.frameCount % 30] = this.frameDelta;			
 		this.frameCount++;			
 		this._frameStart = timeStamp;
+		this._oneShotRender = false;
 	}
 	
 	_tick() {
@@ -193,6 +206,7 @@ class GameLoop {
 		const tickStart = performance.now();
 				
 		// run the ticks:
+		if (this.onBeforeTick) this.onBeforeTick(this.actors);
 		for (const t of this.tickables) t.tick();
 		for (const t of this.zLayers) for (const o of t) o.tick();
 		

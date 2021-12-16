@@ -20,7 +20,7 @@
 * For example a space invaders, tetris, pong, asteroids, etc. might have no use of container for static World but a platformer game definitely has.
 *  
 */
-const VersionNumber = '2.0.1';
+const VersionNumber = '2.0.3';
 
 import * as MultiCast from "./multicast.js";
 import * as Types from "./types.js";
@@ -110,6 +110,11 @@ class TinyGameEngine {
 		
 		AE.sealProp(this, 'url', import.meta ? new URL('./', import.meta.url).pathname : null);
 		
+		this._installEventHandlers();		
+		this._onResizeWindow();
+	}
+
+	_installEventHandlers() {
 		MultiCast.addEvent('contextmenu', (e) => this._onContextMenu(e), null);				
 		MultiCast.addEvent('resize', 	  (e) => this._onResizeWindow(e), null);
 		MultiCast.addEvent('mousemove',   (e) => onMouseMove(e), null);
@@ -139,6 +144,7 @@ class TinyGameEngine {
 			m.dragging   = true;
 			if (m.cb_down) m.cb_down({ position: m.position.clone() });
 		}
+
 		const onMouseUp = (e) => { 
 			const p = e.changedTouches ? e.changedTouches[0] : e;
 			const m = this._mouse;
@@ -148,7 +154,15 @@ class TinyGameEngine {
 			m.right      = e.button != 2;
 			m.dragging   = false;
 			if (m.cb_up) m.cb_up({ position : m.position.clone(), delta: Vector2.Sub(m.position, m.dragStart) });
+
+			// to-do: optimize with a container that has only actors which have 'click' event installed
+			for (const actor of this.gameLoop.actors) {
+				for (const evt of actor._events.click) {
+					actor._clickEventHandler({ name:'click', button:e.button, position:Engine.mousePos.clone() });
+				}
+			}			
 		}
+
 		const onKeyDown = (e) => {			
 			if (this._keys.preventDefault) e.preventDefault();
 			let result;
@@ -157,8 +171,9 @@ class TinyGameEngine {
 			this._keys.status[e.code] = true;						
 			return result;
 		}
+
 		const onKeyUp = (e) => {			
-			if (this._keys.preventDefault) e.preventDefault();
+			if (this._keys.preventDefault) e.preventDefault();			
 			this._keys.status[e.code] = false;
 			if (this._keys.cb_up) return this._keys.cb_up({ code:e.code }, e);
 		}
@@ -168,8 +183,6 @@ class TinyGameEngine {
 		//AE.addEvent(window, 'touchmove', (e) => { onMouseMove(e); });
 		AE.addEvent(window, 'touchstart', (e) => { onMouseDown(e); });
 		AE.addEvent(window, 'touchend', (e) => { onMouseUp(e); });
-		
-		this._onResizeWindow();
 	}
 	
 	/**
@@ -344,12 +357,13 @@ class TinyGameEngine {
 		if (!this.flags.hasContextMenu) e.preventDefault();
 	}
 			
-	/*
-		Starts the GameLoop. Optional callback function may be supplied, which will be called prior to processing of each frame.
-		GameLoop updates physics (if enabled), updates the Actors and responds to Controller input.
-	*/
-	start(beforeRenderCallback) {
-		this.gameLoop.onBeforeRender = beforeRenderCallback;
+	/**
+	 * Starts the GameLoop. Optional callback function may be supplied, which will be called prior to processing of each frame.
+	 * GameLoop updates physics (if enabled), updates the Actors and responds to Controller input.
+	 * @param {function} beforeTickCallback A callback to be executed before every engine tick
+	 */
+	start(beforeTickCallback) {
+		this.gameLoop.onBeforeTick = beforeTickCallback;
 		this.gameLoop.start();		
 	}
 	

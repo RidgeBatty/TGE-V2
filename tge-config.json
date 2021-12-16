@@ -1,6 +1,23 @@
-{
-    "ticksPerSecond" : 60,
-    "gameContainerId" : "game",
-    "zLayers" : 16,
-    "createDefaultCanvas" : true
+{    
+    "startup" : {
+        "ticksPerSecond" : 60,
+        "gameContainerId" : "game",
+        "zLayers" : 16,
+        "createDefaultCanvas" : true,
+        "hasEdges" : true
+    },
+    "mode" : "development",
+    "modes" : {
+        "development" : {
+            "preventBrowserKeys" : true,
+            "debugLayer" : true,
+            "debugControlsLayer" : true,
+            "debugProfiler" : true,
+            "debugCursor" : "crosshair",
+            "plotter" : true,
+            "keys" : {
+                "stopGameloop" : "ctrl+space"
+            }
+        }
+    }
 }

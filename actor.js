@@ -7,9 +7,10 @@
 import { Types, Root, Engine } from "./engine.js";
 import { ChildActor } from "./childActor.js";
 import * as MultiCast from "./multicast.js";
+import { Rect } from "./types.js";
 
 const Vector2 = Types.Vector2;
-const Events  = ['Click','Tick','BeginOverlap','EndOverlap', 'Collide','Destroy'];
+const Events  = ['click', 'tick','beginoverlap','endoverlap', 'collide','destroy'];
 
 /**
  * @readonly
@@ -69,7 +70,7 @@ class Actor extends Root {
 		/** 
 		 * @member {Object} 
 		 */
-		this.renderHints = Object.assign(this.renderHints, { fixedScale:false, fixedRotation:false, isStatic:false, mirrorY:false, mirrorX:false });
+		this.renderHints = Object.assign(this.renderHints, { showBoundingBox:false, fixedScale:false, fixedRotation:false, isStatic:false, mirrorY:false, mirrorX:false });
 
 		/**
 		 * @member {Object} 
@@ -89,7 +90,7 @@ class Actor extends Root {
 						
 		// create arrays for eventhandlers
 		const events = {};
-		for (const e of Events) events[e.toLowerCase()] = [];
+		for (const e of Events) events[e] = [];
 		AE.sealProp(this, '_events', events);
 
 		// container custom user data
@@ -166,6 +167,16 @@ class Actor extends Root {
 		this.width  = v.x;
 		this.height = v.y;		
 	}
+
+	setImage(img) {
+		this.img    = img;
+		this.width  = ('width'  in img) ? img.width  : img.naturalWidth;
+		this.height = ('height' in img) ? img.height : img.naturalHeight;
+	}
+	
+	setVelocity(v) {	// v:Vector2
+		this.velocity.set(v);
+	}
 	
 	forWeapons(cb) {
 		for (let weapon of this.weapons) cb(weapon);
@@ -173,14 +184,19 @@ class Actor extends Root {
 	
 	addEvent(name, func) {
 		if (typeof func != 'function') throw 'Second parameter must be a function';
-		if (name in this._events) this._events[name].push({ name, func });
-			else // hardware event:
-				MultiCast.addEventToActor(name, func, null, this);			
+		if (name in this._events) this._events[name].push({ name, func });		
 	}
 	
 	_fireEvent(name, data) {
 		const e = this._events[name];													
-		if (e) for (var i = 0; i < e.length; i++) e[i].func(this, name, data);
+		if (e) for (var i = 0; i < e.length; i++) e[i].func(Object.assign({ eventName:name, instigator:this }, data));
+	}
+
+	_clickEventHandler(e) {		// called by Engine when mouseup is fired
+		if (this.AABB) {
+			e.isInsideAABB = this.AABB.isPointInside(e.position);
+		}
+		this._fireEvent('click', e);
 	}
 	
 	destroy() { 		
@@ -190,10 +206,6 @@ class Actor extends Root {
 		}
 	}	
 	
-	setVelocity(v) {	// v:Vector2
-		this.velocity.set(v);
-	}
-
 	/*
 	
 		Creates a clone of the Actor.
@@ -215,6 +227,7 @@ class Actor extends Root {
 		this.movement    = actor.movement;					// by reference
 		
 		this.imageURL    = actor.imageURL;
+		this.img		 = actor.img;						// by reference
 		this.data        = actor.data;						// by reference
 		this.isVisible   = actor.isVisible;				
 	}
@@ -293,6 +306,8 @@ class Actor extends Root {
 			}
 
 			if (this.hasColliders && this.renderHints.showColliders && this.owner.flags.showColliders) this.colliders.update();
+
+			if (this.renderHints.showBoundingBox && this.onDrawBoundingBox) this.onDrawBoundingBox(this);
 		}
 	}
 
@@ -303,6 +318,8 @@ class Actor extends Root {
 		if (this.flags.isDestroyed) return;
 		
 		this._fireEvent('tick');
+
+		if (this.flipbook) this.flipbook.tick();										// select a frame from a flipbook if the actor has one specified			
 		
 		// update location by adding velocity:
 		if (this.flags.isGravityEnabled) {
@@ -371,6 +388,22 @@ class Actor extends Root {
 	overlapsWith(other) {			// other:Actor
 		if (!this.colliders || !other.colliders) return;		
 		return this.colliders.resolveOverlap(other);
+	}
+
+	/**
+	 * Returns positions of actor space points 'v' in screen space
+	 * @param {[Vector]} points Array of point to be transformed
+	 * @returns {[Vector2]} Array of transformed points
+	 */
+	transformPoints(points) {
+		const p = this.position;
+		const c = Engine.renderingSurface.ctx;
+		c.setTransform(this.scale, 0, 0, this.scale, p.x, p.y);
+		c.scale(this.renderHints.mirrorX ? -1 : 1, this.renderHints.mirrorY ? -1 : 1);
+		c.rotate(this.rotation);
+		const m = c.getTransform();		
+		const a = points.map(v => new Vector2(m.a * v.x + m.c * v.y + m.e, m.b * v.x + m.d * v.y + m.f));
+		return a;
 	}
 	
 	/* 

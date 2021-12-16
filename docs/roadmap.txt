@@ -1,0 +1,35 @@
+=======================
+Development steps
+=======================
+
+Module updates/upgrades
+=======================
+These upgrades are necessary to modernize the engine and get rid of the remaining HTMLElement based graphics.
+
+    The following modules need to be overhauled/refactored to work in the new V2 system:
+        - animation.js
+        - raytracer.js
+        - texture.js
+        - world.js
+
+    UI modules need to be overhauled:
+        - dialog.js
+        - mainmenu.js
+
+    System wide updates. These modules might need some attention when trying to build a consistent inheritance hierarchy:
+        - root.js
+        - childActor.js
+    
+
+
+Improved dev tooling
+=======================
+These upgrades aim in adding visual assist tools in the engine and bring it closer to a level editor.
+
+1. First step is adding analytic, diagnostics and debugging features, which allow starting/stopping the game loop 
+and getting information from Actors and the Engine state (on mouse click).
+
+2. Actor editor mode. Create/modify/delete actors in real time. Dump data in developer console.
+
+3. Save/load changes to/from 'level' files.
+

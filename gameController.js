@@ -16,6 +16,8 @@ const AllGamepadControllers = [];	// list of created controller objects
 const Events = ['keydown','keyup','keyreleased','keypressed'];
 const PointerEvents = ['start', 'move', 'end'];
 
+const Axes = ['down', 'left', 'up', 'right'];
+
 /**
   @desc Keyboard controller.
  */
@@ -212,6 +214,7 @@ class PointerController {
 			cb_move   : null,
 		}
 		this.init();
+		this.joysticks = [];
 
 		AE.sealProp(this, '_events', { start : [], move : [], end : [] });				
 				
@@ -243,42 +246,147 @@ class PointerController {
 		return new Vector2((p.x / Engine.zoom - screen.left) / screen.width,
 						   (p.y / Engine.zoom - screen.top) / screen.height);
 	}
-	
-	init() {
-		AE.addEvent(window, 'mousemove',   (e) => onMouseMove(e), null);
-		AE.addEvent(window, 'mousedown',   (e) => onMouseDown(e), null);
-		AE.addEvent(window, 'mouseup',     (e) => onMouseUp(e), null);
-		
+
+	/**
+	 * Adds a new virtual joystick to a given position in the viewport. Note that this function does not render any graphics. Up to 2 joysticks can be created. 
+	 * Read the returned joystick object (or PointerController.joysticks[] array) to determine the 'angle' and axis ('left', 'up', 'right', 'down') of the stick. 
+	 * The 'active' property is set to false if the stick is currently centered.
+	 * @param {object} o 
+	 * @param {string=} o.name
+	 * @param {Vector2} o.position
+	 * @param {number} o.radius
+	 * @param {number=4} o.axes Number of axes. Supported values: 4, 8
+	 * @returns {Joystick} Joystick object { name, position, radius, angle, isActive, axis }
+	 */
+	addJoystick(o) {
+		if (this.joysticks.length < 2) {
+			o.axes = ('axes' in o) ? o.axes : 4;
+			const j = Object.assign({}, o);
+			this.resetJoystick(j);
+			this.joysticks.push(j);
+			return j;
+		}
+	}
+
+	resetJoystick = (j) => {	
+		j.isActive = false;
+		j.id       = null;
+		j.angle    = 0;
+		for (const axis of Axes) j[axis] = false;		
+	}
+
+	init() {		
 		const m = this._mouse;
+
+		const getJoystickAtPosition = (pos) => {			
+			for (const j of this.joysticks) {
+				const p = pos.clone().mul(Engine.dims);
+				if (Vector2.Distance(p, j.position) < j.radius && Vector2.Distance(p, j.position) > j.innerRadius) return j;
+			}
+			return null;
+		}
+
+		const setJoystickPosition = (pos, id, status) => {	
+			var j;
+			if (status == 'start') {				
+				j = getJoystickAtPosition(pos);
+				if (j == null) return;							// no stick at touch position!				
+				this.resetJoystick(j);
+				j.id = id;										// stick was found, save id			
+			}
+
+			if (status == 'end') {
+				j = this.joysticks.find(e => e.id == id);
+				if (j == null) return;													// if touch event starts outside a joystick, it also ends outside one...
+				this.resetJoystick(j);					
+				return;
+			}
+
+			if (status == 'move') {
+				j = this.joysticks.find(e => e.id == id);				
+				if (j == null) return;
+				this.resetJoystick(j);				
+				j.id = id;
+
+				// check if pointer is moved inside the 'neutral' area:
+				const p = pos.clone().mul(Engine.dims);
+				if (Vector2.Distance(p, j.position) < j.innerRadius) {
+					j.isActive = false;
+					return;
+				}
+			}
+
+			const p = pos.clone().mul(Engine.dims);
+			j.angle = p.sub(j.position).toAngle();			
+			switch (j.axes) { 							
+				case 4 : {
+					const x = ['down', 'left', 'up', 'right'][Math.floor((j.angle / Math.PI + 1.25) * 2) % 4]; 
+					j[x] = true;
+					j.isActive = true;
+					break;	
+				}						
+				case 8 : {
+					const x = [['down'], ['down','left'], ['left'], ['up','left'], ['up'], ['up','right'], ['right'], ['down','right']][Math.floor((j.angle / Math.PI + 1.125) * 4) % 8]; 
+					for (const v of x) j[v] = true;
+					j.isActive = true;
+					break;
+				}
+			}	
+		}
 		
 		const onMouseMove = (e) => { 
-			const p = e.changedTouches ? e.changedTouches[0] : e;			
-			m.rawPosition.set({ x:p.clientX, y:p.clientY });
-			const n = this.getNormalizedPosition(m.rawPosition);
-			m.position.set(n);
-			this._fireCustomEvent('move', { position:n });
+			const touches = e.changedTouches ? e.changedTouches.length : 1;
+			
+			for (let i = 0; i < touches; i++) {
+				const p = e.changedTouches ? e.changedTouches[i] : e;			
+				const id = ('changedTouches' in e && e.changedTouches[i]) ? e.changedTouches[i].identifier : -1;
+
+				m.rawPosition.set({ x:p.clientX, y:p.clientY });
+				const n = this.getNormalizedPosition(m.rawPosition);
+				m.position.set(n);
+				if (this.joysticks.length > 0) setJoystickPosition(n, id, 'move');
+				this._fireCustomEvent('move', { position:n, id });
+			}
 		}
 		
 		const onMouseDown = (e) => {
-			const p = e.changedTouches ? e.changedTouches[0] : e;
-			m.rawDragStart.set({ x:p.clientX, y:p.clientY });
-			const n = this.getNormalizedPosition(m.rawDragStart);
-			m.position.set(n);
-			m.dragStart.set(n);
-			m.dragging = true;
-			this._fireCustomEvent('start', { position:n });
+			const touches = e.changedTouches ? e.changedTouches.length : 1;
+			
+			for (let i = 0; i < touches; i++) {
+				const p = e.changedTouches ? e.changedTouches[i] : e;
+				const id = ('changedTouches' in e && e.changedTouches[i]) ? e.changedTouches[i].identifier : -1;
+
+				m.rawDragStart.set({ x:p.clientX, y:p.clientY });
+				const n = this.getNormalizedPosition(m.rawDragStart);
+				m.position.set(n);
+				m.dragStart.set(n);
+				m.dragging = true;				
+				if (this.joysticks.length > 0) setJoystickPosition(n, id, 'start');
+				this._fireCustomEvent('start', { position:n, id });
+			}
 		}
 		
 		const onMouseUp = (e) => { 
-			const p = e.changedTouches ? e.changedTouches[0] : e;
-			m.rawPosition.set({ x:p.clientX, y:p.clientY });			
-			const n = this.getNormalizedPosition(m.rawPosition);
-			m.position.set(n);			
-			m.direction = Math.atan2(m.rawPosition.x - m.rawDragStart.x, m.rawPosition.y - m.rawDragStart.y);
-			m.dragging  = false;
-			this._fireCustomEvent('end', { position:n });
+			const touches = e.changedTouches ? e.changedTouches.length : 1;
+			
+			for (let i = 0; i < touches; i++) {
+				const p  = e.changedTouches ? e.changedTouches[i] : e;
+				const id = ('changedTouches' in e && e.changedTouches[i]) ? e.changedTouches[i].identifier : -1;
+
+				m.rawPosition.set({ x:p.clientX, y:p.clientY });			
+				const n = this.getNormalizedPosition(m.rawPosition);
+				m.position.set(n);			
+				m.direction = Math.atan2(m.rawPosition.x - m.rawDragStart.x, m.rawPosition.y - m.rawDragStart.y);
+				m.dragging  = false;
+				if (this.joysticks.length > 0) setJoystickPosition(Vector2.Zero(), id, 'end');
+				this._fireCustomEvent('end', { position:n, id });
+			}
 		}
 		
+		AE.addEvent(window, 'mousemove',   (e) => onMouseMove(e), null);
+		AE.addEvent(window, 'mousedown',   (e) => onMouseDown(e), null);
+		AE.addEvent(window, 'mouseup',     (e) => onMouseUp(e), null);
+
 		AE.addEvent(window, 'dragstart', (e) => { e.preventDefault(); });
 		window.addEventListener('touchmove', (e) => { e.preventDefault(); onMouseMove(e); }, { passive:false });	
 		AE.addEvent(window, 'touchstart', (e) => { onMouseDown(e); });

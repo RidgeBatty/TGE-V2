@@ -1,18 +1,13 @@
 /*
 
-    Projectiles Demo
-
-    In this demo we are creating a rotating turret which fires homing missiles towards a moving tank.
-    The missile animation is implemented using a Flipbook atlas (single image where animation frames are placed on a grid).
-    GameLoop.addTimer() function is used to repeatedly fire the missiles in a preset interval.
-    Events are utilized extensively: missiles are destroyed after a timeout, which fires 'destroy' event, which in turn creates and explosion actor and starts the explosion animation.
-    When the animation is completed, it fires an 'end' event which in turn destroys the explosion actor used for the flipbook animation.
-
+    Debugging Demo
+    
 */
 import * as TGE from '../../engine.js';
 import { preloadImages } from '../../utils.js';
 import { CreateMissileInfo } from '../../projectile.js';
 import { Flipbook } from '../../flipbook.js';
+import { DevTools } from '../../tools/devtools.js';
 
 const Engine = TGE.Engine, GameLoop = Engine.gameLoop;
 const { Vector2:Vec2, CreateVector2:V2 } = TGE.Types;
@@ -28,6 +23,7 @@ const tick = () => {                                                            
 const main = async () => {            
     Engine.setRootElement('game');                                                    // First let's set up the engine    
     Engine.setFlags({ hasEdges:false, hasRenderingSurface:true });
+    GameLoop.flags.showBoundingBoxes = true;
     
     const mInfo = CreateMissileInfo({ homingSpeed:0.01, initialFlightTicks:180 }); // init a MissileInfo object    
         
@@ -38,8 +34,8 @@ const main = async () => {
                 
         images = await preloadImages({ path:'img/', urls:['Missile.png', 'soil.jpg', 'Tower.png', 'Missile_Launcher2.png', 'red_tank.png'] });      // preload ALL actor images we are going to use
 
-        GameLoop.add('actor', { img:images[1], scale:1.125, position:V2(576, 330) });
-        GameLoop.add('actor', { img:images[2], scale:0.4, position:V2(200, 150) });
+        GameLoop.add('actor', { img:images[1], name:'background', scale:1.125, position:V2(576, 330) });                
+        GameLoop.add('actor', { img:images[2], name:'tower', scale:0.4, position:V2(200, 150) });
         const turret  = GameLoop.add('actor', { img:images[3], name:'turret', scale:0.4, position:V2(200, 150), zIndex:2 });
         const tank    = GameLoop.add('actor', { img:images[4], name:'tank', scale:0.7, position:V2(1200, 500), rotation:Math.PI * 1.5, zIndex:1 });
         tank.velocity = Vec2.FromAngle(tank.rotation, 0.8);
@@ -53,7 +49,7 @@ const main = async () => {
     
     GameLoop.addTimer({ name:'launch_missile', duration:80, repeat:Infinity,           // create an infinitely repeating timer which launches missiles every 80 ticks
         onRepeat:() => { 
-            const missile     = GameLoop.add('projectile', { img:images[0], zIndex:1, position:game.turret.position.clone(), rotation:game.turret.rotation + 0.75, scale:0.4, lifeTime:60 * 9 });
+            const missile     = GameLoop.add('projectile', { img:images[0], name:'missile', zIndex:1, position:game.turret.position.clone(), rotation:game.turret.rotation + 0.75, scale:0.4, lifeTime:60 * 9 });
             missile.target    = game.tank;
             missile.info      = mInfo;
 
@@ -65,7 +61,10 @@ const main = async () => {
             });
         }
     });
-    
+       
+    //DevTools.EnableBoundingBox('turret');
+    //DevTools.EnableBoundingBox('tank');
+
     Engine.start(tick);         // start the engine
 }
 

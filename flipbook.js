@@ -336,10 +336,17 @@ class Flipbook {
 		seq.stop();
 	}
 	
-	/*
-		Automatically called from Actor.update()
-	*/
+	/**
+	 * Automatically called from Actor.update()
+	 */	
 	update() {			
+		
+	}
+
+	/**
+	 * Automatically called from Actor.tick()
+	 */
+	tick() {
 		if (this.sequence == null || this.actor == null) return;		
 		
 		const seq   = this.sequences[this.sequence];

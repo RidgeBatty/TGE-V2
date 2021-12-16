@@ -485,6 +485,7 @@ class Rect {
 	 * @returns {boolean}
 	 */
 	isPointInside(v, includeEdges) {
+		if (isNaN(this.left) ||isNaN(this.top) || isNaN(this.right) || isNaN(this.bottom)) return false;
 		if (includeEdges) return !(v.x <= this.left || v.y <= this.top || v.x >= this.right || v.y >= this.bottom);
 		return !(v.x < this.left || v.y < this.top || v.x > this.right || v.y > this.bottom);
 	}
@@ -853,6 +854,14 @@ class Vector2 extends VectorBase {
 		return this;
 	}
 
+	/**
+	 * Converts current Vector2 into angle value
+	 * @returns {number} Actor.rotation angle
+	 */
+	toAngle() {
+		return Math.atan2(this.x, -this.y);
+	}
+
     static Add(a, b) {
         return new Vector2(a.x + b.x, a.y + b.y);
     }       
@@ -910,6 +919,7 @@ class Vector2 extends VectorBase {
 		return Math.atan2(v2.y, v2.x) - Math.atan2(v1.y, v1.x);
 	}
     static Zero() { return new Vector2(0, 0); }
+	static One(){ return new Vector2(1, 1); }
 	static Down() { return new Vector2(0, 1); }
 	static Up() { return new Vector2(0, -1); }
 	static Left() { return new Vector2(-1, 0); }

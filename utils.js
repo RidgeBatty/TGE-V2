@@ -283,6 +283,10 @@ const smoothPoints = (points, stepsPerCurve, tension = 1) => {		// points:[Vecto
 	
 	return result;
 }
+
+const arraysEqual = (a, b)=> {
+    return (a.length == b.length) && a.every((val, index) => val === b[index]);
+}
 	
 export { 
 	delay, 
@@ -303,5 +307,6 @@ export {
 	createFileDropZone,
 	imageFromBlob,
 	wrapBounds,
-	smoothPoints
+	smoothPoints,
+	arraysEqual
 }

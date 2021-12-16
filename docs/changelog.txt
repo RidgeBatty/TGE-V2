@@ -13,3 +13,24 @@ Minor changes:
 - Changelog added
 - Fixed issues with Engine 'edges'
 - Minor updates and fixes in Actors and Projectiles demos
+
+-----------------------------------------------------------------
+Version 2.0.2
+
+Major changes:
+- Refactoring of the particle engine. Breaking changes.
+
+-----------------------------------------------------------------
+Version 2.0.3
+
+Major changes:
+- Reworked debug.js to fully support 2.0
+- Added devtools.js and examples/debugging demo
+- Improved PointerController added support for 2 virtual joysticks
+- Improved ParticleSystem
+
+Minor changes:
+- Minor refactoring and improvements in Engine, GameLoop, Actor, and CanvasSurface
+- Fixed bugs in Types
+- Added docs/roadmap.txt
+- Improved documentation

@@ -102,32 +102,55 @@ class CanvasSurface {
 		this.ctx.stroke();		
 	}
 	
-	/*
-		Draw an arrow from Vector2 to Angle, with Length and Scale (= relative size of the arrow head to the length)
-	*/
-	drawArrow(p, o, style) {		// p:Vector2, o:{ angle:Number, length:Number, scale:Number=0.25, head:Number=0.75 } style:string
-		const h = (o.head ? o.head : 0.75) * Math.PI;
-		const s = o.scale ? o.scale * o.length : 0.25 * o.length;
+	/**
+	 * Draw an arrow from Vector2 to Angle, with Length and Scale (= relative size of the arrow head to the length)
+	 * @param {Vector2} p 
+	 * @param {object} o 
+	 * @param {number} o.angle Angle of the arrow (in radians)
+	 * @param {number} o.length Arrow length
+	 * @param {number} [o.width=1] Arrow thickness
+	 * @param {number} [o.head=0.25] Arrow head size
+	 * @param {number} [o.sweep=0.75] Sweep angle strength of the arrow
+	 * @param {string} style 
+	 */
+	drawArrow(p, o, style) {	
+		const h = (o.sweep ? o.sweep : 0.75) * Math.PI;
+		const s = o.head ? o.head * o.length : 0.25 * o.length;
 		const a = o.angle;
-		
+		const w = ('width' in o) ? o.width : 1;
+
 		if (style) this.ctx.strokeStyle = style;		
 		this.ctx.beginPath();		
+
+		let ps, t, b;
 		
-		this.ctx.moveTo(p.x + 0.5, p.y + 0.5);		
-		const ex = p.x + Math.sin(a) * o.length;
-		const ey = p.y + Math.cos(a) * o.length;
-		this.ctx.lineTo(ex + 0.5, ey + 0.5);		
+		// right side of the arrow
+		ps = Vector2.Up().rotate(a + Math.PI / 2).mulScalar(w / 2).add(p);
+		this.ctx.moveTo(ps.x + 0.5, ps.y + 0.5);		
 		
-		const rx = ex + Math.sin(a + h) * s;
-		const ry = ey + Math.cos(a + h) * s;
-		this.ctx.lineTo(rx + 0.5, ry + 0.5);		
+		t = Vector2.Up().rotate(a).mulScalar(o.length).add(ps);						// tip
+		this.ctx.lineTo(t.x + 0.5, t.y + 0.5);		
 		
-		this.ctx.moveTo(ex + 0.5, ey + 0.5);
-		const lx = ex + Math.sin(a - h) * s;
-		const ly = ey + Math.cos(a - h) * s;
-		this.ctx.lineTo(lx + 0.5, ly + 0.5);		
+		b = Vector2.Up().rotate(a + h).mulScalar(s).add(t);							// sweep back
+		this.ctx.lineTo(b.x + 0.5, b.y + 0.5);		
+
+		// left side of the arrow
+		ps = Vector2.Up().rotate(a - Math.PI / 2).mulScalar(w / 2).add(p);
+		this.ctx.moveTo(ps.x + 0.5, ps.y + 0.5);		
 		
-		this.ctx.stroke();		
+		t = Vector2.Up().rotate(a).mulScalar(o.length).add(ps);						// tip
+		this.ctx.lineTo(t.x + 0.5, t.y + 0.5);		
+		
+		b = Vector2.Up().rotate(a - h).mulScalar(s).add(t);							// sweep back
+		this.ctx.lineTo(b.x + 0.5, b.y + 0.5);				
+		
+		if (w != 1) {
+			let w = this.ctx.lineWidth;
+			this.ctx.lineWidth = o.width || 1;		
+			this.ctx.stroke();		
+			this.ctx.lineWidth = w;
+		} else 
+			this.ctx.stroke();		
 	}
 	/*
 		Draw a line segment on canvas. Accepts Types.LineSegment or an array of coordinates (x0, y0, x1, y1) as parameters.
@@ -227,16 +250,27 @@ class CanvasSurface {
 	 * @param {string} p.stroke Stroke (outline color)
 	 * @param {string=} p.fill Fill color	 
 	 */
-	drawRect(x, y, w, h, p = { stroke:'black' }) {
+	drawRectangle(x, y, w, h, p = { stroke:'black' }) {
 		if (p.fill) { 
-			this.ctx.fillStyle = p.fill; 
+			this.ctx.fillStyle = p.fill; 			
 			this.ctx.fillRect(~~x, ~~y, ~~w, ~~h); 
 		}
 		if (p.stroke) {			
 			this.ctx.strokeStyle = p.stroke; 
 			this.ctx.strokeRect(~~x, ~~y, ~~w, ~~h);
 		}
-	}		
+	}
+
+	drawRect(r, p = { stroke:'black' }) {
+		if (p.fill) { 
+			this.ctx.fillStyle = p.fill; 			
+			this.ctx.fillRect(~~r.left, ~~r.top, ~~r.width, ~~r.height); 
+		}
+		if (p.stroke) {			
+			this.ctx.strokeStyle = p.stroke; 
+			this.ctx.strokeRect(~~r.left, ~~r.top, ~~r.width, ~~r.height);
+		}
+	}
 	
 	/**
 	 * @desc Draws a circle on the canvas
@@ -299,11 +333,13 @@ class CanvasSurface {
 		return Color.FromArray([...data.slice(addr, addr + 4)]);
 	}
 	
-	/*
-		Draws image on canvas. 
-	*/
+	/**
+	 * Draws image on canvas. 
+	 * @param {Vector2=} pos Optional position (if not provided, draws at 0,0)
+	 * @param {HTMLImageElement} img 
+	 */
 	drawImage(pos, img) {
-		if (img == null) this.ctx.drawImage(pos, 0, 0);
+		if (pos == null) this.ctx.drawImage(pos, 0, 0);
 			else this.ctx.drawImage(img, pos.x, pos.y);
 	}	
 	
@@ -365,9 +401,14 @@ class CanvasSurface {
 		} else this.ctx.drawImage(o.img, o.pos.x, o.pos.y, size.x * o.scale, size.y * o.scale);
 	}		
 	
-	/*
-		Writes text on canvas
-	*/
+	/**
+	 * Writes text on canvas
+	 * @param {Vector2} pos 
+	 * @param {string} text 
+	 * @param {Object} params Optional parameters object
+	 * @param {string=} params.font
+	 * @param {string=} params.color
+	 */
 	textOut(pos, text, params) {
 		if (params) {
 			if ('font' in params)  this.ctx.font      = params.font;
@@ -392,12 +433,19 @@ class CanvasSurface {
 		ctx.restore();
 	}
 	
-	/*
-		Loads an image and draws it on Canvas
-		
-		Optional "mask" attribute generates a mask from the image. 
-		The pixel R,G,B will be overwritten by "mask" color on non-zero alpha pixels.
-	*/
+	/**
+	 * Loads an image and draws it on this CanvasSurface.
+	 * Optional "mask" attribute generates a mask from the image, which is useful for pixel-precise hit detection.
+	 * If maskStyle is defined, all image pixels with non-zero alpha will be overwritten by "maskStyle" color.
+	 * @param {object} o 
+	 * @param {string} o.url URL of the image
+	 * @param {Vector2} o.pos Desired top left corner position of the image
+	 * @param {Vector2} o.dims Desired width and height of the image	 
+	 * @param {string} o.url URL of the image
+	 * @param {string=} o.maskStyle Optional mask color
+	 * @returns {<promise>}
+	 */
+	
 	async loadImage(o) {	// o:{ pos:Vector2, url:string, ?dims:Vector2, maskStyle:string }
 		return new Promise(r => {
 			const img = new Image();

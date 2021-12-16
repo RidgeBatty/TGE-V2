@@ -4,12 +4,14 @@
 	Written by Ridge Batty (c) 2021
 	
 **/
-import { Actor, Scene, Engine } from './engine.js';
+import { Actor, Scene, Engine } from '../engine.js';
 
 console.warn('TGE DEBUG TOOLS are enabled!');
 
-const sheet = Engine.styleSheet;
-sheet.insertRule('.tge-debug { position:absolute; left:10px; top:10px; color:lime; text-shadow:1px 1px 1px black; font:14px monospace; pointer-events:none; }', sheet.cssRules.length); 
+const sheet = new CSSStyleSheet();
+sheet.insertRule('.tge-debug    { position:absolute; left:10px; top:10px; color:lime; text-shadow:1px 1px 1px black; font:14px monospace; pointer-events:none; }'); 
+sheet.insertRule('.tge-controls { position:absolute; left:10px; bottom:10px; color:lime; text-shadow:1px 1px 1px black; font:14px monospace; pointer-events:none; }'); 
+document.adoptedStyleSheets = [sheet];
 
 const el = {
 	fps    : null,
@@ -35,17 +37,26 @@ const logic = {
 	current:0,
 	above5ms:0,
 }
+const mouse = {
+	x:0,
+	y:0,
+}
+const KeybState = [];
 
 let overlapCallCount = 0;
 let isPaused         = false;
 let debugLayer       = null;
+let controlLayer     = null;
 
 /*
 	Adds a layer (HTMLElement) for debug information (singleton)
 */
 function addLayer(elem = Engine._rootElem) {
-	debugLayer = AE.newElem(elem, 'div', 'tge-debug');	
-	AE.setText(debugLayer, 'Tiny Game Engine Debug Layer | Space - Pause | Right Arrow - Next Frame');
+	debugLayer   = AE.newElem(elem, 'div', 'tge-debug');	
+	controlLayer = AE.newElem(elem, 'div', 'tge-controls');	
+
+	AE.setText(debugLayer, 'Tiny Game Engine Debug Layer');
+
 	for (const k of Object.keys(el)) el[k] = AE.newElem(debugLayer, 'div');		
 }
 
@@ -80,7 +91,7 @@ Engine.gameLoop._render = function(ts) {
 	if (el.fps)    el.fps.textContent    = `FPS: ${fps.current} | Min ${fps.min} | Max ${fps.max} | Total frames ${fps.total}`;
 	if (el.delta)  el.delta.textContent  = `Frame delta: ${Engine.gameLoop.frameDelta.toFixed(2)}ms`;
 	if (el.logic)  el.logic.textContent  = `Game logic: ${Engine.gameLoop.tickCount} ticks | ${Engine.gameLoop._tickQueue} queued | ${logic.current.toFixed(2)}ms | Min ${logic.min.toFixed(2)}ms | Max ${logic.max.toFixed(2)}ms | >5ms ${logic.above5ms} (${(logic.above5ms/fps.total*100).toFixed(2)}%)`;
-	if (el.actors) el.actors.textContent = `Actors: ${Engine.gameLoop.actors.length}`;
+	if (el.actors) el.actors.textContent = `Actors: ${Engine.gameLoop.actors.length} | zLayers: ${Engine.gameLoop.zLayers.length}`;
 	if (el.olaps)  el.olaps.textContent  = `Overlaps: ${overlapCallCount} Tested | ${Engine.gameLoop.overlaps.length} Detected`;
 	if (el.edges)  el.edges.textContent  = `Edges: L=${Engine.edges.left} | T=${Engine.edges.top} | R=${Engine.edges.right} | B=${Engine.edges.bottom}`;
 	
@@ -89,6 +100,11 @@ Engine.gameLoop._render = function(ts) {
 		let dc = 0, ac = 0;
 		ps.emitters.forEach(e => { dc += e.particles.length; ac += e.activeParticleCount; });
 		if (el.particles)  el.particles.textContent  = `Particles: Emitters ${ps.emitters.length} | Draw Count: ${dc} | Active: ${ac}`;
+	}
+
+	if (controlLayer) {		
+		const keys = Object.keys(KeybState).filter(e => KeybState[e] != false).join(' ');
+		controlLayer.innerHTML = `Keys: ${keys}<br>Mouse: Screen ${mouse.x}:${mouse.y} | Viewport ${Engine.mousePos.asString()} | Touches:`;
 	}
 }
 
@@ -127,7 +143,7 @@ function addBox(corners, id, params) {
 }
 
 function addRect(rect, id, params) {	
-	addBox([{x:rect.left, y:rect.top}, {x:rect.left + rect.width, y:rect.top + rect.height}], id, params);
+	return addBox([{x:rect.left, y:rect.top}, {x:rect.left + rect.width, y:rect.top + rect.height}], id, params);
 }
 
 /*
@@ -167,10 +183,10 @@ function addAnimationDebug() {
 }
 
 function init() {
-	AE.addEvent(window, 'keydown', (e) => { 		
-		if (e.code == 'Space') isPaused = !isPaused;	
-	});
-	addLayer();
+	addLayer();	
+	AE.addEvent(window, 'mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+	AE.addEvent(window, 'keydown', (e) => { KeybState[e.key] = true; });
+	AE.addEvent(window, 'keyup', (e) => { KeybState[e.key] = false; });
 }
 
 init();
