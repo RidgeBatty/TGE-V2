@@ -92,8 +92,11 @@ const onMouseDown = (e) => {
                 pos: null
             }
         
-        if (lastClicked.actor) console.log(lastClicked.actor.name);
-            else console.log('<NONE>');
+        if (lastClicked.actor) {
+            if (e.ctrlKey) console.log(lastClicked.actor);
+                else console.log(lastClicked.actor.name);            
+        }
+            else console.log('<NONE>');        
     }
 
     oldKeyDownActors = [...keyDownActors];
