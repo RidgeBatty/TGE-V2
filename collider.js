@@ -12,6 +12,7 @@ import { Actor, Scene, Engine } from './engine.js';
 import { Types, PhysicsShape, Circle, AABB, Box, Enum_PhysicsShape } from './physics.js';
 
 const Vec2 = Types.Vector2;
+const Rect = Types.Rect;
 
 class Collider {
 	/**
@@ -90,7 +91,7 @@ class Collider {
 					Engine.renderingSurface.drawPoly(c.points, { stroke:'black', fill:actor.overlaps.length > 0 ? this.hilite : this.color });					
 				break;
 				case Enum_PhysicsShape.Box:															
-					Engine.renderingSurface.drawRect(pos.x - c.halfSize.x, pos.y - c.halfSize.y, c.size.x, c.size.y, { stroke:'black', fill:actor.overlaps.length > 0 ? this.hilite : this.color });					
+					Engine.renderingSurface.drawRect(new Rect(pos.x - c.halfSize.x, pos.y - c.halfSize.y, c.size.x, c.size.y), { stroke:'black', fill:actor.overlaps.length > 0 ? this.hilite : this.color });					
 				break;
 				case Enum_PhysicsShape.AABB: 					
 					
