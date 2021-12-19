@@ -14,6 +14,8 @@
 *   9.12.2021, version 1.24 added Rect.isPointInside()
 */
 const lerp = (s, e, t) => { return s + (e - s) * t; }
+const wrapMax = (x, max) => { return (max + (x % max)) % max; }
+const wrapBounds = (x, min, max) => { return min + wrapMax(x - min, max - min); }
 /*
 
     Text
@@ -916,7 +918,7 @@ class Vector2 extends VectorBase {
 	 * @returns {number} Angle in radians
 	 */
 	static AngleBetween(v1, v2) {
-		return Math.atan2(v2.y, v2.x) - Math.atan2(v1.y, v1.x);
+		return wrapBounds(Math.atan2(v2.y, v2.x) - Math.atan2(v1.y, v1.x), -Math.PI, Math.PI);
 	}
     static Zero() { return new Vector2(0, 0); }
 	static One(){ return new Vector2(1, 1); }
