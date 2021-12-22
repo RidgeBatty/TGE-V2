@@ -56,7 +56,7 @@ class Emitter {
 		
 		this.emitSpeed   = params.emitSpeed || 1;				// how many particles to emit per tick?	1 = 60/second
 		this.emitFrac    = 0;									// helper to keep track of the fractinal part of emitted particles	
-		this.pos		 = Vector2.FromStruct(params.position || { x:0, y:0});
+		this.position	 = Vector2.FromStruct(params.position || { x:0, y:0});
 		this.angle 	 	 = params.angle || 0;
 		this.delay	     = calc('delay', params);		   // emitter start delay
 		this.maxDelay    = params.delay || 0;
@@ -102,7 +102,7 @@ class Emitter {
 				opacity		 : 1,
 				lifeTime     : 0,
 				maxLife      : 0,
-				pos          : Vector2.Zero(),
+				position     : Vector2.Zero(),
 				velocity     : Vector2.Zero(),			// travel direction
 				angle        : 0,						// initial travel direction (used to calculate velocity)
 				angularSpeed : 0,						// initial rate of 'angle' change
@@ -139,8 +139,8 @@ class Emitter {
 
 			switch (this.params.type) {	// using emitter parameters:
 				case 'box': {																	// size:vector2
-					p.pos.x = Math.random() * this.size.x - this.size.x / 2;
-					p.pos.y = Math.random() * this.size.y - this.size.y / 2;
+					p.position.x = Math.random() * this.size.x - this.size.x / 2;
+					p.position.y = Math.random() * this.size.y - this.size.y / 2;
 					break;
 				}
 				case 'circle': {																// angle, innerRadius, radius
@@ -148,11 +148,11 @@ class Emitter {
 					let r      = Math.random() * (this.radius - this.innerRadius) ** 2;
 					let ir     = this.innerRadius ** 2;
 					
-					p.pos.x = Math.sin(angle) * Math.sqrt(r + ir);
-					p.pos.y = Math.cos(angle) * Math.sqrt(r + ir);
+					p.position.x = Math.sin(angle) * Math.sqrt(r + ir);
+					p.position.y = Math.cos(angle) * Math.sqrt(r + ir);
 					break;
 				}
-				case 'point': p.pos = Vector2.Zero();	
+				case 'point': p.position = Vector2.Zero();	
 			}
 			
 			if ('img' in init) {
@@ -248,14 +248,14 @@ class Emitter {
 
 			// point gravity
 			if (pointG) {				
-				let dx = pointG.offset.x - p.pos.x;
-				let dy = pointG.offset.y - p.pos.y;
+				let dx = pointG.offset.x - p.position.x;
+				let dy = pointG.offset.y - p.position.y;
 				let distSq = Math.max(dx * dx + dy * dy, 4000);
 				let f = pointG.mass / (distSq * Math.sqrt(distSq));
 				p.velocity.add(new Vector2(dx * f, dy * f));
 			}								
 
-			p.pos.add(p.velocity);			
+			p.position.add(p.velocity);			
 		}
 
 		// condition met for stopping the emitter?
@@ -277,9 +277,9 @@ class Emitter {
 		const alpha = ctx.globalAlpha;		
 
 		for (const particle of this.particles) {
-			pos.set(particle.pos);
+			pos.set(particle.position);
 			if (this.angle != 0) pos.rotate(this.angle * Math.PI);
-			pos.add(this.pos);			
+			pos.add(this.position);			
 
 			if (particle.active) {			
 				this.activeParticleCount++;
