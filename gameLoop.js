@@ -7,6 +7,7 @@
 */
 import { Hitpoints } from './actor-hp.js';
 import { Player } from './player.js';
+import { Enemy } from './enemy.js';
 import { Projectile } from './projectile.js';
 import { Actor, Enum_ActorTypes } from './actor.js';
 import { preloadImages } from './utils.js';
@@ -55,11 +56,12 @@ class GameLoop {
 	/**
 	 * 
 	 * @param {object} o 
-	 * @param {string=} o.name
-	 * @param {number} o.duration
-	 * @param {number} o.repeat
-	 * @param {function=} o.onTick
-	 * @param {function=} o.onComplete	 
+	 * @param {string=} o.name User defined name
+	 * @param {number} o.duration How many ticks between 
+	 * @param {number} o.repeat How many times the timer should repeat?
+	 * @param {function=} o.onTick Fires on every tick
+	 * @param {function=} o.onRepeat Fires when the cycle repeats
+	 * @param {function=} o.onComplete Fires when the repeats are used up and the timer is destroyed
 	 */
 	addTimer(o) {
 		if (!('repeat' in o)) o.repeat = 1;
@@ -71,16 +73,20 @@ class GameLoop {
 		this.timers.length = 0;
 	}
 	
-	/*
-		Loops through all actors and issues a callback
-	*/
+	/**
+	 * Loops through all actors and issues a callback
+	 * @param {function} cb 	 
+	 */
 	forActors(cb) {
 		for (const actor of this.actors) cb(actor);
 	}
-	
-	/*
-		Loops through all actors and returns an array of actors based on their field values
-	*/
+		
+	/**
+	 * 	Loops through all actors and returns an array of actors based on their field values
+	 * @param {string} field The field name you want to test (e.g. 'name', 'position', etc.)
+	 * @param {string} value The field value which needs to match
+	 * @returns {[Actor]} Array of actors
+	 */
 	findActors(field, value) {
 		var list = [];
 		for (const actor of this.actors) if (actor[field] == value) list.push(actor);
@@ -100,12 +106,34 @@ class GameLoop {
 	get isRunning() { return this.flags.isRunning; }
 	set isRunning(b) { this.flags.isRunning = (b === true) ? true : false; }
 
-	hideColliders() { this.flags.showColliders = false; }	
+	/**
+	 * @deprecated
+	 */
+	hideColliders() { this.flags.showColliders = false; }				
+
+	/**
+	 * @deprecated
+	 */
 	showColliders() { this.flags.showColliders = true; }
+
+	/**
+	 * 	Set multiple flags at once by providing an object, for example: 
+	 *	engine.setFlags({ hasWorld:true, hasEdges:true });
+     *	If a defined flag does not exist in the engine, the parameter is silently ignored.
+	 *	@param {object} o Key Value object where key is the flag name (string) and value is boolean.
+	 */		
+	 setFlags(o) {
+		const _this = this;
+		if (AE.isObject(o)) Object.keys(o).forEach( key => { 
+			if (key in this.flags) {				
+				this.flags[key] = o[key];				// after the create functions are called!
+			}
+		});
+	}
 	
 	/**
 	 * Creates a new Actor instance and adds it in the GameLoop
-	 * @param {String} aType Actor type to create, one of level|player|projectile|enemy|layer|consumable|obstacle
+	 * @param {String} aType Actor type to create, one of level|player|projectile|enemy|layer|consumable|obstacle|npc
 	 * @param {object} o Actor parameter object
 	 * @param {string} o.name User defined name
 	 * @param {image} o.img HTMLImageElement or Canvas
@@ -115,7 +143,7 @@ class GameLoop {
 	 * @param {number} o.scale
 	 * @param {Vector2} o.dims Image dimensions
 	 * @param {boolean} o.hasColliders Image dimensions
-	 * @returns {Actor|Player|Projectile|Level}
+	 * @returns {Actor|Player|Enemy|Projectile|Level}
 	 */
 	add(aType, o = {}) {		
 		o.owner = this;
@@ -124,11 +152,12 @@ class GameLoop {
 			case 'level'       	: { var a = new Level(o); this.levels.push(a); a._type = 256; return a; }			// not an actor, return without running actor code
 
 			case 'player'      	: { var a = new Player(o); const hp = new Hitpoints(); hp.assignTo(a); this.players.push(a); a._type = Enum_ActorTypes.player; break; }
+			case 'enemy' 	  	: { var a = new Enemy(o);  const hp = new Hitpoints(); hp.assignTo(a); a._type = Enum_ActorTypes.enemy; break; } 
 			case 'projectile'  	: { var a = new Projectile(o); a._type = Enum_ActorTypes.projectile; break; }			
-			case 'enemy' 	  	: { var a = new Actor(o); a._type = Enum_ActorTypes.enemy; break; } 
 			case 'layer'        : { var a = new Actor(o); a._type = Enum_ActorTypes.layer; break; }
 			case 'consumable'   : { var a = new Actor(o); a._type = Enum_ActorTypes.consumable; break; }
 			case 'obstacle'     : { var a = new Actor(o); a._type = Enum_ActorTypes.obstacle; break; }
+			case 'npc'  		: { var a = new Actor(o); a._type = Enum_ActorTypes.npc; break; }
 			default 	  		: { var a = new Actor(o); a._type = Enum_ActorTypes.default; }
 		}
 
@@ -143,14 +172,16 @@ class GameLoop {
 			})						
 		}
 
+		// if the GameLoop has showColliders flag enabled, make the colliders visible for all subsequently created Actors
+		a.renderHints.showColliders   = this.flags.showColliders;
 		a.renderHints.showBoundingBox = this.flags.showBoundingBoxes;			// copy the Gameloop boundingbox state to the created actor
 		
 		return a;
 	}
 
-	/*
-		This is called internally!
-	*/
+	/**
+	 * DO NOT USE! This is called internally!
+	 */	
 	_render(timeStamp) {
 
 		// schedule frame
@@ -199,7 +230,21 @@ class GameLoop {
 		this._frameStart = timeStamp;
 		this._oneShotRender = false;
 	}
+
+	removeFromZLayers(object) {
+		let deleteCount = 0;
+		for (const layer of this.zLayers) {
+			for (let i = layer.length; i--;) if (layer[i] === object) {
+				layer.splice(i, 1);
+				deleteCount++;
+			}
+		}
+		return deleteCount;
+	}
 	
+	/**
+	 * DO NOT USE! This is called internally!
+	 */	
 	_tick() {
 		if (!this.flags.isRunning) return;
 		
@@ -236,31 +281,36 @@ class GameLoop {
 		// loop all actors in the gameloop		
 		for (let i = actorsArray.length; i--;) {			
 			const actor = actorsArray[i];
-			actor.tick();
+
+			actor.tick();										// tick all actors (actor.tick() returns immediately if actor is destroyed)
 			
 			// check for collisions and overlaps:
-			if (this.flags.collisionsEnabled) {
-				if (actor.flags.hasColliders) for (const g of Object.keys(groups)) {
+			if (this.flags.collisionsEnabled && actor.flags.hasColliders) {
+				for (const g of Object.keys(groups)) {														// loop through every hit test group
 					if (actor._hitTestFlag[g] < 3) {
 						for (const o of groups[g]) {
-							if (o != actor && !actor.flags.isDestroyed && !o.flags.isDestroyed) actor.testOverlaps(o);
-							if (o.flags.isDestroyed) destroyed.push(o);
+							if (o != actor && !actor.flags.isDestroyed && !o.flags.isDestroyed) {				// do not test against self and destroyed actors
+								actor.testOverlaps(o);
+								if (o.flags.isDestroyed) destroyed.push(o);
+							}
 						}				
 					}
 				}
 			}
 			
 			if (actor.flags.isDestroyed) destroyed.push(actor);						
-		} 			
+		} 	
 
 		// take care of destroying the actors AFTER checking for collisions, because typically actors get destroyed in collisions/overlaps			
 		for (const actor of destroyed) {
 			// signal 'endoverlap' to all actors which this actor overlaps with:
-			for (const olap of actor.overlaps) actor._fireEvent('endoverlap', { actor, otherActor:olap });		
-
+			for (const olap of actor.overlaps) {				
+				olap.overlaps = olap.overlaps.filter(e => e != actor);			// remove destroyed actor from (all the) other actors' overlaps list!				
+				actor._fireEvent('endoverlap', { actor, otherActor:olap });	
+			}
+			
 			// remove from zLayers:
-			const layer = this.zLayers[actor.zIndex];
-			for (let i = layer.length; i--;) if (layer[i] === actor) layer.splice(i, 1);
+			this.removeFromZLayers(actor);
 			
 			// clean up:
 			actor.release();
@@ -291,12 +341,18 @@ class GameLoop {
 		this._lastTick = performance.now() - tickStart;				
 	}
 
+	/**
+	 * Pauses the GameLoop
+	 */
 	pause() {
 		window.cancelAnimationFrame(this.requestID);
 		this.requestID       = null;
 		this.flags.isRunning = false;				
 	}
 	
+	/**
+	 * Starts the GameLoop
+	 */
 	start() {
 		this.flags.isRunning = true;
 		
@@ -309,6 +365,10 @@ class GameLoop {
 			window.cancelAnimationFrame(this.requestID);
 			console.error(e);
 		}
+	}
+
+	toString() {
+		return '[GameLoop]';
 	}
 
 } // class

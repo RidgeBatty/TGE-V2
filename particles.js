@@ -4,7 +4,9 @@
 	Written by Ridge Batty (c) 2021
 	
 */
-import { Engine, Types } from './engine.js';	
+import { Engine, Types } from './engine.js';
+import { EventBroadcaster } from './eventBroadcaster.js';
+import { wrapBounds } from './utils.js';
 
 const Vector2 = Types.Vector2;
 
@@ -18,24 +20,42 @@ class ParticleParams {
 	@param {string=} prop - property name
 	@param {object} o - object where to look for the property
 */
-const calc = (prop, o) => {		
+const calc = (prop, o, defaultValue= 0) => {		
 	if (typeof o[prop] == 'object') {
 		return (Math.random() * (o[prop].max - o[prop].min)) + o[prop].min;
-	} else return o[prop] || 0;
+	} else return (prop in o) ? o[prop] : defaultValue;
 }	
-
-class Emitter {
-	constructor(params) {
+class Emitter extends EventBroadcaster {
+	/**
+	 * DO NOT CALL MANUALLY! Use ParticleSystem.addEmitter() to create Emitter instances!
+	 * @param {*} particleSystem 
+	 * @param {*} params 
+	 */
+	constructor(particleSystem, params) {		
+		super(['destroy','complete']);
+	
+		this.particleSystem = particleSystem;
+	
 		this.params    = params;
 		this.zIndex    = ('zIndex' in params) ? params.zIndex : 1;
 		this.surface   = ('surface' in params) ? params.surface : Engine.renderingSurface;
 		
 		this.particles = [];
 		this._running  = false;
+		this._isDestroyed = false;
 				
-		this.initEmitter();
-				
+		this.initEmitter();				
 		this._createParticles(params.maxDrawCount || 100);
+	}
+
+	destroy() {
+		if (this._isDestroyed) return;
+
+		this._fireEvent('destroy');
+
+		const ps = this.particleSystem;
+		for (let i = ps.emitters.length; i--;) if (ps.emitters[i] === this) ps.emitters.splice(i, 1);
+		const count = ps.gameLoop.removeFromZLayers(this);	
 	}
 	
 	get isActive() {
@@ -55,24 +75,28 @@ class Emitter {
 		this.name	     = params.name;
 		
 		this.emitSpeed   = params.emitSpeed || 1;				// how many particles to emit per tick?	1 = 60/second
-		this.emitFrac    = 0;									// helper to keep track of the fractinal part of emitted particles	
-		this.position	 = Vector2.FromStruct(params.position || { x:0, y:0});
-		this.angle 	 	 = params.angle || 0;
-		this.delay	     = calc('delay', params);		   // emitter start delay
+		this.emitFrac    = 0;									// helper to keep track of the fractional part of emitted particles	
+		this.position	 = Vector2.FromStruct(params.position || { x:0, y:0 });
+		this.angle 	 	 = params.angle || 0;					// rotation of the emitter
+
+		// applies to circle emitter only
+		this.startAngle  = calc('startAngle', params, -2);
+		this.endAngle    = calc('endAngle', params, 2);
+
+		this.delay	     = calc('delay', params);	  // emitter start delay
 		this.maxDelay    = params.delay || 0;
 		this.image 		 = params.image || null;		
 		this.textContent = params.textContent || '';		
 		this.emitCount   = params.emitCount || 0;				// 0 = emit unlimited number of particles
-		this.emitLeft    = this.emitCount;						// counter for emitted particles
+		this.emitMax     = ('emitMax' in params) ? params.emitMax : Infinity;	// how many particles to emit total?		
 		this.activeParticleCount = 0;
 		this.compositeOperation  = params.compositeOperation;
-		this.emitMax          = ('emitMax' in params) ? params.emitMax : Infinity;	// how many particles to emit total?
-		this.emitCount        = 0;															// how many particles emitted so far?
-		this.onComplete		  = null;							// callback to be fired when emitCount = emitMax and all particles are dead
-
+		
 		// different from emitter.isActive, which, when turned off, shuts down everything (including living particles)
 		// this controls whether new particles are being spawned during tick or not
 		this.spawnParticles   = ('spawnParticles' in params) ? params.spawnParticles : true;	
+
+		this._emitLeft   = this.emitCount;						// internal counter for emitted particles
 		
 		if (params.type == 'box') {
 			this.size   = params.size || { x:0, y:0 };
@@ -83,11 +107,11 @@ class Emitter {
 		}
 	}
 	
-	start(onBeforeTick) {		
-		this._running = true;
-		this.onBeforeTick = (typeof onBeforeTick == 'function') ? onBeforeTick : null;
+	start() {		
 		this.initEmitter();
-		this.particles.forEach(p => p.lifeTime = p.maxLife);
+		this.particles.length = 0;
+		this._createParticles(this.params.maxDrawCount || 100);
+		this._running = true;		
 	}
 	
 	/*
@@ -125,7 +149,7 @@ class Emitter {
 		if (emit >= 1) this.emitFrac = this.emitFrac - Math.floor(this.emitFrac);			
 		if (emit == 0) return 0;
 					
-		if (this.emitLeft > 0) this.emitLeft -= emit;		// do we have any particles left to be emitted?
+		if (this._emitLeft > 0) this._emitLeft -= emit;		// do we have any particles left to be emitted?
 		
 		return emit;
 	}
@@ -143,13 +167,13 @@ class Emitter {
 					p.position.y = Math.random() * this.size.y - this.size.y / 2;
 					break;
 				}
-				case 'circle': {																// angle, innerRadius, radius
-					let angle  = Math.random() * Math.PI * 2;						
-					let r      = Math.random() * (this.radius - this.innerRadius) ** 2;
-					let ir     = this.innerRadius ** 2;
+				case 'circle': {																// start and end angle (to create an arc), innerRadius, radius
+					const a      = Math.random() * Math.PI * this.endAngle + Math.random() * Math.PI * this.startAngle;		
+					const r      = Math.random() * (this.radius - this.innerRadius) ** 2;
+					const ir     = this.innerRadius ** 2;
 					
-					p.position.x = Math.sin(angle) * Math.sqrt(r + ir);
-					p.position.y = Math.cos(angle) * Math.sqrt(r + ir);
+					p.position.x =  Math.sin(a) * Math.sqrt(r + ir);
+					p.position.y = -Math.cos(a) * Math.sqrt(r + ir);
 					break;
 				}
 				case 'point': p.position = Vector2.Zero();	
@@ -172,22 +196,35 @@ class Emitter {
 			p.lifeTime     = calc('life', init);
 			p.maxLife      = p.lifeTime;
 			p.angle        = calc('angle', init);				
-			p.rotation     = ('rotation' in init) ? calc('rotation', init) : 0;
+			p.rotation     = calc('rotation', init);
 			p.angularSpeed = calc('angularSpeed', init);
 			p.angularWeight= calc('angularWeight', init);
 			p.speed        = calc('speed', init);
-			p.velocity     = Vector2.FromAngle(p.angle * Math.PI, p.speed);
-			p.opacity      = ('opacity' in init) ? calc('opacity', init) : 1;
-			
-			// initial color and opacity:				
-			if (this.params.initColor) {
-				let hue = calc('hue', this.params.initColor);
-				let sat = calc('saturation', this.params.initColor);
-				
-				p.opacity    = calc('opacity', this.params.initColor);					
-				p.hue        = hue;
-				p.saturation = sat;
+			p.opacity      = calc('opacity', init, 1);
+
+			// filter 
+			if ('filter' in init) {
+				const value = calc('value',init.filter);
+				if (init.filter.name == 'blur') p.filter = `${init.filter.name}(${value}px)`;
 			}
+
+			// initial particle velocity
+			if ('velocity' in init) {
+				if (init.velocity == 'radial') p.velocity = p.position.clone().normalize().mulScalar(p.speed);				
+					else
+				if (init.velocity == 'square') {
+					const ang  = (Math.floor((wrapBounds(p.position.clone().toAngle(), 0, Math.PI * 2) + Math.PI * 0.25) / (Math.PI * 0.5)) % 4);
+					
+					if (ang == 0) p.velocity = new Vector2(0, -1);
+					if (ang == 1) p.velocity = new Vector2(1, 0);
+					if (ang == 2) p.velocity = new Vector2(0, 1);
+					if (ang == 3) p.velocity = new Vector2(-1, 0);
+
+					p.velocity.mulScalar(p.speed);
+				}
+					else p.velocity = Vector2.FromStruct(init.velocity);										
+			} else
+				p.velocity   = Vector2.FromAngle(p.angle * Math.PI, p.speed);			
 			
 			if (AE.isFunction(init.func)) init.func(p);
 				
@@ -200,7 +237,6 @@ class Emitter {
 	
 	tick() {
 		if (!this._running) return;
-		if (this.onBeforeTick) this.onBeforeTick(this);
 		
 		// delay the update by "delay" frames (comes from emitter)
 		if (this.delay > 0) { this.delay--; return }		
@@ -261,7 +297,7 @@ class Emitter {
 		// condition met for stopping the emitter?
 		if (this.emitCount == this.emitMax && deadParticles == this.particles.length) {
 			this._running = false;
-			if (AE.isFunction(this.onComplete)) this.onComplete(this);
+			this._fireEvent('complete');
 		}
 	}
 	
@@ -287,7 +323,17 @@ class Emitter {
 					ctx.globalAlpha = particle.alpha;					
 					ctx.setTransform(particle.scale, 0, 0, particle.scale, pos.x, pos.y);
 					ctx.rotate((particle.rotation + particle.angle) * Math.PI);
+								
+					// apply filter
+					if (particle.filter) {
+						ctx.filter = particle.filter;
+					}
+			
 					ctx.drawImage(particle.img, -particle._cachedSize.x / 2, -particle._cachedSize.y / 2);
+
+					if (particle.filter) {
+						ctx.filter = 'none';
+					}
 				}				
 			}
 		}	
@@ -310,12 +356,17 @@ class ParticleSystem {
 	}
 	
 	addEmitter(params) {
-		let e = new Emitter(params);
+		let e = new Emitter(this, params);
 		this.emitters.push(e);
 		this.gameLoop.zLayers[e.zIndex].push(e);				// add the emitter on gameLoop zLayer
 		return e;
 	}
 	
+	/**
+	 * 
+	 * @param {string} name 
+	 * @returns {Emitter}
+	 */
 	emitterByName(name) {
 		return this.emitters.find(e => e.name == name);
 	}
@@ -336,9 +387,9 @@ class ParticleSystem {
 	}
 	
 	clear() {
-		//for (let e of this.emitters) AE.removeElement(e.layer);
-		this.emitters = [];
+		for (const e of this.emitters) e.destroy();
 	}
 }
+
 
 export { ParticleSystem, Emitter }
