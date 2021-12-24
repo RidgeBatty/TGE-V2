@@ -34,3 +34,21 @@ Minor changes:
 - Fixed bugs in Types
 - Added docs/roadmap.txt
 - Improved documentation
+
+-----------------------------------------------------------------
+Version 2.0.4
+
+- Improved documentation
+- Fixed bugs in Actor, Colliders, collision detection, Projectiles, GameLoop
+- Added/Improved Projectile Actor homing parameters and behavior
+- Added Actor.addCollider() convenience function
+- Added Enemy Actor
+- Automatic collision handling between Player, PlayerShot, Enemy, EnemyShot. Create the Actors, attach Colliders and go!
+- Added html-ui.js module with basic UI components
+- Added some UI components in DevTools
+- Improved MultiCast functionality and performance. Event delegate arrays are now created on-demand.
+- Implemented Engine.flags.mouseEnabled to allow disabling of Engine mouse events
+- Fixed missing implementation of PointerController.isActive 
+- Vastly improved particle engine
+- Rewritten examples/particles demo 
+

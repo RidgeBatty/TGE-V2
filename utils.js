@@ -141,10 +141,13 @@ const waitClick = async (elem) => {
 	});			
 }
 
-/*
-	Removes duplicate objects from an array, based on the value of property 'prop'
-	i.e. when the value of the 'prop' is the same, the objects are considered to be duplicates
-*/
+/**
+ *  * Removes duplicate objects from an array, based on the value of property 'prop'
+ *	i.e. when the value of the 'prop' is the same, the objects are considered to be duplicates
+ * @param {[*]} arr 
+ * @param {*} prop 
+ * @returns 
+ */
 const removeDuplicates = (arr, prop) => {
 	const flag   = {};
 	const unique = [];
@@ -157,8 +160,20 @@ const removeDuplicates = (arr, prop) => {
 	return unique;
 }
 
+/**
+ * Returns true if array items are equal, false otherwise
+ * @param {[*]} a Array
+ * @param {[*]} b Array
+ * @returns {boolean}
+ */
+const arraysEqual = (a, b)=> {
+    return (a.length == b.length) && a.every((val, index) => val === b[index]);
+}
+
+
 const imgDims = (img) => {
-	return new Vec2(img.naturalWidth, img.naturalHeight);
+	if (img == null) return Vec2.Zero();
+	return new Vec2(img.naturalWidth || img.width, img.naturalHeight || img.height);
 }
 
 const lerp = (start, end, n) => {
@@ -283,10 +298,6 @@ const smoothPoints = (points, stepsPerCurve, tension = 1) => {		// points:[Vecto
 	
 	return result;
 }
-
-const arraysEqual = (a, b)=> {
-    return (a.length == b.length) && a.every((val, index) => val === b[index]);
-}
 	
 export { 
 	delay, 
@@ -296,6 +307,7 @@ export {
 	rtByActorType, 
 	waitClick, 
 	removeDuplicates, 
+	arraysEqual,
 	imgDims, 	
 	lerp, 
 	lerp3, 
@@ -308,5 +320,4 @@ export {
 	imageFromBlob,
 	wrapBounds,
 	smoothPoints,
-	arraysEqual
 }

@@ -77,17 +77,14 @@ class Root {
 		this.colliders    = null;  		// collider object			
 		this.overlaps     = [];			// this actor is currently overlapping all the other actors in the list
 		
-		this._defaultColliderType = 'WorldDynamic';	// override in descendant class to change the default		
+		this._defaultColliderType = o.defaultColliderType ? o.defaultColliderType : 'WorldDynamic';	// override in descendant class to change the default		
 
-		AE.sealProp(this, 'name', ('name' in o) ? o.name : '');	
-
-		// if the GameLoop has showColliders flag enabled, make the colliders visible for all subsequently created Root objects
-		if (this.owner.flags.showColliders == true) this.renderHints.showColliders = true;
+		AE.sealProp(this, 'name', ('name' in o) ? o.name : '');			
 	}
 	
 	_createCollisionChannels() {
 		this._hitTestGroup = this._defaultColliderType;				
-		this._hitTestFlag  = Object.create(HitTestFlag);
+		this._hitTestFlag  = Object.assign(HitTestFlag);
 	}
 	
 	get hasColliders() { return this.flags.hasColliders; }		

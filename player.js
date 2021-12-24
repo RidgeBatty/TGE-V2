@@ -21,13 +21,10 @@ const Enum_PlayerMovement = {
 
 class Player extends Actor {
 	constructor(o) {				
-		super(o);
-		
-		this._defaultColliderType = 'Player';
+		const params = Object.assign(o, { defaultColliderType : 'Player' });
+		super(params);
 				
-		('instigator' in o) ? this.instigator = o.instigator : null;
-		
-		this.data          = {}; // userdata
+		this.instigator    = ('instigator' in o) ? o.instigator : null;		
 		this.controllers   = {};	
 		this._movementType = Enum_PlayerMovement.Default;
 		this._isMovementCancelled = false;

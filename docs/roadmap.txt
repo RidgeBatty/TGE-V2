@@ -28,8 +28,13 @@ These upgrades aim in adding visual assist tools in the engine and bring it clos
 
 1. First step is adding analytic, diagnostics and debugging features, which allow starting/stopping the game loop 
 and getting information from Actors and the Engine state (on mouse click).
+    Status: 20.12.2021 first step is complete
 
 2. Actor editor mode. Create/modify/delete actors in real time. Dump data in developer console.
+    Status: 20.12.2021 first step is 30% complete
 
-3. Save/load changes to/from 'level' files.
+3. Actor save/load feature
+
+4. Save/load changes to/from 'level' files.
+ 
 

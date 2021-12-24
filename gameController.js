@@ -61,8 +61,7 @@ class KeyController {
 	 * Adds an event handler.
 	 * @param {String} name Unique name for the handler
 	 * @param {Function} func User function
-	 */
-	
+	 */	
 	addEvent(name, func) {
 		if (typeof func != 'function') throw 'Second parameter must be a function.';
 		if ( !Events.includes(name) )  throw 'First parameter must be a keyboard event name.';
@@ -80,7 +79,7 @@ class KeyController {
 		Add a single keybind (which can have multiple keys assigned to it).
 		Key codes: <a href="https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code/code_values" target="_blank">MDN key code reference</a>.
 		@param {String} name Unique name for the key
-		@param {String[]} keyCodes Key code
+		@param {[String]} keyCodes Key code
 	*/
 	addKeyBind(name, keyCodes) {	// name:string, keyCodes:[string]
 		this.keyBind[name]  = keyCodes;
@@ -335,6 +334,7 @@ class PointerController {
 		}
 		
 		const onMouseMove = (e) => { 
+			if (this.isActive == false) return;
 			const touches = e.changedTouches ? e.changedTouches.length : 1;
 			
 			for (let i = 0; i < touches; i++) {
@@ -350,6 +350,7 @@ class PointerController {
 		}
 		
 		const onMouseDown = (e) => {
+			if (this.isActive == false) return;
 			const touches = e.changedTouches ? e.changedTouches.length : 1;
 			
 			for (let i = 0; i < touches; i++) {
@@ -367,6 +368,7 @@ class PointerController {
 		}
 		
 		const onMouseUp = (e) => { 
+			if (this.isActive == false) return;
 			const touches = e.changedTouches ? e.changedTouches.length : 1;
 			
 			for (let i = 0; i < touches; i++) {
@@ -388,7 +390,7 @@ class PointerController {
 		AE.addEvent(window, 'mouseup',     (e) => onMouseUp(e), null);
 
 		AE.addEvent(window, 'dragstart', (e) => { e.preventDefault(); });
-		window.addEventListener('touchmove', (e) => { e.preventDefault(); onMouseMove(e); }, { passive:false });	
+		AE.addEvent(window, 'touchmove', (e) => { e.preventDefault(); onMouseMove(e); }, { passive:false });	
 		AE.addEvent(window, 'touchstart', (e) => { onMouseDown(e); });
 		AE.addEvent(window, 'touchend', (e) => { onMouseUp(e); });
 	}
@@ -409,14 +411,14 @@ class PointerController {
 /**
 Read-only container for all instantiated Controllers.
 @typedef {Object} Controllers
-@property {GameController[]} all - List of all controller instances.
+@property {[GameController]} all - List of all controller instances.
 @property {Function} disable() - Deactivates all controllers i.e. prevents controller events from firing.
 @property {Function} enable() - Activates all controllers.
 */
 const Controllers = {
 	all     : [],	
-	disable : () => { for (const c of this.all) c.isActive = false; },
-	enable  : () => { for (const c of this.all) c.isActive = true; }
+	disable : () => { for (const c of Controllers.all) c.isActive = false; },
+	enable  : () => { for (const c of Controllers.all) c.isActive = true; }
 }
 
 export { KeyController, GamepadController, PointerController, AllGamepads, AllGamepadControllers, Controllers }

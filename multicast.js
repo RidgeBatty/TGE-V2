@@ -7,21 +7,8 @@
 	Install one Window level event handler of each type and redirect events to user installed handler functions.
 
 */
-const handlers = {
-	'contextmenu' : [],
-	'mouseover'   : [],
-	'mouseout'    : [],
-	'mousedown'   : [],
-	'mousemove'   : [],
-	'mouseup'     : [],
-	'click'       : [],
-	'wheel'       : [],
-	'dblclick'    : [],
-	'keydown'     : [],
-	'keyup'       : [],
-	'resize'      : [],
-}
-const MouseEvts = 'contextmenu mouseover mouseout mousedown mousemove mouseup click dblclick'.split(' ');
+const handlers  = {};
+const MouseEvts = 'contextmenu mouseover mouseout mousedown mousemove mouseup click dblclick wheel'.split(' ');
 
 function broadcast(o) {
 	for (let i = 0; i < handlers[o.name].length; i++) {		
@@ -44,8 +31,15 @@ function installHandlers() {
 	}
 }
 
-function addEvent(evtName, func, data) {
-	if (evtName != null && evtName in handlers) handlers[evtName].push({ func, data, isActorEvent:false });	
+function addEvent(evtName, func, data, options) {
+	if (evtName == null) return;
+	const evt = { func, data, isActorEvent:false };
+
+	if (evtName in handlers) handlers[evtName].push(evt);	
+		else {
+			handlers[evtName] = [evt];    																		// create new delegate array		
+			AE.addEvent(window, evtName, (e) => broadcast({ event:e, name:evtName }) );		// create new multicaster
+		}
 }
 
 function addEventToActor(evtName, func, data, actor) {
@@ -68,6 +62,10 @@ function uninstall(evtName, func) {
 	return removed;
 }
 
+function getDelegateKeys() {
+	return Object.keys(handlers);
+}
+
 installHandlers();
 
-export { addEvent, addEventToActor, uninstall, MouseEvts };
+export { addEvent, addEventToActor, uninstall, MouseEvts, getDelegateKeys };

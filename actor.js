@@ -8,6 +8,7 @@ import { Types, Root, Engine } from "./engine.js";
 import { ChildActor } from "./childActor.js";
 import * as MultiCast from "./multicast.js";
 import { Rect } from "./types.js";
+import { PhysicsShape } from "./physics.js";
 
 const Vector2 = Types.Vector2;
 const Events  = ['click', 'tick','beginoverlap','endoverlap', 'collide','destroy'];
@@ -29,6 +30,7 @@ const Enum_ActorTypes = {
 	layer 	   : 32,
 	consumable : 64,
 	obstacle   : 128,
+	npc		   : 256,
 }
 
 /**
@@ -112,7 +114,7 @@ class Actor extends Root {
 		this.isVisible       = ('hidden' in o) ? !o.hidden : true;
 
 		if ('dims' in o) this.setSize(o.dims);		
-		if ('hasColliders' in o) this.hasColliders = o.hasColliders;
+		if ('hasColliders' in o) this.hasColliders = o.hasColliders;		// get colliders flag state from create parameters
 
 		if ('img' in o) {						
 			this.img = o.img;	
@@ -148,6 +150,15 @@ class Actor extends Root {
 		const c = new ChildActor(this, o);
 		this.children.push(c);
 		return c;
+	}
+
+	/**
+	 * Adds a new collider to this Actor and makes sure the colliders flag is set 'true'.
+	 * @param {PhysicsShape} o 
+	 */
+	addCollider(o) {
+		this.hasColliders = true;
+		this.colliders.add(o);
 	}
 	
 	getChildByName(name) {
@@ -305,9 +316,8 @@ class Actor extends Root {
 				c.drawImage(img, -this.width / 2, -this.height / 2);			
 			}
 
-			if (this.hasColliders && this.renderHints.showColliders && this.owner.flags.showColliders) this.colliders.update();
-
-			if (this.renderHints.showBoundingBox && this.onDrawBoundingBox) this.onDrawBoundingBox(this);
+			if (this.hasColliders && this.renderHints.showColliders && this.owner.flags.showColliders) this.colliders.update();			
+			if (this.owner.flags.showBoundingBoxes && this.renderHints.showBoundingBox && this.onDrawBoundingBox) this.onDrawBoundingBox(this);
 		}
 	}
 

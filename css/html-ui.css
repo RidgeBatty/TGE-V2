@@ -1,0 +1,90 @@
+
+/* width */
+::-webkit-scrollbar {
+    width: 5px;
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+    background: darkgreen;
+}
+
+/* Handle */
+::-webkit-scrollbar-thumb {
+    background: lime;
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+tge-ui { 
+    position:absolute; 
+    inset:10px;
+    font:14px monospace; 
+}
+
+tge-panel { 
+    position:absolute; 
+    display:flex; 
+    align-items:center 
+}
+
+.relative { 
+    position:relative; 
+    inset:auto; 
+}
+
+button { 
+    position:relative; 
+    margin:2px; 
+} 
+
+tge-checkbox { 
+    display:flex; 
+    align-items:center; 
+    margin:2px; 
+}
+
+tge-checkbox > label { 
+    color:white 
+} 
+
+tge-kvl { 
+    position: absolute;
+    margin:2px;
+    background:black; 
+    color:white; 
+    border:1px solid lime;   
+    top:160px;
+}
+
+tge-kvl > .client { 
+    display: flex;
+    flex-direction: column;    
+    width:320px;
+    max-width:320px;
+    height:480px;
+    padding:2px;
+}
+
+tge-kvl tge-head > div { 
+    color:lime;
+    padding:2px;
+    margin-bottom:2px;
+    border-bottom:1px dashed lime;
+}
+
+tge-kvl tge-body {
+    overflow:auto;    
+}
+
+tge-kvl tge-body table { 
+    border-collapse: collapse;
+}
+
+tge-kvl tge-body td { 
+    padding:1px;
+    border:1px dotted green;    
+}

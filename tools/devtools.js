@@ -1,4 +1,14 @@
+/**
+ * 
+ * TGE DevTools
+ * 
+ * Enable this only in development mode
+ * Written by Ridge Batty (c) 2021
+ * 
+ */
 import { Engine, Actor, Types } from '../engine.js';
+import { Controllers } from '../gameController.js';
+import { UI } from '../html-ui.js';
 import { arraysEqual } from '../utils.js';
 import Debug from '../tools/debug.js';
 
@@ -15,10 +25,78 @@ let keyDownActors = [],
     mouseDownPos  = Vec2.Zero(),
     mouseUpPos    = Vec2.Zero();
 
-AE.addEvent(window, 'keyup', (e) => onKeyUp(e), null);		
-AE.addEvent(window, 'mouseup', (e) => onMouseUp(e), null);		
-AE.addEvent(window, 'mousedown', (e) => onMouseDown(e), null);		
-AE.addEvent(window, 'mousemove', (e) => onMouseMove(e), null);		
+/**
+ * Set up the UI
+ */
+UI.autoReplaceParent = false;
+const panel   = UI.add({ type:'panel', name:'buttons', style:'right:0px' });
+const cbPanel = panel.add({ type:'panel', name:'checkboxes', className:'relative' });
+
+const cbShowColliders = cbPanel.add({ type:'checkbox', caption:'Show Colliders' });
+const cbShowBB        = cbPanel.add({ type:'checkbox', caption:'Show Bounding Boxes' });
+
+const btPauseEngine   = panel.add({ type:'button', name:'pause', caption:'Pause' });
+const btFiles         = panel.add({ type:'button', name:'files', caption:'Files' });
+
+const actorInspector  = UI.add({ type:'keyvaluelist', name:'kvl', caption:'Actor Inspector' });
+
+btPauseEngine.addEvent('click', _ => { 
+    pauseEngine();            
+});
+
+btFiles.addEvent('click', async _ => {     
+    const fs = await window.showOpenFilePicker({ multiple:true });
+    
+    /*
+    const fs = await window.showDirectoryPicker();
+    for await (const [key, value] of fs.entries()) {
+        console.log(key, value);
+    }
+
+    */
+});
+
+cbShowColliders.addEvent('change', _ => { Engine.gameLoop.flags.showColliders = cbShowColliders.checked; });
+cbShowBB.addEvent('change', _ => { Engine.gameLoop.flags.showBoundingBoxes = cbShowBB.checked; });
+
+/**
+ * Methods
+ */
+
+const editActor = (actor) => {
+    const props = Object.getOwnPropertyNames(actor);
+    for (const key of props) {        
+        actorInspector.addItem({ key, value:actor[key] });
+    }
+}
+
+const updateState = () => {
+    cbShowColliders.checked = Engine.gameLoop.flags.showColliders;
+    cbShowBB.checked = Engine.gameLoop.flags.showBoundingBoxes;
+}
+
+const installEventHandlers = () => {
+    AE.addEvent(window, 'keyup', (e) => onKeyUp(e), null);		
+    AE.addEvent(window, 'mouseup', (e) => onMouseUp(e), null);		
+    AE.addEvent(window, 'mousedown', (e) => onMouseDown(e), null);		
+    AE.addEvent(window, 'mousemove', (e) => onMouseMove(e), null);		
+    setInterval(updateState, 1000);
+}
+
+/**
+ * Pauses the gameloop and bypasses Engine mouse events to give access to DevTools
+ */
+const pauseEngine = () => {    
+    if (Engine.gameLoop.isRunning) {
+        Engine.flags.mouseEnabled = false;
+        Controllers.disable();
+        console.log(Controllers);
+    } else {
+        Engine.flags.mouseEnabled = true;
+        Controllers.enable();
+    }
+    Engine.gameLoop.isRunning = !Engine.gameLoop.isRunning;    
+}
 
 const onKeyUp = (e) => {
     if (Keys.stopEngine != '') {
@@ -31,9 +109,9 @@ const onKeyUp = (e) => {
 
         let key = (e.key == ' ') ? 'Space' : '';
         
-        if (condKey && sp[1] == key) {            
-            Engine.gameLoop.isRunning = !Engine.gameLoop.isRunning;
-        }        
+        if (condKey && sp[1] == key) { 
+                // select actor
+        } 
     }
 }
 
@@ -93,7 +171,10 @@ const onMouseDown = (e) => {
             }
         
         if (lastClicked.actor) {
-            if (e.ctrlKey) console.log(lastClicked.actor);
+            if (e.ctrlKey) {
+                console.log(lastClicked.actor);
+                editActor(lastClicked.actor);
+            }
                 else console.log(lastClicked.actor.name);            
         }
             else console.log('<NONE>');        
@@ -145,11 +226,11 @@ Actor.prototype.onDrawBoundingBox = function() {
     // draw the bounding box!
     const stroke = (lastClicked.actor == e) ? 'black' : 'red';
     const fill   = (lastClicked.actor == e) ? 'rgba(255,255,0,0.25)' : null;
-    s.drawRect(e.AABB, { stroke, fill });			
+    s.drawRect(e.AABB, { stroke, fill });
     
     const mid = e.AABB.center;
     s.drawCircle(mid, 4, { stroke:'black' });        
-    s.drawArrow(mid, { angle:e.rotation, length:50, sweep:0.85, head:0.2, width:3 }, 'black');
+    s.drawArrow(mid, { angle:e.rotation, length:50, sweep:0.85, head:0.2, width:1.5 }, 'black');
 
     s.textOut(mid, e.name || 'actor', { color:'black', font:'14px monospace' });
     s.textOut(Vec2.Sub(mid, Vec2.One()), e.name || 'actor', { color:'white', font:'14px monospace' });
@@ -165,5 +246,7 @@ class DevTools {
         actor.renderHints.showBoundingBox = true;
     }
 }
+
+installEventHandlers();
 
 export { DevTools }

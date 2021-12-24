@@ -91,7 +91,7 @@ class Collider {
 					Engine.renderingSurface.drawPoly(c.points, { stroke:'black', fill:actor.overlaps.length > 0 ? this.hilite : this.color });					
 				break;
 				case Enum_PhysicsShape.Box:															
-					Engine.renderingSurface.drawRect(new Rect(pos.x - c.halfSize.x, pos.y - c.halfSize.y, c.size.x, c.size.y), { stroke:'black', fill:actor.overlaps.length > 0 ? this.hilite : this.color });					
+					Engine.renderingSurface.drawRect(new Rect(pos.x - c.halfSize.x, pos.y - c.halfSize.y, c.halfSize.x, c.halfSize.y), { stroke:'black', fill:actor.overlaps.length > 0 ? this.hilite : this.color });					
 				break;
 				case Enum_PhysicsShape.AABB: 					
 					
@@ -137,6 +137,15 @@ class Collider {
 			}
 		}	
 		return result;
+	}
+
+	/**
+	 * Forces the actor to be marked as 'not overlapped'
+	 * This is called internally when an actor is destroyed (thus, potentially ending the overlap with another actor)
+	 */
+	endOverlap() {
+		for (const c of this.objects) c.isOverlapped = false;		
+		this.isOverlapped = false;		
 	}
 		
 }

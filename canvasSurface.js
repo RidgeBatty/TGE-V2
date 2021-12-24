@@ -6,6 +6,7 @@
 	
 */
 import * as Engine from "./engine.js";
+import { Types } from "./physics.js";
 
 const { Rect, Vector2, Color } = Engine.Types;
 
@@ -41,10 +42,11 @@ class CanvasSurface {
 	
 	get width()  { return this.canvas.width; }
 	get height() { return this.canvas.height; }
-	get size()	 { return new Vector2(this.canvas.width, this.canvas.height); }
+	get size()	 { return new Vector2(this.canvas.width, this.canvas.height); }	
 
 	set width(v)  { this.canvas.width = v; }
 	set height(v) { this.canvas.height = v; }
+	set size(v) { this.setCanvasSize( v.x, v.y); }
 	
 	/*
 		Sets bitmap image rendering mode. If "pixelSmooth" is true, pixels may appear blurred, especially when scaled up.
@@ -70,14 +72,14 @@ class CanvasSurface {
 	*/
 	setCanvasSize(w, h) {
 		const canvas = this.canvas;		
-		canvas.width = w;
-		canvas.height = h;
+		if (canvas.width != w)  canvas.width = w;
+		if (canvas.height != h) canvas.height = h;
 		
 		if (this._pixelSmooth) {
 			canvas.style.imageRendering = 'pixelated crisp-edges';			
 		} else {
 			canvas.style.imageRendering = 'auto';			
-		}
+		}		
 	}
 	
 	static FromImage(img) {
@@ -261,6 +263,13 @@ class CanvasSurface {
 		}
 	}
 
+	/**
+	 * Draws a rectangle on the canvas
+	 * @param {Types.Rect} r 
+	 * @param {object} p 
+	 * @param {string} p.stroke Stroke (outline color)
+	 * @param {string=} p.fill Fill color	  
+	 */
 	drawRect(r, p = { stroke:'black' }) {
 		if (p.fill) { 
 			this.ctx.fillStyle = p.fill; 			
@@ -336,10 +345,10 @@ class CanvasSurface {
 	/**
 	 * Draws image on canvas. 
 	 * @param {Vector2=} pos Optional position (if not provided, draws at 0,0)
-	 * @param {HTMLImageElement} img 
+	 * @param {HTMLImageElement|CanvasSurface} img 
 	 */
 	drawImage(pos, img) {
-		if (pos == null) this.ctx.drawImage(pos, 0, 0);
+		if (pos == null) this.ctx.drawImage(img, 0, 0);
 			else this.ctx.drawImage(img, pos.x, pos.y);
 	}	
 	
@@ -408,11 +417,15 @@ class CanvasSurface {
 	 * @param {Object} params Optional parameters object
 	 * @param {string=} params.font
 	 * @param {string=} params.color
+	 * @param {string=} params.textAlign
+	 * @param {string=} params.textBaseline
 	 */
 	textOut(pos, text, params) {
 		if (params) {
 			if ('font' in params)  this.ctx.font      = params.font;
 			if ('color' in params) this.ctx.fillStyle = params.color;
+			if ('textAlign' in params) this.ctx.textAlign = params.textAlign;
+			if ('textBaseline' in params) this.ctx.textBaseline = params.textBaseline;
 		}
 		this.ctx.fillText(text, pos.x, pos.y);
 	}

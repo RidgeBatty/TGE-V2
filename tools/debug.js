@@ -11,7 +11,7 @@ console.warn('TGE DEBUG TOOLS are enabled!');
 const sheet = new CSSStyleSheet();
 sheet.insertRule('.tge-debug    { position:absolute; left:10px; top:10px; color:lime; text-shadow:1px 1px 1px black; font:14px monospace; pointer-events:none; }'); 
 sheet.insertRule('.tge-controls { position:absolute; left:10px; bottom:10px; color:lime; text-shadow:1px 1px 1px black; font:14px monospace; pointer-events:none; }'); 
-document.adoptedStyleSheets = [sheet];
+document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
 
 const el = {
 	fps    : null,
@@ -95,7 +95,7 @@ Engine.gameLoop._render = function(ts) {
 	if (el.olaps)  el.olaps.textContent  = `Overlaps: ${overlapCallCount} Tested | ${Engine.gameLoop.overlaps.length} Detected`;
 	if (el.edges)  el.edges.textContent  = `Edges: L=${Engine.edges.left} | T=${Engine.edges.top} | R=${Engine.edges.right} | B=${Engine.edges.bottom}`;
 	
-	const ps = Engine.gameLoop.particleEngine;
+	const ps = Engine.gameLoop.particleSystem;
 	if (ps) {
 		let dc = 0, ac = 0;
 		ps.emitters.forEach(e => { dc += e.particles.length; ac += e.activeParticleCount; });
@@ -185,8 +185,8 @@ function addAnimationDebug() {
 function init() {
 	addLayer();	
 	AE.addEvent(window, 'mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
-	AE.addEvent(window, 'keydown', (e) => { KeybState[e.key] = true; });
-	AE.addEvent(window, 'keyup', (e) => { KeybState[e.key] = false; });
+	AE.addEvent(window, 'keydown', (e) => { KeybState[e.code] = true; });
+	AE.addEvent(window, 'keyup', (e) => { KeybState[e.code] = false; });
 }
 
 init();

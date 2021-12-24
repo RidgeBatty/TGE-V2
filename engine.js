@@ -20,7 +20,7 @@
 * For example a space invaders, tetris, pong, asteroids, etc. might have no use of container for static World but a platformer game definitely has.
 *  
 */
-const VersionNumber = '2.0.3';
+const VersionNumber = '2.0.4';
 
 import * as MultiCast from "./multicast.js";
 import * as Types from "./types.js";
@@ -42,8 +42,8 @@ const DefaultFlags = {
 	'hasAutoAdjustScreen' : true,
 	'preserveAspectRatio' : true,
 	'hasContextMenu' : false,
-	'mouseEnabled' : false,
-	'hasRenderingSurface' : false,
+	'mouseEnabled' : true,						// enable/disable Engine mouse events. Disabling might increase performance but the effect is tiny. Used by DevTools to bypass Engine mouse events
+	'hasRenderingSurface' : false,	
 }
 
 /**
@@ -124,6 +124,7 @@ class TinyGameEngine {
 		MultiCast.addEvent('keyup',       (e) => onKeyUp(e), null);		
 		
 		const onMouseMove = (e) => { 
+			if (!this.flags.mouseEnabled) return;
 			const p = e.changedTouches ? e.changedTouches[0] : e;
 			this._mouse.position.x = p.clientX / this.zoom - this.screen.left;
 			this._mouse.position.y = p.clientY / this.zoom - this.screen.top;
@@ -134,6 +135,7 @@ class TinyGameEngine {
 			});
 		}
 		const onMouseDown = (e) => {
+			if (!this.flags.mouseEnabled) return;
 			const p = e.changedTouches ? e.changedTouches[0] : e;
 			const m = this._mouse;
 			m.position.x = p.clientX / this.zoom - this.screen.left;
@@ -146,6 +148,7 @@ class TinyGameEngine {
 		}
 
 		const onMouseUp = (e) => { 
+			if (!this.flags.mouseEnabled) return;
 			const p = e.changedTouches ? e.changedTouches[0] : e;
 			const m = this._mouse;
 			m.position.x = p.clientX / this.zoom - this.screen.left;
@@ -179,8 +182,8 @@ class TinyGameEngine {
 		}
 		
 		AE.addEvent(window, 'dragstart', (e) => { e.preventDefault(); });
-		window.addEventListener('touchmove', (e) => { e.preventDefault(); onMouseMove(e); }, { passive:false });
-		//AE.addEvent(window, 'touchmove', (e) => { onMouseMove(e); });
+		//window.addEventListener('touchmove', (e) => { e.preventDefault(); onMouseMove(e); }, { passive:false });
+		AE.addEvent(window, 'touchmove', (e) => { onMouseMove(e); }, { passive:false });
 		AE.addEvent(window, 'touchstart', (e) => { onMouseDown(e); });
 		AE.addEvent(window, 'touchend', (e) => { onMouseUp(e); });
 	}
@@ -320,7 +323,7 @@ class TinyGameEngine {
      *	If a defined flag does not exist in the engine, the parameter is silently ignored.
 	 *	@param {object} o Key Value object where key is the flag name (string) and value is boolean.
 	 */		
-	setFlags(o) {	// o:{}		
+	setFlags(o) {	
 		const _this = this;
 		if (AE.isObject(o)) Object.keys(o).forEach( key => { 
 			if (key in this.flags) {

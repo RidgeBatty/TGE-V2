@@ -1,18 +1,36 @@
 /*
 
-	TGE Version 1.1 Canvas Particles	
+	TGE Canvas Particles	
 	Written by Ridge Batty (c) 2021
 	
 */
+import { CanvasSurface } from './canvasSurface.js';
 import { Engine, Types } from './engine.js';
 import { EventBroadcaster } from './eventBroadcaster.js';
-import { wrapBounds } from './utils.js';
+import { wrapBounds, preloadImages, imgDims } from './utils.js';
 
 const Vector2 = Types.Vector2;
-
+const Filters = {
+	'blur'        : 'px',
+	'brightness'  : '',
+	'contrast'    : '',
+	'grayscale'   : '',
+	'hue-rotate'  : 'deg',
+	'saturate'    : '',
+	'sepia'       : ''
+}
 class ParticleParams {
 	constructor(p) {
 		Object.assign(this, p);
+	}
+
+	get img() {
+		return this._img;
+	}
+
+	set img(image) {
+		this._img        = image;
+		this._cachedSize = imgDims(image);
 	}
 }
 
@@ -20,34 +38,34 @@ class ParticleParams {
 	@param {string=} prop - property name
 	@param {object} o - object where to look for the property
 */
-const calc = (prop, o, defaultValue= 0) => {		
+const calc = (prop, o, defaultValue= 0) => {
+	if (Array.isArray(o[prop])) {
+		return o[prop][Math.floor(Math.random() * o[prop].length)];		
+	}
 	if (typeof o[prop] == 'object') {
 		return (Math.random() * (o[prop].max - o[prop].min)) + o[prop].min;
-	} else return (prop in o) ? o[prop] : defaultValue;
+	}
+	return (prop in o) ? o[prop] : defaultValue;
 }	
+
 class Emitter extends EventBroadcaster {
 	/**
 	 * DO NOT CALL MANUALLY! Use ParticleSystem.addEmitter() to create Emitter instances!
 	 * @param {*} particleSystem 
 	 * @param {*} params 
 	 */
-	constructor(particleSystem, params) {		
-		super(['destroy','complete']);
+	constructor(particleSystem) {		
+		super(['destroy','complete','tick']);
 	
-		this.particleSystem = particleSystem;
-	
-		this.params    = params;
-		this.zIndex    = ('zIndex' in params) ? params.zIndex : 1;
-		this.surface   = ('surface' in params) ? params.surface : Engine.renderingSurface;
-		
-		this.particles = [];
-		this._running  = false;
-		this._isDestroyed = false;
-				
-		this.initEmitter();				
-		this._createParticles(params.maxDrawCount || 100);
-	}
+		this.particleSystem = particleSystem;		
+		this.particles      = [];
+		this._running       = false;
+		this._isDestroyed   = false;
+		this._imageList     = [];
 
+		this.tmpCanvas      = new CanvasSurface();
+	}
+	
 	destroy() {
 		if (this._isDestroyed) return;
 
@@ -65,38 +83,84 @@ class Emitter extends EventBroadcaster {
 	set isActive(state) {
 		if (state === true || state === false) this._running = state;
 	}
+
+	get img() {		
+		return this._imageList[Math.floor(Math.random() * this._imageList.length)];
+	}
+
+	/**
+	 * DO NOT CALL MANUALLY! Internal use only.
+	 * @param {*} params 
+	 */
+	async _init(params) {
+		this.params    = Object.assign({}, params);
+
+		this.zIndex    = ('zIndex' in params) ? params.zIndex : 1;
+		this.surface   = ('surface' in params) ? params.surface : Engine.renderingSurface;		
+						
+		if ('imgUrl' in params) {
+			const urls      = Array.isArray(params.imgUrl) ? params.imgUrl : [params.imgUrl];
+			this._imageList = await preloadImages({ urls });			
+			console.log('Image loaded');
+		}
+
+		this._initEmitter();						
+	}
+
+	/**
+	 * Use this for debugging your emitter parameters structure!
+	 * @param {*} params 
+	 */
+	analyze(params) {
+		console.warn('Running Emitter.analyze() to check parameters. Do not use in production code!');
+		try {
+			if ('initParticle' in params) {			
+				const init = params.initParticle;
+				if ('filters' in init) {				
+					if (!Array.isArray(init.filters)) throw 'initParticle.filter must be an array.';
+					
+					const filterKeys = Object.keys(Filters);
+					for (const f of init.filters) {
+						if (typeof f != 'object') throw 'Filter must be defined by an object which contains "name" and "value" fields.';
+						if (!filterKeys.includes(f.name)) throw `Illegal filter name: "${f.name}".`;
+					}
+
+					if ('velocity' in init) {
+						if (!['radial', 'square'].includes(init.velocity)) throw `Invalid velocity parameter: "${init.velocity}".`;
+					}
+				}
+			}
+		} catch (e) {
+			console.error(e);
+		}
+	}
 	
-	/*
-		Set initial state for this emitter
-	*/
-	initEmitter() {		
+	/**
+	 * DO NOT CALL MANUALLY!
+	 * Set initial state for this emitter. Called internally by Emitter.start()
+	 */
+	_initEmitter() {		
 		const params     = this.params;
 		
 		this.name	     = params.name;
 		
 		this.emitSpeed   = params.emitSpeed || 1;				// how many particles to emit per tick?	1 = 60/second
-		this.emitFrac    = 0;									// helper to keep track of the fractional part of emitted particles	
 		this.position	 = Vector2.FromStruct(params.position || { x:0, y:0 });
-		this.angle 	 	 = params.angle || 0;					// rotation of the emitter
-
-		// applies to circle emitter only
-		this.startAngle  = calc('startAngle', params, -2);
-		this.endAngle    = calc('endAngle', params, 2);
-
+		this.angle 	 	 = params.angle || 0;					// rotation of the emitter				
 		this.delay	     = calc('delay', params);	  // emitter start delay
-		this.maxDelay    = params.delay || 0;
-		this.image 		 = params.image || null;		
-		this.textContent = params.textContent || '';		
+		this.maxDelay    = params.delay || 0;		
+		this.textContent = params.textContent || '';			
 		this.emitCount   = params.emitCount || 0;				// 0 = emit unlimited number of particles
 		this.emitMax     = ('emitMax' in params) ? params.emitMax : Infinity;	// how many particles to emit total?		
 		this.activeParticleCount = 0;
-		this.compositeOperation  = params.compositeOperation;
+		this.compositeOperation  = ('compositeOperation' in params) ? params.compositeOperation : null;
 		
 		// different from emitter.isActive, which, when turned off, shuts down everything (including living particles)
 		// this controls whether new particles are being spawned during tick or not
 		this.spawnParticles   = ('spawnParticles' in params) ? params.spawnParticles : true;	
 
 		this._emitLeft   = this.emitCount;						// internal counter for emitted particles
+		this._emitFrac   = 0;									// helper to keep track of the fractional part of emitted particles	
 		
 		if (params.type == 'box') {
 			this.size   = params.size || { x:0, y:0 };
@@ -104,18 +168,22 @@ class Emitter extends EventBroadcaster {
 		if (params.type == 'circle') {
 			this.radius      = params.radius || 0;
 			this.innerRadius = params.innerRadius || 0;
+			this.startAngle  = calc('startAngle', params, null);				// applies to circle emitter only: start angle of the arc
+			this.endAngle    = calc('endAngle', params, null);					// applies to circle emitter only: end angle of the arc
+			this.arc         = calc('arc', params);
 		}
+
+		this._createParticles(this.params.maxDrawCount || 100);
 	}
 	
-	start() {		
-		this.initEmitter();
-		this.particles.length = 0;
-		this._createParticles(this.params.maxDrawCount || 100);
+	start() {				
+		this._initEmitter();		
 		this._running = true;		
 	}
 	
-	/*
-		Initialize all drawable particles for this emitter
+	/** 
+	 * DO NOT CALL MANUALLY! This is called internally when all the particles need to be initialized to default state
+	 * Initialize all drawable particles for this emitter
 	*/
 	_createParticles(count) {
 		this._maxDrawCount = count;
@@ -136,17 +204,17 @@ class Emitter extends EventBroadcaster {
 				scale		 : 1,
 				active		 : false,
 				delay        : 0,
-				visible      : true
+				visible      : true,				
 			});						
-			this.particles.push(p);
+			this.particles[i] = p;
 		}				
 	}
 	
 	emitParticles() {
-		this.emitFrac += this.params.emitSpeed;
-		let emit       = this.emitFrac | 0;					// how many particles to emit on current frame?
+		this._emitFrac += this.params.emitSpeed;
+		let emit        = this._emitFrac | 0;					// how many particles to emit on current frame?
 					
-		if (emit >= 1) this.emitFrac = this.emitFrac - Math.floor(this.emitFrac);			
+		if (emit >= 1) this._emitFrac = this._emitFrac - Math.floor(this._emitFrac);
 		if (emit == 0) return 0;
 					
 		if (this._emitLeft > 0) this._emitLeft -= emit;		// do we have any particles left to be emitted?
@@ -167,8 +235,12 @@ class Emitter extends EventBroadcaster {
 					p.position.y = Math.random() * this.size.y - this.size.y / 2;
 					break;
 				}
-				case 'circle': {																// start and end angle (to create an arc), innerRadius, radius
-					const a      = Math.random() * Math.PI * this.endAngle + Math.random() * Math.PI * this.startAngle;		
+				case 'circle': {																// start and end angle (to create an arc), innerRadius, radius					
+					let a        = (this.startAngle != null) ? (Math.random() * Math.PI * this.endAngle + Math.random() * Math.PI * this.startAngle) : Math.random() * Math.PI * 2;		
+					if ('arc' in this) {
+
+					}
+
 					const r      = Math.random() * (this.radius - this.innerRadius) ** 2;
 					const ir     = this.innerRadius ** 2;
 					
@@ -179,10 +251,9 @@ class Emitter extends EventBroadcaster {
 				case 'point': p.position = Vector2.Zero();	
 			}
 			
-			if ('img' in init) {
-				p.img = init.img;
-				p._cachedSize = new Vector2(p.img.naturalWidth, p.img.naturalHeight);
-			}
+			// if particle has img defined, use it - otherwise try to fall back to img defined in emitter
+			p.img = ('img' in init) ? init.img : this.img;
+
 			p.scaleX = 1;
 			p.scaleY = 1;
 
@@ -193,21 +264,31 @@ class Emitter extends EventBroadcaster {
 				if ('scaleY' in init) p.scaleY = calc('scaleY', init);				
 			}
 			
-			p.lifeTime     = calc('life', init);
-			p.maxLife      = p.lifeTime;
-			p.angle        = calc('angle', init);				
-			p.rotation     = calc('rotation', init);
-			p.angularSpeed = calc('angularSpeed', init);
-			p.angularWeight= calc('angularWeight', init);
-			p.speed        = calc('speed', init);
-			p.opacity      = calc('opacity', init, 1);
+			p.lifeTime      = calc('life', init);
+			p.maxLife       = p.lifeTime;
+			p.angle         = calc('angle', init);				
+			p.rotation      = calc('rotation', init);
+			p.angularSpeed  = calc('angularSpeed', init);
+			p.angularWeight = calc('angularWeight', init);
+			p.speed         = calc('speed', init);
+			p.opacity       = calc('opacity', init, 1);
+			p.textContent   = init.textContent;
+			p.textSettings  = init.textSettings;
 
-			// filter 
-			if ('filter' in init) {
-				const value = calc('value',init.filter);
-				if (init.filter.name == 'blur') p.filter = `${init.filter.name}(${value}px)`;
+			// apply filters
+			if ('filters' in init) {
+				p.filter = '';
+				for (const f of init.filters) {
+					const value = calc('value',f);				
+					p.filter += `${f.name}(${value}${Filters[f.name]})`;
+				}				
 			}
 
+			// colorize
+			if ('tint' in init) {				
+				p.tintColor = calc('color', init.tint);				
+			}
+			
 			// initial particle velocity
 			if ('velocity' in init) {
 				if (init.velocity == 'radial') p.velocity = p.position.clone().normalize().mulScalar(p.speed);				
@@ -237,6 +318,8 @@ class Emitter extends EventBroadcaster {
 	
 	tick() {
 		if (!this._running) return;
+
+		this._fireEvent('tick');
 		
 		// delay the update by "delay" frames (comes from emitter)
 		if (this.delay > 0) { this.delay--; return }		
@@ -304,36 +387,57 @@ class Emitter extends EventBroadcaster {
 	update() {		
 		if (!this._running) return;
 
-		const ctx = this.surface.ctx;
-		const pos = Vector2.Zero();		
+		const tmp = this.tmpCanvas,	
+		      ctx = this.surface.ctx,
+		      pos = Vector2.Zero();		
+
 		this.activeParticleCount = 0;
 		
 		const savedCompositeState = ctx.globalCompositeOperation;
 		if (this.compositeOperation) ctx.globalCompositeOperation = this.compositeOperation;		
-		const alpha = ctx.globalAlpha;		
-
+		const alpha = ctx.globalAlpha;												// opacity
+		
 		for (const particle of this.particles) {
-			pos.set(particle.position);
+			pos.set(particle.position);						
 			if (this.angle != 0) pos.rotate(this.angle * Math.PI);
 			pos.add(this.position);			
 
 			if (particle.active) {			
 				this.activeParticleCount++;
-				if (particle.img && particle.visible) {
+				if (particle.visible) {
 					ctx.globalAlpha = particle.alpha;					
 					ctx.setTransform(particle.scale, 0, 0, particle.scale, pos.x, pos.y);
 					ctx.rotate((particle.rotation + particle.angle) * Math.PI);
 								
 					// apply filter
-					if (particle.filter) {
-						ctx.filter = particle.filter;
-					}
-			
-					ctx.drawImage(particle.img, -particle._cachedSize.x / 2, -particle._cachedSize.y / 2);
+					if (particle.filter) ctx.filter = particle.filter;
 
-					if (particle.filter) {
-						ctx.filter = 'none';
+					// image 
+					if (particle.img) {
+						if (particle.tintColor) {										// colorization?
+							tmp.size = particle._cachedSize;
+							
+							tmp.ctx.globalCompositeOperation = 'source-over';
+							tmp.drawImage(null, particle.img);			
+
+							tmp.ctx.globalCompositeOperation = 'color';											
+							tmp.drawRectangle(0,0, tmp.size.x, tmp.size.y, { fill:particle.tintColor });
+							
+							tmp.ctx.globalCompositeOperation = 'destination-in';
+							tmp.drawImage(null, particle.img);			
+											
+							ctx.drawImage(tmp.canvas, -particle._cachedSize.x / 2, -particle._cachedSize.y / 2);
+						} 					
+
+						// image default processing:
+						if (particle.tintColor == null) ctx.drawImage(particle.img, -particle._cachedSize.x / 2, -particle._cachedSize.y / 2);
 					}
+
+					// text operations
+					if (particle.textContent) this.surface.textOut(Vector2.Zero(), particle.textContent, particle.textSettings);			// offset/pivot
+									
+					// reset filter
+					if (particle.filter) ctx.filter = 'none';
 				}				
 			}
 		}	
@@ -351,15 +455,18 @@ class ParticleSystem {
 	 * @param {Engine} Engine 
 	 */
 	constructor(Engine) {
+		Engine.gameLoop.particleSystem = this;
+
 		this.gameLoop = Engine.gameLoop;
 		this.emitters = [];	
 	}
 	
 	addEmitter(params) {
-		let e = new Emitter(this, params);
-		this.emitters.push(e);
-		this.gameLoop.zLayers[e.zIndex].push(e);				// add the emitter on gameLoop zLayer
-		return e;
+		let emitter = new Emitter(this);
+		emitter._init(params);
+		this.emitters.push(emitter);
+		this.gameLoop.zLayers[emitter.zIndex].push(emitter);				// add the emitter on gameLoop zLayer
+		return emitter;
 	}
 	
 	/**
@@ -390,6 +497,5 @@ class ParticleSystem {
 		for (const e of this.emitters) e.destroy();
 	}
 }
-
 
 export { ParticleSystem, Emitter }
