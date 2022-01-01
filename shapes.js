@@ -5,57 +5,58 @@
 
 */
 
-import * as Types from './types.js';	
-import { Engine } from './engine.js';	
+import * as Types from './types.js';		
 
-const Vector2 = Types.Vector2;
-const LineSegment = Types.LineSegment;
+const Vec2 = Types.Vector2;
 
-/*
-	Axis aligned bounding box
-*/
-class AABB {
-	constructor(position, size) { // position:Vector2, size:Vector2		
-		Object.assign(this, { position, size });		
-		this.type     = Enum_Shape.AABB;
-		this.halfSize = Vector2.DivScalar(size, 2);
-	}
-	
-/*
-	Creates an AABB from literal coordinate values of a rectangle	
-*/
-	static FromRect(left, top, right, bottom) {		// left:number, top:number, right:number, bottom:number
-		const width  = (right - left);
-		const height = (bottom - top);
-		return new AABB(new Vector2(left + width * 0.5, top + height * 0.5), new Vector2(width, height));
-	}
-	
-/*
-	Creates an AABB from rectangle coordinates (left, top, right, bottom) stored in an array
-*/	
-	static FromArray(a) {
-		return AABB.FromRect(a[0], a[1], a[2], a[3]);
-	}
-	
-	get boundsArray() {
-		const hs  = this.halfSize;
-		const p   = this.position;
-		return [p.x - hs.x, p.y - hs.y, p.x + hs.x, p.y + hs.y];
-	}	
-	
-	get top()	 { return this.position.y - this.halfSize.y; }
-	get left()	 { return this.position.x - this.halfSize.x; }
-	get right()	 { return this.position.x + this.halfSize.x; }
-	get bottom() { return this.position.y + this.halfSize.y; }
-	
-	overlapsAABB(aabb) {
-		const a = this.boundsArray;
-		const b = aabb.boundsArray;
+class Polygon {
+	static Star(innerRadius, outerRadius, gram = 5) {
+		const inner = new Vec2(0, innerRadius);
+		const outer = new Vec2(0, outerRadius);
 
-		if (a[2] < b[0] || a[3] < b[1] || a[0] > b[2] || a[1] > b[3]) return false;
-		return true;
+		const points = [];
+		for (let i = 0; i < gram; i++) {                        
+			const angle = Math.PI * 2 / gram * i;
+			let a = inner.clone().rotate(angle - Math.PI / (gram * 2));
+			let b = outer.clone().rotate(angle + Math.PI / (gram * 2));
+			points.push(...[a, b]);                    
+		}
+		
+		return points;
+	}
+
+	static Ngon(corners, scale = 1) {
+		const v = new Vec2(0, scale);
+		
+		const points = [];
+		for (let i = 0; i < corners; i++) {                        
+			const angle = Math.PI * 2 / corners * i;
+			let a = v.clone().rotate(angle + Math.PI / (corners * 2));			
+			points.push(a);
+		}
+		
+		return points;
+	}
+
+	static Ring(innerRadius, outerRadius, corners)  {
+		const inner = new Vec2(0, innerRadius);
+		const outer = new Vec2(0, outerRadius);
+
+		const a = [], b = [];
+		for (let i = 0; i < corners; i++) {                        
+			const angle = Math.PI * 2 / corners * i;
+			const p1 = inner.clone().rotate(angle + Math.PI / (corners * 2));
+			const p2 = outer.clone().rotate(-angle + Math.PI / (corners * 2));
+			a[i] = p1;
+			b[i] = p2;
+		}
+		
+		return { a, b };
+	}
+
+	static Triangle(scale) {		
+		return [new Vec2(-1, 1).mulScalar(scale), new Vec2(1, 1).mulScalar(scale), new Vec2(0, -1).mulScalar(scale)];		
 	}
 }
 
-
-export { Types, AABB }
+export { Polygon } 

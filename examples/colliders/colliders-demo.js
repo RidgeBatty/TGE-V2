@@ -80,7 +80,7 @@ const main = async () => {
             createCollider(a, name);                                                                    // create a star and some circles
         }
     } catch (e) {
-        console.log('Failed to run colliders demo!');
+        console.log('Failed initialize/load assets for the demo!');
         console.error(e);
         return;
     }
@@ -88,4 +88,4 @@ const main = async () => {
     Engine.start(tick);                                                                          // start the engine, call tick() on every cycle 60 times/second
 }
 
-main();
+Engine.init(main);

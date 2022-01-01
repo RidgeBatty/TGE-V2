@@ -14,6 +14,7 @@ sheet.insertRule('.tge-controls { position:absolute; left:10px; bottom:10px; col
 document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
 
 const el = {
+	uptime : null,
 	fps    : null,
 	delta  : null,
 	actors : null,
@@ -23,6 +24,7 @@ const el = {
 	particles : null,
 }
 
+const onTick      = Engine.gameLoop._tick;
 const onRender    = Engine.gameLoop._render;
 const overlapFunc = Actor.prototype.testOverlaps;
 const fps = {
@@ -44,6 +46,7 @@ const mouse = {
 const KeybState = [];
 
 let overlapCallCount = 0;
+let totalOverlaps    = 0;
 let isPaused         = false;
 let debugLayer       = null;
 let controlLayer     = null;
@@ -51,7 +54,7 @@ let controlLayer     = null;
 /*
 	Adds a layer (HTMLElement) for debug information (singleton)
 */
-function addLayer(elem = Engine._rootElem) {
+const addLayer = (elem = Engine._rootElem) => {
 	debugLayer   = AE.newElem(elem, 'div', 'tge-debug');	
 	controlLayer = AE.newElem(elem, 'div', 'tge-controls');	
 
@@ -60,8 +63,12 @@ function addLayer(elem = Engine._rootElem) {
 	for (const k of Object.keys(el)) el[k] = AE.newElem(debugLayer, 'div');		
 }
 
-function getLayer() {
+const getLayer = () => {
 	return debugLayer;
+}
+
+const pad = (variable, digits = 2) => {
+	return ('' + variable).padStart(digits, '0');
 }
 
 Actor.prototype.testOverlaps = function(other) {
@@ -88,11 +95,12 @@ Engine.gameLoop._render = function(ts) {
 	}
 	if (logic.current > 5) logic.above5ms++;
 	
-	if (el.fps)    el.fps.textContent    = `FPS: ${fps.current} | Min ${fps.min} | Max ${fps.max} | Total frames ${fps.total}`;
+	if (el.uptime) el.uptime.textContent = `Uptime: ${Engine.gameLoop.seconds.toFixed(2)} sec`;
+	if (el.fps)    el.fps.textContent    = `FPS: ${pad(fps.current)} | Min ${pad(fps.min)} | Max ${fps.max} | Total frames ${fps.total}`;
 	if (el.delta)  el.delta.textContent  = `Frame delta: ${Engine.gameLoop.frameDelta.toFixed(2)}ms`;
 	if (el.logic)  el.logic.textContent  = `Game logic: ${Engine.gameLoop.tickCount} ticks | ${Engine.gameLoop._tickQueue} queued | ${logic.current.toFixed(2)}ms | Min ${logic.min.toFixed(2)}ms | Max ${logic.max.toFixed(2)}ms | >5ms ${logic.above5ms} (${(logic.above5ms/fps.total*100).toFixed(2)}%)`;
-	if (el.actors) el.actors.textContent = `Actors: ${Engine.gameLoop.actors.length} | zLayers: ${Engine.gameLoop.zLayers.length}`;
-	if (el.olaps)  el.olaps.textContent  = `Overlaps: ${overlapCallCount} Tested | ${Engine.gameLoop.overlaps.length} Detected`;
+	if (el.actors) el.actors.textContent = `Actors: ${pad(Engine.gameLoop.actors.length, 3)} | zLayers: ${Engine.gameLoop.zLayers.length}`;
+	if (el.olaps)  el.olaps.textContent  = `Overlaps: Currently Testing ${pad(overlapCallCount)} | Total Detected ${pad(totalOverlaps)} `;
 	if (el.edges)  el.edges.textContent  = `Edges: L=${Engine.edges.left} | T=${Engine.edges.top} | R=${Engine.edges.right} | B=${Engine.edges.bottom}`;
 	
 	const ps = Engine.gameLoop.particleSystem;
@@ -106,6 +114,11 @@ Engine.gameLoop._render = function(ts) {
 		const keys = Object.keys(KeybState).filter(e => KeybState[e] != false).join(' ');
 		controlLayer.innerHTML = `Keys: ${keys}<br>Mouse: Screen ${mouse.x}:${mouse.y} | Viewport ${Engine.mousePos.asString()} | Touches:`;
 	}
+}
+
+Engine.gameLoop._tick = () => {
+	onTick.call(Engine.gameLoop);
+	totalOverlaps += Engine.gameLoop.overlaps.length;					// number of overlap events after a tick is completed: if two actors overlap each other, this will increase by 2 (it can never increase by 1)
 }
 
 /*

@@ -7,48 +7,9 @@
 import * as Utils from './utils.js';
 import { Engine, Types } from './engine.js';
 import { CanvasSurface } from './canvasSurface.js';
+import { Layer } from './layer.js';
 
 const { Vector2 : Vec2, Rect } = Types;
-
-/*
-	Layer represents a single Parallax layer. Typically you do NOT need to create Layer instances.
-*/
-class Layer {
-	constructor(o, img) {			// o:{}, img:HTMLImageElement
-		const data = o.layerData;
-		Object.assign(this, o);			
-
-		this.img       = img;
-		this.increment = ('increment' in data) ? Vec2.FromStruct(data.increment) : Vec2.Zero();
-		this.offset    = ('offset' in data) ? Vec2.FromStruct(data.offset) : Vec2.Zero();
-		this.scale     = ('scale' in data) ? Vec2.FromStruct(data.scale) : new Vec2(1, 1);
-		this.zIndex    = data.zIndex;
-	}
-	
-	set x(value) { this._x = value == null ? 0 : value; }	
-	get x() 	 { return this._x; }
-	
-	set y(value) { this._y = value == null ? 0 : value; }	
-	get y() 	 { return this._y; }
-
-	get position() { return new Vec2(this._x, this._y); }
-	
-	tick() {
-		this._x = this.increment.x * this.owner.position.x + this.offset.x + this.increment.x;		
-		this._y = this.increment.y * this.owner.position.y + this.offset.y + this.increment.y;				
-	}
-
-	update() {		
-		Engine.renderingSurface.drawImageRepeat({
-			targetRect: this.owner.viewport,
-			position: this.position,
-			img: this.img,
-			repeat: this.owner.repeat,
-			size: new Vec2(this.img.naturalWidth, this.img.naturalHeight),
-			scale: this.scale,
-		});
-	}
-}
 
 /*
 
@@ -58,7 +19,18 @@ class Layer {
 	
 */
 class Parallax {
-	constructor(o) {		// o:{ path, container:CanvasSurface }		
+	/**
+	 * Creates a new parallax effect
+	 * @param {object} o 
+	 * @param {string=} o.path
+	 * @param {CanvasSurface=} o.container
+	 * @param {Types.Rect=} o.viewport
+	 * @param {Types.Vector2=} o.position initial scroll position of the effect
+	 * @param {number=} o.speed
+	 * @param {number=} o.scale
+	 * @param {string=} o.repeat string 'x'|'y'|'both'
+	 */
+	constructor(o) {
 		this.container = ('container' in o) ? o.container : new CanvasSurface({ name:'Parallax', dims:Engine.dims });		
 		this.layers    = [];		
 
@@ -84,10 +56,9 @@ class Parallax {
 		for (const layerData of o.layers) {
 			if (!('scale' in layerData)) layerData.scale = this.scale.clone();
 
-			const layer = new Layer({ owner:this, layerData }, images[i++]);
-			this.layers.push(layer);
-			// console.log(Engine.gameLoop);			
-			Engine.gameLoop.zLayers[layer.zIndex].push(layer);
+			const o     = Object.assign({ owner:this, img:images[i++], repeat:this.repeat, viewport:this.viewport }, layerData);
+			const layer = new Layer(o);
+			this.layers.push(layer);			
 		}
 	}
 	
@@ -116,17 +87,17 @@ class Parallax {
 		});
 	}
 
-	/*
-		 Adds the Parallax effect into the gameLoop tickables pipeline (enable auto-update of the effect)
-		 This is automatically called by the Make() static method
-	*/
+	/**
+	 * Adds the Parallax effect into the gameLoop tickables pipeline (enable auto-update of the effect)
+     * This is automatically called by the Make() static method
+	 */
 	stage() {
 		if (!Engine.gameLoop.tickables.includes(this)) Engine.gameLoop.tickables.push(this);
 	}
 
-	/*
-		Removes the Parallax effect from the gameLoop tickables pipeline (stop auto-update of the effect)
-	*/
+	/**
+	 * Removes the Parallax effect from the gameLoop tickables pipeline (stop auto-update of the effect)
+	 */
 	unstage() {
 		const t = Engine.gameLoop.tickables;
 		for (let i = t.length; i--;) if (t[i] === this) t.splice(i, 1);	
@@ -144,13 +115,15 @@ class Parallax {
 		});
 	}
 
-	/*
-		This is the recommended method for creating new parallax effects.
-
-		A new parallax effect is created from the data in parameter "o" or from file specified in "o.url".
-		Automatically stages the effect once it's loaded.
-		Returns a promise: can be run async or sync.
-	*/
+	/**
+	 * This is the recommended method for creating new parallax effects.
+	 * A new parallax effect is created from the data in parameter "o" or from file specified in "o.url".
+	 * Automatically stages the effect once it's loaded.
+	 * Returns a promise: can be run async or sync.
+	 * @param {object} o
+	 * @param {string} o.url
+	 * @returns {promise}
+	 */
 	static async Make(o) {
 		return new Promise(async (resolve, reject) => {
 			try {

@@ -53,12 +53,12 @@ const main = async () => {
     
     GameLoop.addTimer({ name:'launch_missile', duration:80, repeat:Infinity,           // create an infinitely repeating timer which launches missiles every 80 ticks
         onRepeat:() => { 
-            const missile     = GameLoop.add('projectile', { img:images[0], zIndex:1, position:game.turret.position.clone(), rotation:game.turret.rotation + 0.75, scale:0.4, lifeTime:60 * 9 });
+            const missile     = GameLoop.add('projectile', { img:images[0], zIndex:1, position:game.turret.position.clone(), rotation:game.turret.rotation, scale:0.4, lifeTime:60 * 1 });
             missile.target    = game.tank;
             missile.info      = mInfo;
 
-            missile.addEvent('destroy', (instigator) => { 
-                const eActor  = GameLoop.add('actor', { name:'explosion', scale:1, position:missile.position.clone(), rotation:instigator.rotation + Math.PI * 1.5 });
+            missile.addEvent('destroy', (o) => { 
+                const eActor  = GameLoop.add('actor', { name:'explosion', scale:1, position:missile.position.clone(), rotation:o.instigator.rotation + Math.PI * 1.5 });
                 const exp     = expAnim.clone(eActor);                      // clone the explosion animation flipbook (we may have multiple explosions) and replace the Actor reference
                 exp.addEvent('end', _ => eActor.destroy());  // add 'end' event to the flipbook. When the flipbook sequence ends, destroy the Actor (the flipbook loses reference and is destroyed with it)   
                 exp.sequences['explosion'].play();
@@ -69,4 +69,4 @@ const main = async () => {
     Engine.start(tick);         // start the engine
 }
 
-main();
+Engine.init(main);

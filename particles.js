@@ -8,8 +8,10 @@ import { CanvasSurface } from './canvasSurface.js';
 import { Engine, Types } from './engine.js';
 import { EventBroadcaster } from './eventBroadcaster.js';
 import { wrapBounds, preloadImages, imgDims } from './utils.js';
+import { Polygon } from './shapes.js';
 
 const Vector2 = Types.Vector2;
+const Color   = Types.Color;
 const Filters = {
 	'blur'        : 'px',
 	'brightness'  : '',
@@ -19,6 +21,8 @@ const Filters = {
 	'saturate'    : '',
 	'sepia'       : ''
 }
+const ParticleShapes = ['none', 'circle', 'square', 'ring', 'triangle', 'polygon', 'star'];
+
 class ParticleParams {
 	constructor(p) {
 		Object.assign(this, p);
@@ -42,12 +46,20 @@ const calc = (prop, o, defaultValue= 0) => {
 	if (Array.isArray(o[prop])) {
 		return o[prop][Math.floor(Math.random() * o[prop].length)];		
 	}
-	if (typeof o[prop] == 'object') {
+	if (o[prop] instanceof Color) {		
+		return o[prop];
+	}
+	if (typeof o[prop] == 'object') {	
 		return (Math.random() * (o[prop].max - o[prop].min)) + o[prop].min;
 	}
 	return (prop in o) ? o[prop] : defaultValue;
 }	
 
+const deserializeColorProperty = (prop, o) => {	
+	if (o[prop] == null) return null;
+	if (Array.isArray(o[prop])) return o[prop].map(e => Color.FromCSS(e));			   // deserialize an array of colors		
+	return Color.FromCSS(o[prop]);																// deserialize single color
+}
 class Emitter extends EventBroadcaster {
 	/**
 	 * DO NOT CALL MANUALLY! Use ParticleSystem.addEmitter() to create Emitter instances!
@@ -90,10 +102,30 @@ class Emitter extends EventBroadcaster {
 
 	/**
 	 * DO NOT CALL MANUALLY! Internal use only.
+	 * 
 	 * @param {*} params 
 	 */
 	async _init(params) {
 		this.params    = Object.assign({}, params);
+		
+		// deserialize init params:
+		const ip = this.params.initParticle;
+		if (ip) {
+			const shape = ip.shape;
+			if (shape) {
+				shape.fill = deserializeColorProperty('fill', shape);			
+			}
+		}
+
+		// deserialize evolve params:
+		const ev = this.params.evolveParticle;
+		if (ev) {
+			const tint = ev.tint;
+			if (tint) {
+				tint.targetColor = deserializeColorProperty('targetColor', tint);			
+				tint.colorStops  = deserializeColorProperty('colorStops', tint);				
+			}
+		}
 
 		this.zIndex    = ('zIndex' in params) ? params.zIndex : 1;
 		this.surface   = ('surface' in params) ? params.surface : Engine.renderingSurface;		
@@ -170,7 +202,7 @@ class Emitter extends EventBroadcaster {
 			this.innerRadius = params.innerRadius || 0;
 			this.startAngle  = calc('startAngle', params, null);				// applies to circle emitter only: start angle of the arc
 			this.endAngle    = calc('endAngle', params, null);					// applies to circle emitter only: end angle of the arc
-			this.arc         = calc('arc', params);
+			this.arc         = calc('arc', params);											// TO-DO: not implemented yet
 		}
 
 		this._createParticles(this.params.maxDrawCount || 100);
@@ -238,7 +270,7 @@ class Emitter extends EventBroadcaster {
 				case 'circle': {																// start and end angle (to create an arc), innerRadius, radius					
 					let a        = (this.startAngle != null) ? (Math.random() * Math.PI * this.endAngle + Math.random() * Math.PI * this.startAngle) : Math.random() * Math.PI * 2;		
 					if ('arc' in this) {
-
+						// TO-DO
 					}
 
 					const r      = Math.random() * (this.radius - this.innerRadius) ** 2;
@@ -250,6 +282,8 @@ class Emitter extends EventBroadcaster {
 				}
 				case 'point': p.position = Vector2.Zero();	
 			}
+
+			if (this.pivot) p.position.add(this.pivot.clone().sub(this.position).rotate(-this.angle * Math.PI));
 			
 			// if particle has img defined, use it - otherwise try to fall back to img defined in emitter
 			p.img = ('img' in init) ? init.img : this.img;
@@ -306,7 +340,30 @@ class Emitter extends EventBroadcaster {
 					else p.velocity = Vector2.FromStruct(init.velocity);										
 			} else
 				p.velocity   = Vector2.FromAngle(p.angle * Math.PI, p.speed);			
+
+			if ('shape' in init) {
+				p.shape     = ParticleShapes.findIndex(e => e == init.shape.type);
+				p.shapeFill = calc('fill',init.shape);				
+				if (p.shape == 3) p.points = Polygon.Ring(calc('innerRadius', init.shape), calc('outerRadius', init.shape), Math.round(calc('points', init.shape)));
+				if (p.shape == 4) p.points = Polygon.Triangle(1);
+				if (p.shape == 5) p.points = Polygon.Ngon(calc('points', init.shape));
+				if (p.shape == 6) p.points = Polygon.Star(calc('innerRadius', init.shape), calc('outerRadius', init.shape), Math.round(calc('points', init.shape)));				
+			}
+
+			// precalculate evolve parameters for particles
+			const evolve  = this.params.evolveParticle;				
+			if (evolve) {
+				if ('force'   in evolve) p.evolveForce        = Vector2.FromStruct(evolve.force);
+				if ('func'    in evolve) p.evolveFunc         = evolve.func;
+				if ('tint'    in evolve) {					
+					if (evolve.tint.targetColor) p.evolveTint = calc('targetColor', evolve.tint);
+				}
+				if ('opacity' in evolve) p.evolveOpacity = evolve.opacity;
+				if ('acceleration' in evolve) p.evolveAcceleration = evolve.acceleration;
+				if ('scale' in evolve) p.evolveScale = evolve.scale;
+			}	
 			
+			// custom function:
 			if (AE.isFunction(init.func)) init.func(p);
 				
 			p.active = true;
@@ -326,14 +383,6 @@ class Emitter extends EventBroadcaster {
 		
 		// evolve particle
 		const evolve  = this.params.evolveParticle;	
-		let force     = null,
-			scalar    = null,
-			func      = null;
-		if (evolve) {
-			if ('force'  in evolve) force  = Vector2.FromStruct(evolve.force);
-			if ('scalar' in evolve) scalar = evolve.scalar;
-			if ('func'   in evolve) func   = evolve.func;
-		}
 		
 		// point gravity
 		const pointG  = this.params.pointGravity;
@@ -353,17 +402,26 @@ class Emitter extends EventBroadcaster {
 				deadParticles++;
 				continue;
 			}
-
-			// opacity follows lifetime?
-			if (p.opacity == 'lifetime') p.alpha = p.lifeTime / p.maxLife;					
 				
-			// apply forces
-			if (force)  p.velocity.add(force);
-			if (scalar) p.velocity.mulScalar(scalar);
-			if (func)   func(p);
-						
+			// evolve
+			if (p.evolveOpacity == 'lifetime') p.alpha = p.lifeTime / p.maxLife;			// opacity follows lifetime?
+			if (p.evolveForce)  p.velocity.add(p.evolveForce);
+			if (p.evolveAcceleration)  p.velocity.mulScalar(p.evolveAcceleration);
+			if (p.evolveFunc)   p.evolveFunc(p);
+			if (evolve.tint) {
+				const m = 1 - p.lifeTime / p.maxLife;
+				if (evolve.tint.colorStops) {					
+					const c1 = evolve.tint.colorStops[Math.floor(m * (evolve.tint.colorStops.length - 1))];
+					const c2 = evolve.tint.colorStops[Math.ceil(m * (evolve.tint.colorStops.length - 1))];					
+					p.outColor = Color.Lerp(c1, c2, m);				
+				} else
+					p.outColor = Color.Lerp(p.shapeFill, p.evolveTint, m);
+			}
+			if (p.evolveScale) p.scale  *= p.evolveScale;
+			
+			// apply effect of angular speed to particles
 			if (p.angularSpeed) p.angle += p.angularSpeed;
-			p.velocity.add(Vector2.FromAngle(p.angle,  p.angularWeight));
+			p.velocity.add(Vector2.FromAngle(p.angle, p.angularWeight));
 
 			// point gravity
 			if (pointG) {				
@@ -401,7 +459,7 @@ class Emitter extends EventBroadcaster {
 			pos.set(particle.position);						
 			if (this.angle != 0) pos.rotate(this.angle * Math.PI);
 			pos.add(this.position);			
-
+			
 			if (particle.active) {			
 				this.activeParticleCount++;
 				if (particle.visible) {
@@ -433,6 +491,15 @@ class Emitter extends EventBroadcaster {
 						if (particle.tintColor == null) ctx.drawImage(particle.img, -particle._cachedSize.x / 2, -particle._cachedSize.y / 2);
 					}
 
+					// shape
+					if (particle.shape) {
+						const fill = ('outColor' in particle) ? particle.outColor.css : particle.shapeFill.css;												
+						if (particle.shape == 1) this.surface.drawCircle(Vector2.Zero(), 1, { fill });
+						if (particle.shape == 2) this.surface.drawRectangle(-1, -1, 2, 2, { fill });						
+						if (particle.shape == 3) this.surface.drawPolyCut(particle.points.a, particle.points.b, { fill });
+						if (particle.shape >= 4) this.surface.drawPoly(particle.points, { fill });
+					}
+
 					// text operations
 					if (particle.textContent) this.surface.textOut(Vector2.Zero(), particle.textContent, particle.textSettings);			// offset/pivot
 									
@@ -462,7 +529,7 @@ class ParticleSystem {
 	}
 	
 	addEmitter(params) {
-		let emitter = new Emitter(this);
+		const emitter = new Emitter(this);
 		emitter._init(params);
 		this.emitters.push(emitter);
 		this.gameLoop.zLayers[emitter.zIndex].push(emitter);				// add the emitter on gameLoop zLayer
@@ -478,9 +545,9 @@ class ParticleSystem {
 		return this.emitters.find(e => e.name == name);
 	}
 	
-	/*
-		Called automatically in Engine.GameLoop
-	*/
+	/**
+	 * Called automatically in Engine.GameLoop
+	 */	
 	tick() {
 		for (let e of this.emitters) e.tick();		
 	}
@@ -493,6 +560,9 @@ class ParticleSystem {
 		// TO-DO return a promise
 	}
 	
+	/**
+	 * Destroys all emitters
+	 */
 	clear() {
 		for (const e of this.emitters) e.destroy();
 	}

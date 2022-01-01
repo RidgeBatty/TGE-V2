@@ -25,9 +25,10 @@ class MissileInfo {
 class Projectile extends Actor {
 	constructor(o) {						
 		// if instigator is specified we can guess a good collider group for this Projectile		
-		if (o.instigator != null && o.instigator._type == Enum_ActorTypes.player) o.defaultColliderType = 'PlayerShot';			
-			else
-		if (o.instigator != null && o.instigator._type == Enum_ActorTypes.enemy) o.defaultColliderType = 'EnemyShot';
+		if (o.instigator != null) {
+			if (o.instigator._type == Enum_ActorTypes.player) o.defaultColliderType = 'PlayerShot';			
+			if (o.instigator._type == Enum_ActorTypes.enemy)  o.defaultColliderType = 'EnemyShot';
+		}
 
 		super(o);
 
@@ -52,9 +53,8 @@ class Projectile extends Actor {
 		
 		if (this.lifeTime > 0) {
 			this.lifeTime--;
-			if (this.lifeTime == 0) {
-				this.destroy();
-				return;
+			if (this.lifeTime == 0) {				
+				return this.destroy();
 			}
 		}
 		

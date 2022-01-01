@@ -53,7 +53,8 @@ class Root {
 		if ('scale' in o && !AE.isNumeric(o.scale)) throw 'Parameter "scale" must be a Number';
 		
 		this.owner        = o.owner;		
-		this.createParams = o;
+		this.createParams = Object.assign({}, o);
+		this.createParams.toString = function(){ return '[ActorCreateParams]' };
 				
 		/**
 		 * @type {Vector2} Position of the Root

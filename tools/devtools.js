@@ -11,6 +11,7 @@ import { Controllers } from '../gameController.js';
 import { UI } from '../html-ui.js';
 import { arraysEqual } from '../utils.js';
 import Debug from '../tools/debug.js';
+import { Vector2 } from '../types.js';
 
 const Vec2 = Types.Vector2;
 
@@ -20,7 +21,6 @@ const Keys = {
 }
 
 let keyDownActors = [],
-    oldKeyDownActors = [],
     lastClicked   = { actor:null, index:-1 },
     mouseDownPos  = Vec2.Zero(),
     mouseUpPos    = Vec2.Zero();
@@ -29,8 +29,8 @@ let keyDownActors = [],
  * Set up the UI
  */
 UI.autoReplaceParent = false;
-const panel   = UI.add({ type:'panel', name:'buttons', style:'right:0px' });
-const cbPanel = panel.add({ type:'panel', name:'checkboxes', className:'relative' });
+const panel           = UI.add({ type:'panel', name:'buttons', style:'right:0px' });
+const cbPanel         = panel.add({ type:'panel', name:'checkboxes', className:'relative' });
 
 const cbShowColliders = cbPanel.add({ type:'checkbox', caption:'Show Colliders' });
 const cbShowBB        = cbPanel.add({ type:'checkbox', caption:'Show Bounding Boxes' });
@@ -38,7 +38,11 @@ const cbShowBB        = cbPanel.add({ type:'checkbox', caption:'Show Bounding Bo
 const btPauseEngine   = panel.add({ type:'button', name:'pause', caption:'Pause' });
 const btFiles         = panel.add({ type:'button', name:'files', caption:'Files' });
 
-const actorInspector  = UI.add({ type:'keyvaluelist', name:'kvl', caption:'Actor Inspector' });
+const selWin          = UI.add({ type:'window', name:'sel-actors', caption:'Selected Actors', position:new Vec2(1600, 160), size: new Vec2(240, 200) });
+const lbSelectActor   = selWin.add({ type:'listbox', name:'sel-actor-lb' });
+
+const objectWin       = UI.add({ type:'window', name:'object-inspector', caption:'Object Inspector', position:new Vec2(2, 160), size: new Vec2(360, 480) });
+const objectInspector = objectWin.add({ type:'keyvaluelist', name:'kvl' });
 
 btPauseEngine.addEvent('click', _ => { 
     pauseEngine();            
@@ -53,7 +57,11 @@ btFiles.addEvent('click', async _ => {
         console.log(key, value);
     }
 
-    */
+    */    
+});
+
+lbSelectActor.addEvent('select', (e) => { 
+    if (e.item.data) editActor(e.item.data);    
 });
 
 cbShowColliders.addEvent('change', _ => { Engine.gameLoop.flags.showColliders = cbShowColliders.checked; });
@@ -64,9 +72,12 @@ cbShowBB.addEvent('change', _ => { Engine.gameLoop.flags.showBoundingBoxes = cbS
  */
 
 const editActor = (actor) => {
+    console.log(actor);
+
     const props = Object.getOwnPropertyNames(actor);
+    objectInspector.clear();
     for (const key of props) {        
-        actorInspector.addItem({ key, value:actor[key] });
+        objectInspector.addItem({ key, value:actor[key] });
     }
 }
 
@@ -76,10 +87,10 @@ const updateState = () => {
 }
 
 const installEventHandlers = () => {
-    AE.addEvent(window, 'keyup', (e) => onKeyUp(e), null);		
-    AE.addEvent(window, 'mouseup', (e) => onMouseUp(e), null);		
-    AE.addEvent(window, 'mousedown', (e) => onMouseDown(e), null);		
-    AE.addEvent(window, 'mousemove', (e) => onMouseMove(e), null);		
+    AE.addEvent(window, 'keyup', (e) => onKeyUp(e));		
+    AE.addEvent(window, 'mouseup', (e) => onMouseUp(e));		
+    AE.addEvent(window, 'mousedown', (e) => onMouseDown(e));		
+    AE.addEvent(window, 'mousemove', (e) => onMouseMove(e));		
     setInterval(updateState, 1000);
 }
 
@@ -89,8 +100,8 @@ const installEventHandlers = () => {
 const pauseEngine = () => {    
     if (Engine.gameLoop.isRunning) {
         Engine.flags.mouseEnabled = false;
-        Controllers.disable();
-        console.log(Controllers);
+        Controllers.disable();                     // TO-DO: cannot simply disable all controllers and then enable them: the user may have already disabled specific controllers and expects them to stay disabled after the engine resumes
+        //console.log(Controllers);
     } else {
         Engine.flags.mouseEnabled = true;
         Controllers.enable();
@@ -115,6 +126,12 @@ const onKeyUp = (e) => {
     }
 }
 
+const mousePosFromEvent = (e) => {
+    const x = e.clientX / Engine.zoom - Engine.screen.left;
+	const y = e.clientY / Engine.zoom - Engine.screen.top;			
+    return Vec2.FromCoords(x, y);
+}
+
 /**
  * List of all actors in zOrder from bottom to top
  * @returns {[Actor]} Actors array
@@ -134,62 +151,39 @@ const onMouseMove = (e) => {
 
 const onMouseUp = (e) => {
     mouseUpPos.set(Engine.mousePos);
-
     if (lastClicked.actor) lastClicked.pos = null;                
     
-    loopActors();
+    //loopActors();
 }
 
-const onMouseDown = (e) => {
-    mouseDownPos.set(Engine.mousePos);
+const onMouseDown = (e) => {    
+    mouseDownPos  = mousePosFromEvent(e);
+
+    if (!Engine.viewport.isPointInside(mouseDownPos)) return; // mouse click was not inside the Engine.screen
     keyDownActors = loopActors();
- 
+
     // sort actors by zDepths
     const zList = getActorZList();
-    keyDownActors.sort((a, b) => zList.indexOf(a) - zList.indexOf(b));      
+    keyDownActors.sort((a, b) => zList.indexOf(b) - zList.indexOf(a));
+
+    // reset actorlist:
+    lbSelectActor.clear();
 
     // see which actor is highest in z-order under mouse:
-    if (keyDownActors.length > 0) {
-        let index = 0;
-        if (arraysEqual(oldKeyDownActors, keyDownActors)) index = lastClicked.index - 1;             // arrays are equal, decrement the last selection
-            else index = keyDownActors.length - 1;                                                         // arrays not equal, start from top of the list
-        
-        if (index > -1) {            
-            const actor = keyDownActors[index];
-            if (actor) {
-                lastClicked = {
-                    actor,
-                    index,
-                    pos: actor.position.clone()
-                }
-            }
-        } else
-            lastClicked = {
-                actor: null,
-                index: -1,
-                pos: null
-            }
-        
-        if (lastClicked.actor) {
-            if (e.ctrlKey) {
-                console.log(lastClicked.actor);
-                editActor(lastClicked.actor);
-            }
-                else console.log(lastClicked.actor.name);            
-        }
-            else console.log('<NONE>');        
+    if (keyDownActors.length > 0) {    
+        for (const actor of keyDownActors) lbSelectActor.addItem({ text:'[' + actor.name + ']', data:actor });  // add all actors currently under mouse cursor in the UI listbox
+        editActor(keyDownActors[0]);
     }
-
-    oldKeyDownActors = [...keyDownActors];
-    keyDownActors    = [];
 }
 
 const loopActors = () => {
+    if (!Engine.viewport.isPointInside(mouseDownPos)) return []; // mouse click was not inside the Engine.screen
+
     const found   = [];
     const oneShot = !Engine.gameLoop.flags.isRunning;
 
-    for (const actor of Engine.gameLoop.actors) {
-        if (actor.AABB && actor.AABB.isPointInside(Engine.mousePos)) {             
+    for (const actor of Engine.gameLoop.actors) {        
+        if (actor.AABB && actor.AABB.isPointInside(mouseDownPos)) {              
             found.push(actor);
             actor.onDrawBoundingBox();
         }

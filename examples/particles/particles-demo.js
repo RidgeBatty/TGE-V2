@@ -10,10 +10,10 @@ const main = async () => {
     
     // First let's set up the engine    
     Engine.setRootElement('game');
-    Engine.createRenderingSurface();
+    Engine.setFlags({ hasEdges:false, hasRenderingSurface:true });
 
     try {
-        // load cornflower image and background
+        // load background
         const images = await preloadImages({ path:'img/', urls:['clouds.jpg'] });
 
         Engine.gameLoop.add('actor', { img:images[0], scale:1.125, position:new Vec2(576, 330) });
@@ -45,4 +45,4 @@ const main = async () => {
     Engine.start(); 
 }
 
-main();
+Engine.init(main);

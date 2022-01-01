@@ -2,6 +2,14 @@
 Development steps
 =======================
 
+Next version improvements
+=========================
+
+- Developer tools
+- User interface
+- Serialization/deserialization overhaul?
+
+
 Module updates/upgrades
 =======================
 These upgrades are necessary to modernize the engine and get rid of the remaining HTMLElement based graphics.

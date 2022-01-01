@@ -30,7 +30,11 @@ class CanvasSurface {
 		this.ctx 	  = canvas.getContext('2d', o.flags);
 		this.canvas   = canvas;
 		
-		this._pixelSmooth = true;		
+		this.pixelSmooth = ('pixelSmooth' in o) ? o.pixelSmooth : true;		
+	}
+
+	toString() {
+		return '[CanvasSurface]';
 	}
 	
 	destroy() {
@@ -65,6 +69,8 @@ class CanvasSurface {
 
 	resetTransform() {
 		this.ctx.resetTransform();
+		this.ctx.rotate(0);
+		this.ctx.scale(1, 1);
 	}	
 	
 	/**
@@ -76,9 +82,9 @@ class CanvasSurface {
 		if (canvas.height != h) canvas.height = h;
 		
 		if (this._pixelSmooth) {
-			canvas.style.imageRendering = 'pixelated crisp-edges';			
+			canvas.style.imageRendering = 'auto';						
 		} else {
-			canvas.style.imageRendering = 'auto';			
+			canvas.style.imageRendering = 'pixelated crisp-edges';				
 		}		
 	}
 	
@@ -111,13 +117,13 @@ class CanvasSurface {
 	 * @param {number} o.angle Angle of the arrow (in radians)
 	 * @param {number} o.length Arrow length
 	 * @param {number} [o.width=1] Arrow thickness
-	 * @param {number} [o.head=0.25] Arrow head size
+	 * @param {number} [o.head=10] Arrow head size (in pixels)
 	 * @param {number} [o.sweep=0.75] Sweep angle strength of the arrow
 	 * @param {string} style 
 	 */
 	drawArrow(p, o, style) {	
 		const h = (o.sweep ? o.sweep : 0.75) * Math.PI;
-		const s = o.head ? o.head * o.length : 0.25 * o.length;
+		const s = ('head' in o) ? o.head : 10;
 		const a = o.angle;
 		const w = ('width' in o) ? o.width : 1;
 
@@ -170,10 +176,13 @@ class CanvasSurface {
 		this.ctx.stroke();		
 	}
 	
-	/*
-		Draw a polygon on canvas. Accepts an array of Vector2 as parameter
-	*/
-	drawPoly(points, p = { stroke:'black' }) {		// points:[Vector2], ?p:{ ?stroke:String, ?fill:String }
+	/**	
+	 * Draw a polygon on canvas. Accepts an array of Vector2 as parameter
+	 * @param {[Vector2]} points 
+	 * @param {string} p.stroke Stroke (outline color)
+	 * @param {string=} p.fill Fill color	  
+	 */
+	drawPoly(points, p = { stroke:'black' }) {	
 		this.ctx.beginPath();
 		
 		if (Array.isArray(points) && points.length > 1) {
@@ -183,10 +192,38 @@ class CanvasSurface {
 			}
 			this.ctx.lineTo(points[0].x, points[0].y);
 		}
-		
+		this.ctx.closePath();
 		if (p.stroke)	{ this.ctx.strokeStyle = p.stroke; this.ctx.stroke(); }
 		if (p.fill)		{ this.ctx.fillStyle   = p.fill;   this.ctx.fill(); }
 	}
+
+	/**	
+	 * Draw a polygon on canvas with a cutout. Accepts two arrays of Vector2 as parameter. First is the filled shape, seconds in the cutout.
+	 * @param {[Vector2]} fillPoints
+	 * @param {[Vector2]} cutPoints
+	 * @param {string} p.stroke Stroke (outline color)
+	 * @param {string=} p.fill Fill color	  
+	 */
+	 drawPolyCut(fillPoints, cutPoints, p = { stroke:'black' }) {	
+		if (!Array.isArray(fillPoints) || fillPoints.length < 2 || !Array.isArray(cutPoints) || cutPoints.length < 2) return;
+
+		this.ctx.beginPath();		
+		this.ctx.moveTo(fillPoints[0].x, fillPoints[0].y);
+		for (var i = 1; i < fillPoints.length; i++) {
+			this.ctx.lineTo(fillPoints[i].x, fillPoints[i].y);
+		}
+		this.ctx.lineTo(fillPoints[0].x, fillPoints[0].y);
+		this.ctx.closePath();
+
+		this.ctx.moveTo(cutPoints[0].x, cutPoints[0].y);
+		for (var i = 1; i < cutPoints.length; i++) {
+			this.ctx.lineTo(cutPoints[i].x, cutPoints[i].y);
+		}
+		this.ctx.lineTo(cutPoints[0].x, cutPoints[0].y);
+		this.ctx.closePath();		
+		if (p.stroke)	{ this.ctx.strokeStyle = p.stroke; this.ctx.stroke(); }
+		if (p.fill)		{ this.ctx.fillStyle   = p.fill;   this.ctx.fill(); }
+	 }
 	
 	drawPolyInt(points, p = { stroke:'black' }) {		// points:[Vector2], ?p:{ ?stroke:String, ?fill:String }
 		this.ctx.beginPath();

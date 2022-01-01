@@ -52,3 +52,23 @@ Version 2.0.4
 - Vastly improved particle engine
 - Rewritten examples/particles demo 
 
+-----------------------------------------------------------------
+Version 2.0.5
+
+- Added basic shapes in particle engine: circle, square, ring, triangle, polygon, star
+- Added particle image and shape tinting, particle shape tint evolution
+- Added emitter.pivot (Vector2) to allow the spawn point to be moved at will
+- Added particle scale evolution
+- Added Actor.opacity. 1 = fully opaque (default), 0 = transparent
+- Added Gameloop.clearColor property (null i.e. disabled by default) 
+- Improved html-ui.js module functionality and added UWindow and UListbox components
+- Some improvements to DevTools and UI event handling pipeline (event delegation not working well with MultiCast)
+- Improvements and bug fixes in Types.Color class
+- Reworked actor creation in GameLoop.add()
+- Separated Actors from other Gameloop Objects (Layer, Level, Custom)
+- Slightly improved Actor rendering speed
+- Added mixin support (utils.js)
+- Added ImageOwner mixin into Actor and Layer classes
+- Separated Parallax and Layer into own different classes. Layer can now be used to represent lightweight, scrollable background image instead of an actor
+- Examples overhauled
+- Added actor-stress-test, actor-target, and particles2 examples

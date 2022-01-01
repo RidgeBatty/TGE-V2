@@ -365,9 +365,9 @@ class Color extends BaseColor {
         return new Color(0, 0, 0, 0);            
     }
 	
-	static FromCss(str) {
-		var c = new Color();
-		c.css = str;
+	static FromCSS(str) {
+		var c = new Color();		
+		c.css = str;			
 		return c;		
 	}
 	
@@ -424,11 +424,22 @@ class Color extends BaseColor {
 		return Array.from(this.value);
 	}
 	
-	/*
+	/**
 		Sets the color from an array of 4 component values: red, green, blue and alpha. The array length must be exactly 4 elements.
 	*/
 	set array(n) {
 		if (Array.isArray(n) && n.length == 4) this.value.from(n);
+	}
+
+	/**
+	 * 
+	 * @param {Color} s Source value
+	 * @param {Color} t Target value
+	 * @param {number} n Liner interpolation factor. 0 = source value 's', 1 = target value 't'
+	 * @returns {Color}
+	 */
+	static Lerp (s, t, n) {
+		return new Color(lerp(s.r, t.r, n), lerp(s.g, t.g, n), lerp(s.b, t.b, n), lerp(s.a, t.a, n));
 	}
 }
 
@@ -502,9 +513,10 @@ class VectorBase {
     constructor() {
 		
     }
-	/*
-		Assigns source vector 'vec' into this vector. 
-		Source vector can be of any length. Only properties which exist and contain numbers are copied.
+	
+	/**
+	*	Assigns source vector 'vec' into this vector. 
+	*	Source vector can be of any length. Only properties which exist and contain numbers are copied.
 	*/
 	set(vec) {		// vec:VectorBase
 		Object.keys(this).forEach((key) => { if (key in vec && isFinite(vec[key])) this[key] = vec[key]; });        
@@ -899,8 +911,15 @@ class Vector2 extends VectorBase {
 		vec.y = y0 * cos + x0 * sin;
 		return vec;
 	}
+
+	/**
+	 * Returns the distance between two Vector2's
+	 * @param {Vector2} a 
+	 * @param {Vector2} b 
+	 * @returns {Number} Distance
+	 */
 	static Distance(a, b) {
-		return Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2);
+		return Math.sqrt(((b.x - a.x) ** 2) + ((b.y - a.y) ** 2));
 	}
 	static Negate(v) {
 		return mulScalar(v, -1);		
@@ -918,7 +937,7 @@ class Vector2 extends VectorBase {
 	 * @returns {number} Angle in radians
 	 */
 	static AngleBetween(v1, v2) {
-		return wrapBounds(Math.atan2(v2.y, v2.x) - Math.atan2(v1.y, v1.x), -Math.PI, Math.PI);
+		return wrapBounds(Math.atan2(v1.x, v1.y) - Math.atan2(v2.x, v2.y), -Math.PI, Math.PI);
 	}
     static Zero() { return new Vector2(0, 0); }
 	static One(){ return new Vector2(1, 1); }
@@ -938,7 +957,7 @@ class Vector2 extends VectorBase {
 	static IsVector2(a) { return (AE.isObject(a) && a.constructor === Vector2.prototype.constructor); }
 
 	/**
-	 * Lineraly interpolates the components of two vectors
+	 * Linear interpolation of the components of two vectors
 	 * @param {Vector2} v1 
 	 * @param {Vector2} v2 
 	 * @param {number} f Factor

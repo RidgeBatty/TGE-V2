@@ -52,39 +52,69 @@ tge-checkbox > label {
 } 
 
 tge-kvl { 
-    position: absolute;
-    margin:2px;
+    position: relative;
+    margin:1px;
     background:black; 
     color:white; 
-    border:1px solid lime;   
-    top:160px;
-}
-
-tge-kvl > .client { 
+    
     display: flex;
-    flex-direction: column;    
-    width:320px;
-    max-width:320px;
-    height:480px;
-    padding:2px;
+    flex-direction: column;        
 }
 
-tge-kvl tge-head > div { 
-    color:lime;
-    padding:2px;
-    margin-bottom:2px;
-    border-bottom:1px dashed lime;
-}
-
-tge-kvl tge-body {
-    overflow:auto;    
-}
-
-tge-kvl tge-body table { 
+tge-kvl table { 
     border-collapse: collapse;
 }
 
-tge-kvl tge-body td { 
+tge-kvl td { 
     padding:1px;
-    border:1px dotted green;    
+    border:1px dotted green;  
+    width:50%;  
+}
+
+tge-win { 
+    position: absolute;
+    background:black; 
+    color:white; 
+    border:1px solid lime;   
+    min-width:160px;
+    min-height:100px;           
+}
+
+tge-win .client { 
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height:100%;
+    width:100%;    
+}
+
+tge-win tge-head { 
+    margin:1px;
+    padding:1px 3px;
+    background:green;
+    color:white;
+    text-shadow:1px 1px 1px black;
+}
+
+tge-win tge-body { 
+    display: flex;
+    overflow: auto;
+    margin:1px;    
+    flex-grow: 1;
+}
+
+tge-lb {
+    position: relative;
+    flex-grow: 1;
+    margin:1px;        
+}
+
+tge-lb > div {
+    width:100%;
+    height: 100%;
+}
+
+tge-lb .selected {
+    background-color: lime;
+    color:black;
 }

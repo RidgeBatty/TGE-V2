@@ -298,6 +298,32 @@ const smoothPoints = (points, stepsPerCurve, tension = 1) => {		// points:[Vecto
 	
 	return result;
 }
+
+/**
+ * Call inside the constructor of 'target' object
+ * @param {Object} target Object instance to be extended
+ * @param {class} source Class of source object which is to be mixed in with target
+ */
+const Mixin = (target, source, createParams) => {
+	// copy the source class prototype over to the target object
+    const props = Object.getOwnPropertyNames(source.prototype);    
+    for (const p of props) {	
+        if (p != 'constructor' && p != 'create') Object.defineProperty(target, p, Object.getOwnPropertyDescriptor(source.prototype, p));
+    } 
+
+	// create an instance of the source class
+	const newObject = new source();
+
+	// add it to the mixins collection of the target object (not needed to make things work, but it's fun to have)
+	if (!('__mixins__' in target)) target.__mixins__ = [];
+    target.__mixins__.push(newObject);    	
+
+	// assign the source objects (this) properties over to target object (existing properties will be overwritten without warning!)
+	Object.assign(target, newObject);
+
+	// finally call the 'fake' constructor of the source object to initialize it
+	if ('create' in newObject) newObject.create.call(target, createParams);
+}
 	
 export { 
 	delay, 
@@ -320,4 +346,5 @@ export {
 	imageFromBlob,
 	wrapBounds,
 	smoothPoints,
+	Mixin,
 }

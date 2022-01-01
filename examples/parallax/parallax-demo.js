@@ -8,7 +8,7 @@ const main = async () => {
     try {
         const parallax = await Parallax.Make({ url:'forest-parallax.json' })            
     } catch (e) {
-        console.log('Failed to load & run parallax!');
+        console.log('Failed initialize/load assets for the demo!');
         console.log(e);
         return;
     }
@@ -21,4 +21,4 @@ const main = async () => {
     Engine.start();
 }
 
-main();
+Engine.init(main);

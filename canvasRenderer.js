@@ -12,7 +12,7 @@ import { CanvasSurface } from "./canvasSurface.js";
 const { Rect, Vector2, Color } = Engine.Types;
 
 class CanvasRenderer extends CanvasSurface {
-	constructor(HTMLContainer, flags = { clickMaskTest : false, alpha : false }) {
+	constructor(HTMLContainer, flags = { pixelSmooth:true, clickMaskTest : false, alpha : false }) {
 		super({ flags:flags.alpha });
 		
 		var HTMLContainer = (ID(HTMLContainer) == null) ? HTMLContainer : ID(HTMLContainer);

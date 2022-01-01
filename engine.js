@@ -20,7 +20,7 @@
 * For example a space invaders, tetris, pong, asteroids, etc. might have no use of container for static World but a platformer game definitely has.
 *  
 */
-const VersionNumber = '2.0.4';
+const VersionNumber = '2.0.5';
 
 import * as MultiCast from "./multicast.js";
 import * as Types from "./types.js";
@@ -110,8 +110,7 @@ class TinyGameEngine {
 		
 		AE.sealProp(this, 'url', import.meta ? new URL('./', import.meta.url).pathname : null);
 		
-		this._installEventHandlers();		
-		this._onResizeWindow();
+		this._installEventHandlers();				
 	}
 
 	_installEventHandlers() {
@@ -186,6 +185,16 @@ class TinyGameEngine {
 		AE.addEvent(window, 'touchmove', (e) => { onMouseMove(e); }, { passive:false });
 		AE.addEvent(window, 'touchstart', (e) => { onMouseDown(e); });
 		AE.addEvent(window, 'touchend', (e) => { onMouseUp(e); });
+
+		// added in 2.0.5 to make sure we get the window dimensions right even when the developer tools is open
+		AE.addEvent(window, 'load', (e) => {
+			this.recalculateScreen();
+			if (AE.isFunction(this._mainFunction)) this._mainFunction();
+		});			
+	}
+
+	get viewport() {		
+		return new Rect(0,0, this.screen.width, this.screen.height);
 	}
 	
 	/**
@@ -277,9 +286,17 @@ class TinyGameEngine {
 	get aspectRatio() {
 		return this.screen.width / this.screen.height;
 	}
+
+	/**
+	 * Call this function with your game's main function as parameter. This function makes sure the page is loaded and the Engine is completely set up before running your code.
+	 * @param {function} mainFunction 
+	 */
+	init(mainFunction) {
+		this._mainFunction = mainFunction;
+	}
 	
 	/**
-	 * Current engine frames per second. Average over time period (default past 0.5 seconds).
+	 * Current engine frames per second. Average over time period (default: past 0.5 seconds).
 	 * @returns {Number}
 	 */
 	getFPS() {
@@ -334,13 +351,13 @@ class TinyGameEngine {
 		});
 	}
 	
-	recalculateScreen() {
-		const pos = AE.getPos(this._rootElem);		
+	recalculateScreen() {		
+		const pos = AE.getPos(this._rootElem);
 		this.screen = new Rect(pos.left, pos.top, pos.left + pos.width, pos.top + pos.height);
 		this.edges  = new Rect(0, 0, pos.width, pos.height);
 	}
 
-	setRootElement(el) {
+	setRootElement(el) {		
 		if (typeof el == 'string' && ID(el) != null) var el = ID(el);
 		if (el instanceof HTMLElement) this._rootElem = el;
 			else throw 'Parameter must be an instance of HTMLElement or a valid element id.';
@@ -396,11 +413,11 @@ class TinyGameEngine {
 		}
 	}
 	
-	createRenderingSurface(parentElem) {		// ?parentElem:HTMLElement|String
+	createRenderingSurface(parentElem, flags) {		// ?parentElem:HTMLElement|String
 		if (this.flags.hasRenderingSurface == false) {
 			let s = parentElem ? parentElem : this._rootElem;
 			s = (typeof s == 'string') ? ID(s) : s;		
-			this.renderingSurface = new Renderer(s);
+			this.renderingSurface = new Renderer(s, flags);
 			this.flags.hasRenderingSurface = true;
 		}
 	}
@@ -415,15 +432,24 @@ class TinyGameEngine {
 		});
 	}
 
-	/*
-	 * 
+	/**
+	 * Creates a new Actor, adds it in the gameLoop and returns the Actor. 
 	 * @param {string} actorType 
-	 * @param {*} o 
-	 * @returns {Actor}	 
-	 * Creates a new Actor and returns it.
+	 * @param {object} o 
+	 * @returns {Actor|Player|Enemy|Projectile}
 	 */
-	 addActor(actorType, o) {
+	addActor(actorType, o) {
 		return this.gameLoop.add(actorType, o);
+	}
+
+	/**
+	 * Creates a new gameLoop layer, adds it in the gameLoop and returns the Layer.
+	 * Layers are lightweight (background) images which can be scrolled and repeated indefinitely
+	 * @param {object} o 
+	 * @returns {Layer}
+	 */
+	addLayer(o) {
+		return this.gameLoop.add('layer', o);
 	}
 
 	/**

@@ -27,7 +27,7 @@ function broadcast(o) {
 function installHandlers() {	
 	console.log('Installing event handlers...');
 	for (let name in handlers) {	
-		AE.addEvent(window, name, (e) => broadcast({ event:e, name }) );	
+		AE.addEvent(window, name, (e) => broadcast({ event:e, name }), true);			
 	}
 }
 
@@ -37,7 +37,7 @@ function addEvent(evtName, func, data, options) {
 
 	if (evtName in handlers) handlers[evtName].push(evt);	
 		else {
-			handlers[evtName] = [evt];    																		// create new delegate array		
+			handlers[evtName] = [evt];    																	  // create new delegate array		
 			AE.addEvent(window, evtName, (e) => broadcast({ event:e, name:evtName }) );		// create new multicaster
 		}
 }

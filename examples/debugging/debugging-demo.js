@@ -47,7 +47,7 @@ const main = async () => {
     
         Object.assign(game, { turret, tank });                             // save references to actors in 'game'
     } catch (e) {
-        console.log('Failed to run projectiles demo!');
+        console.log('Failed initialize/load assets for the demo!');
         console.log(e);
         return;
     }
@@ -72,4 +72,4 @@ const main = async () => {
     Engine.start(tick);         // start the engine
 }
 
-main();
+Engine.init(main);
