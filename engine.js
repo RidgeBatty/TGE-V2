@@ -20,7 +20,7 @@
 * For example a space invaders, tetris, pong, asteroids, etc. might have no use of container for static World but a platformer game definitely has.
 *  
 */
-const VersionNumber = '2.0.5';
+const VersionNumber = '2.0.6';
 
 import * as MultiCast from "./multicast.js";
 import * as Types from "./types.js";
@@ -39,11 +39,12 @@ const Events 	   = ['resize', 'contextmenu', 'mousemove', 'mouseup', 'mousedown'
 const DefaultFlags = {
 	'hasWorld' : false,
 	'hasEdges' : true,
-	'hasAutoAdjustScreen' : true,
+	'screenAutoAdjustEnabled' : true,
 	'preserveAspectRatio' : true,
 	'hasContextMenu' : false,
 	'mouseEnabled' : true,						// enable/disable Engine mouse events. Disabling might increase performance but the effect is tiny. Used by DevTools to bypass Engine mouse events
 	'hasRenderingSurface' : false,	
+	'preventKeyDefaults' : true,
 }
 
 /**
@@ -101,7 +102,6 @@ class TinyGameEngine {
 		}
 		
 		this._keys      = {
-			preventDefault : true,
 			status    : {},
 			cb_down   : null,
 			cb_up	  : null,
@@ -165,8 +165,10 @@ class TinyGameEngine {
 			}			
 		}
 
+		this.preventedKeys = {};
+
 		const onKeyDown = (e) => {			
-			if (this._keys.preventDefault) e.preventDefault();
+			if (Engine.flags.preventKeyDefaults || this.preventedKeys[e.code]) e.preventDefault();
 			let result;
 			if (this._keys.cb_down) result = this._keys.cb_down({ code:e.code }, e);			
 			if (this._keys.cb_press && !this._keys.status[e.code]) this._keys.cb_press({ code:e.code }, e);
@@ -175,7 +177,7 @@ class TinyGameEngine {
 		}
 
 		const onKeyUp = (e) => {			
-			if (this._keys.preventDefault) e.preventDefault();			
+			if (Engine.flags.preventKeyDefaults || this.preventedKeys[e.code]) e.preventDefault();			
 			this._keys.status[e.code] = false;
 			if (this._keys.cb_up) return this._keys.cb_up({ code:e.code }, e);
 		}
@@ -355,6 +357,7 @@ class TinyGameEngine {
 		const pos = AE.getPos(this._rootElem);
 		this.screen = new Rect(pos.left, pos.top, pos.left + pos.width, pos.top + pos.height);
 		this.edges  = new Rect(0, 0, pos.width, pos.height);
+		if (this.flags.hasRenderingSurface) this.renderingSurface.setCanvasSize(pos.width, pos.height);
 	}
 
 	setRootElement(el) {		
@@ -369,8 +372,8 @@ class TinyGameEngine {
 		if (i > -1) MultiCast.addEvent(evtName, (e) => callback(e), null);		
 	}
 	
-	_onResizeWindow(e) {		
-		if (this.flags.hasAutoAdjustScreen) this.recalculateScreen();
+	_onResizeWindow(e) {				
+		if (this.flags.screenAutoAdjustEnabled) this.recalculateScreen();
 	}
 	
 	_onContextMenu(e) {

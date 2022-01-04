@@ -357,7 +357,7 @@ class CanvasSurface {
 	}
 	
 	/*
-		Set individual pixel in World canvas. Not that this extremely slow and is not recommended to be used in real-time graphics.
+		Set individual pixel in World canvas. Note that this extremely slow and is not recommended to be used in real-time graphics.
 	*/
 	setPixel(v, c) {	// v:Vector2, c:Color
 		if (this.pixelCache == null) this.savePixelData();

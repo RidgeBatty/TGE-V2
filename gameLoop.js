@@ -272,8 +272,8 @@ class GameLoop {
 	/**
 	 * DO NOT USE! This is called internally!
 	 */	
-	_tick() {
-		if (!this.flags.isRunning) return;
+	_tick(forceSingleTick) {
+		if (!this.flags.isRunning && !forceSingleTick) return;
 		
 		const tickStart = performance.now();
 				
@@ -391,6 +391,17 @@ class GameLoop {
 		} catch (e) {
 			window.cancelAnimationFrame(this.requestID);
 			console.error(e);
+		}
+	}
+
+	step() {
+		if (this.flags.isRunning == false) {
+			this._tick(true); 
+			this.pause(); 
+			this._oneShotRender = true; 
+			this._lastTickLen   = performance.now();
+			this._frameStart    = this._lastTick;
+			this._render();
 		}
 	}
 

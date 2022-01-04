@@ -1,0 +1,101 @@
+/*
+	Written by Ridge Batty (c) 2020-2021
+	Default stylesheet for engine v2
+	
+	Many arcade style games do not respond well to pixel resolution changes.
+	You should define a fixed resolution for your game, especially if it differs from PPG frame size (1152 x 648 pixels).
+*/
+
+html, body {					/* Makes sure the parent frame is fully utilized and the game will float inside it */
+	display:flex;
+	position:absolute;
+	margin:0;
+	top:0;
+	left:0;
+	right:0;
+	bottom:0;	
+	background:black;
+	justify-content:start;
+	align-items:center;
+	overflow:hidden;
+	user-select:none;
+}
+.cover {
+	position:absolute;
+	left:0;
+	top:0;
+	right:0;
+	bottom:0;
+}
+button {
+	height:26px;
+	padding:2px 8px;
+	margin:2px;
+}
+#game {					
+	position:relative;
+	height: 100%;
+	overflow:hidden;
+	background-color: gray;
+	zoom:1;
+	cursor:crosshair;
+	flex-grow:1;
+}
+#editor-frame {					
+	display: flex;
+	flex-direction: column;
+	position:relative;
+	height: 100%;
+	background-color:gray;
+}
+#editor-frame > .ui {
+	display: flex;
+	margin:4px;
+	margin-bottom:0px;
+}					
+#editor-frame > textarea {
+	font:14px monospace;
+	color:#a5e075;
+	background-color: #282c34;
+	flex-grow: 1;
+	border:1px solid black;
+	margin:4px;
+	resize:none;
+	overflow:auto;
+	white-space: pre;
+}
+#divider {
+	position: relative;
+	width:10px;
+	cursor:ew-resize;
+	margin-left:-5px;
+	height: 100%;
+	z-index:1;
+}
+.ui {
+	display:flex;
+	flex-wrap: wrap;
+}
+.align > * {
+	font:14px arial;
+	color:white;	
+	margin-left:4px;
+}
+#filename {
+	color:yellow;	
+}
+.align {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-right: 4px;
+}
+#statusbar {
+	height:18px;
+	background-color: silver;
+	border-top:1px solid black;
+	padding:2px;
+	font:14px monospace;
+	color:black;
+	overflow:hidden;
+}

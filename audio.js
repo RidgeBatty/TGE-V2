@@ -52,7 +52,7 @@ class SFX {
 	
 	set rate(value)		   { if (this.webAudio) this.webAudio.playbackRate.value = value; else this.elem.playbackRate = value; }
 	
-	play(loops) {
+	play(loops= 1) {
 		if (this.webAudio) return this.webAudio.start();		
 		if (loops != null) this.loop = loops;
 		this.elem.play();
@@ -187,8 +187,17 @@ class Sounds {
 			resolve();
 		});
 	}
-		
-	play(o) {	// o:{ name:String, ?volume:Number, ?delay:Number(seconds), ?startTime:Number, ?loop:Number }
+	
+	/**
+	 * Looks up a sound by the "name" parameter and plays it.
+	 * @param {object} o 
+	 * @param {string} o.name Name of the audio track
+	 * @param {number=} o.volume Volume in normalized 0..1 range (Default = 1)
+	 * @param {number=} o.delay Delay before starting playback (in seconds)
+	 * @param {number=} o.startTime Offset from the beginning of the track (in seconds)
+	 * @param {number=} o.loop How many times to play back the track? (Default = 1)
+	 */
+	play(o) {	
 		const track = this.tracks[o.name];
 		if (o.name && track) {
 			
@@ -205,14 +214,19 @@ class Sounds {
 		if (this.tracks[name]) this.tracks[name].currentTime = seconds;
 	}
 	
-	async fadeOut(time) {	// { time:Number(milliseconds) }
+	/**
+	 * Fade out all audio tracks
+	 * @param {number} time Duration (in seconds)
+	 * @returns 
+	 */
+	async fadeOut(time) {	
 		return await new Promise((resolve, reject) => {
 			if (isNaN(time)) reject();
 			for (const t of Object.values(this.tracks)) t.fade({ duration:time, targetVolume:0 });
 			setTimeout(_ => { 
 				for (const t of Object.values(this.tracks)) t.stop();
 				resolve();
-			}, time);
+			}, time / 1000);
 		});
 	}
 }

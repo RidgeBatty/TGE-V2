@@ -1,0 +1,74 @@
+import * as TGE from '../../engine.js';
+import { ParticleSystem }  from '../../particles.js';
+import { getJSON } from '../../utils.js';
+import '../../ext/hjson.min.js';
+
+const Engine = TGE.Engine;	
+
+class ParticleEditor {        
+    constructor() {
+        this._followMouse   = false;
+        this._autoCenter    = true;
+        this._text          = '';
+        this.recreatePS();
+    }
+
+    recreatePS() {
+        if (this.particleSystem) this.particleSystem.destroy();
+        this.particleSystem = new ParticleSystem(Engine);        
+    }
+
+    fromParams(params) {
+        this.recreatePS();
+
+        const emitter = this.particleSystem.addEmitter(params);                
+        this.emitter = emitter;
+
+        emitter.analyze(params);        
+        emitter.position = Engine.dims.mulScalar(0.5);
+        emitter.addEvent('tick', e => this._onEmitterTick(e));
+        emitter.start(); 
+    }
+
+    fromEditorContent(text) {
+        try {
+            const p = Hjson.parse(text);
+            this._text = text;
+            this.fromParams(p);
+        } catch (e) {              
+            return e;            
+        }
+    }
+
+    async loadFromFile(f) {
+        const params = await getJSON(f);
+        const text   = await fetch(f).then(response => response.text());        
+
+        this._text   = text;
+
+        this.fromParams(params);
+    }
+
+    _onEmitterTick(e) {
+        if (this.followMouse) e.instigator.pivot = Engine.mousePos;             
+        if (this.autoCenter)  e.instigator.pivot = Engine.dims.mulScalar(0.5);
+    }
+
+    get followMouse() {
+        return this._followMouse;
+    }
+
+    set followMouse(v) {
+        if (typeof v == 'boolean') this._followMouse = v;
+    }
+
+    get autoCenter() {
+        return this._autoCenter;
+    }
+
+    set autoCenter(v) {
+        if (typeof v == 'boolean') this._autoCenter = v;
+    }
+}
+
+export { ParticleEditor }

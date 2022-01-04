@@ -338,15 +338,21 @@ class Actor extends Root {
 
 			if (this.flipbook) {
 				this.flipbook.update();						// select a frame from a flipbook if the actor has one specified			
-				img = this.flipbook.customRender.img;
-				if (img && this.flipbook.isAtlas) {
-					const n = this.flipbook.customRender;
+
+				const n = this.flipbook.customRender;
+				
+				if (this.flipbook.isAtlas && n.img) {
 					c.setTransform(this.scale, 0, 0, this.scale, this.position.x, this.position.y);
 					c.scale(this.renderHints.mirrorX ? -1 : 1, this.renderHints.mirrorY ? -1 : 1);
 					c.rotate(this.rotation);					
-					c.drawImage(img, n.a * n.w, n.b * n.h, n.w, n.h, -n.w / 2, -n.h / 2, n.w, n.h);	
-
+					c.drawImage(n.img, n.a * n.w, n.b * n.h, n.w, n.h, -n.w / 2, -n.h / 2, n.w, n.h);
 					img = null;	
+				} 
+
+				if (!this.flipbook.isAtlas && n.img) {		// let the rendering go through to code below
+					this.size.x = n.w;
+					this.size.y = n.h;
+					img = n.img;
 				}
 			}
 					

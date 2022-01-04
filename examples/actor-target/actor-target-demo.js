@@ -65,8 +65,8 @@ const main = async () => {
         const update = () => {            
             Engine.gameLoop.forActors(e => {
                 if (e.name == 'player-actor') {
-                    Engine.renderingSurface.resetTransform();
-                    Engine.renderingSurface.drawCircle(e.position, 200, { stroke:'lime' });
+                    Engine.renderingSurface.resetTransform();                    
+                    Engine.renderingSurface.drawPoly(e.position, { stroke:'lime' });
                 } 
                 if (e.name == 'asteroid') {                        
                     if (e.movement._targetPosition) {

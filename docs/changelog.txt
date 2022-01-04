@@ -72,3 +72,14 @@ Version 2.0.5
 - Separated Parallax and Layer into own different classes. Layer can now be used to represent lightweight, scrollable background image instead of an actor
 - Examples overhauled
 - Added actor-stress-test, actor-target, and particles2 examples
+
+-----------------------------------------------------------------
+Version 2.0.6
+
+- Added particle system editor (devtools)
+- Improved audio.js documentation
+- Improved actor rendering
+- flags.js finalized (sort of)
+- Improved particles.js
+- Added gameLoop.step()
+- Added preventKeyDefaults flag and preventedKeys object into Engine class

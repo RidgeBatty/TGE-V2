@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TGE2 Particle Editor Tool</title>
+    <script src="../../ext/ae2.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="default.css">
+</head>
+<body>
+    <div id="editor-frame">
+        <div class="ui" id="bt-panel">
+            <button>Save</button>
+            <button>Save As...</button>
+            <button>Load</button>
+            <button>Pause</button>
+            <button>Step</button>
+            <button>Font -</button>
+            <button>Font +</button>
+            <div class="align">
+                <label>Background:</label>
+                <input type="color" id="color">
+            </div>
+            <div class="align">
+                <span>Filename:</span>
+                <span id="filename">[none]</span>
+            </div>
+            <button>Clear</button>                        
+        </div>
+        <textarea id="editor"></textarea>
+        <div id="statusbar"></div>
+    </div>
+    <div id="divider"></div>
+    <div id="game"></div>
+    <script src="particle-editor-tool.js" type="module"></script>
+</body>
+</html>

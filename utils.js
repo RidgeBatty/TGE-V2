@@ -204,18 +204,20 @@ const randomInRange = (arr) => {
 	return Math.random() * Math.abs(arr[0] - arr[1]) + arr[0];
 }	
 
-const getJSON = (url, errorHandler) => {
+const getJSON = (url, getText) => {
 	return new Promise(async (resolve, reject) => {		
 		try {
+			let text;
 			if (url.split('.').pop() == 'hjson') {
 				const o = await fetch(url)
-					.then(response => response.text())
+					.then(response => { const t = response.text(); if (getText) text = t; return t; })
 					.then(text => Hjson.parse(text));
-				resolve(o);
+				resolve(o, text);
 			} else {
 				const o = await fetch(url)
-					.then(e => e.json());
-				resolve(o);
+					.then(response => { const t = response.text(); if (getText) text = t; return t; })
+					.then(text => JSON.parse(text));
+				resolve(o, text);
 			}
 		} catch (e) {
 			reject(e, url);			

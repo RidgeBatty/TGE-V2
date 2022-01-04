@@ -493,7 +493,7 @@ class Emitter extends EventBroadcaster {
 
 					// shape
 					if (particle.shape) {
-						const fill = ('outColor' in particle) ? particle.outColor.css : particle.shapeFill.css;												
+						const fill = ('outColor' in particle) ? particle.outColor.css : particle.shapeFill.css;
 						if (particle.shape == 1) this.surface.drawCircle(Vector2.Zero(), 1, { fill });
 						if (particle.shape == 2) this.surface.drawRectangle(-1, -1, 2, 2, { fill });						
 						if (particle.shape == 3) this.surface.drawPolyCut(particle.points.a, particle.points.b, { fill });
@@ -501,7 +501,13 @@ class Emitter extends EventBroadcaster {
 					}
 
 					// text operations
-					if (particle.textContent) this.surface.textOut(Vector2.Zero(), particle.textContent, particle.textSettings);			// offset/pivot
+					if (particle.textContent) {
+						if (particle.textSettings.color == 'particle') {
+							const copy = Object.assign({}, particle.textSettings, { color:particle.outColor.css });
+							this.surface.textOut(Vector2.Zero(), particle.textContent, copy);			
+						}
+							else this.surface.textOut(Vector2.Zero(), particle.textContent, particle.textSettings);			
+					}
 									
 					// reset filter
 					if (particle.filter) ctx.filter = 'none';
@@ -521,11 +527,22 @@ class ParticleSystem {
 	 * 
 	 * @param {Engine} Engine 
 	 */
+	
 	constructor(Engine) {
-		Engine.gameLoop.particleSystem = this;
+		if (!Engine.gameLoop.particleSystems) Engine.gameLoop.particleSystems = [this];
+			else Engine.gameLoop.particleSystems.push(this);
 
 		this.gameLoop = Engine.gameLoop;
 		this.emitters = [];	
+	}
+
+	destroy() {
+		const p = Engine.gameLoop.particleSystems;
+		const f = p.findIndex(e => e == this);
+		if (f > -1) {
+			p[f].clear();
+			p.splice(f, 1);
+		}
 	}
 	
 	addEmitter(params) {
