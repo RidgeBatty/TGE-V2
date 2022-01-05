@@ -16,6 +16,8 @@
 const lerp = (s, e, t) => { return s + (e - s) * t; }
 const wrapMax = (x, max) => { return (max + (x % max)) % max; }
 const wrapBounds = (x, min, max) => { return min + wrapMax(x - min, max - min); }
+
+let tempColorConvertCtx;
 /*
 
     Text
@@ -375,40 +377,54 @@ class Color extends BaseColor {
         return new Color(this.r, this.g, this.b, this.a);
     }
 	
-	/*
-		Returns a CSS representation of the color 
-	*/
+	/**
+	 * Returns a CSS representation of the color 
+	 */
 	get css() {
 		return `rgba(${this.r},${this.g},${this.b},${(this.a/255).toFixed(3)})`;
 	}
 	
-	/*
-		Sets the color using CSS string representation. 
-		The color can be any valid CSS color string, for example 'yellow' or 'rgba(255,160,0,0.5)'.
-	*/
+	/**
+	 * Sets the color using CSS string representation. 
+	 * The color can be any valid CSS color string, for example 'yellow' or 'rgba(255,160,0,0.5)'.
+	 * @param {string} str Color name, Hex, RGB, RGBA or HSL value (CSS)
+	 */
 	set css(str) {
-		var d = AE.newElem(document.body, 'i');
-		d.style.color = str;
-		var color = getComputedStyle(d).color;
-		AE.removeElement(d);
-		var comps = color.split(/rgb\(|rgba\(|\,|\)/).filter(Boolean);
-		for (var i = 0; i < 3; i++) this.value[i] = parseInt(comps[i], 10);
-		this.value[3] = (comps.length == 4) ? parseFloat(comps[3] * 255) : 255;
+		if (tempColorConvertCtx == null) tempColorConvertCtx = document.createElement('canvas').getContext('2d');
+    	tempColorConvertCtx.fillStyle = str;
+		
+		const result = tempColorConvertCtx.fillStyle;	// let the canvas context beautify the color, then we can chop it up. If the color has alpha, the result is RGBA string, otherwise always a hex string (from RGB, HSL, etc).
+
+		if (result.startsWith('rgba')) {
+			const sp = result.split('rgba(')[1].split(',');
+			this.r = parseInt(sp[0], 10);
+			this.g = parseInt(sp[1], 10);
+			this.b = parseInt(sp[2], 10);
+			this.a = parseFloat(sp[3].slice(0, -1)) * 255;			
+			return;
+		}
+		const c = Color.HexToRGB(result);	
+		this.r = c.r;
+		this.g = c.g;
+		this.b = c.b;
+		this.a = c.a;
 	}
 	
-	/* 
-		Returns hexadecimal representation of the color. Alpha is ignored by this operation.
-	*/
+	/**
+	 * Returns hexadecimal representation of the color. Alpha is ignored by this operation.	 
+	 */
 	get hex() {
-		var result = '';
+		var result = '#';
 		for (var i = 0; i < 3; i++) result += AE.pad(this.value[i].toString(16), 2);			
 		return result;
 	}
 	
-	/*
-		Sets the color from hexadecimal string data. The string length must be 6 characters and contain an RGB triplet. Alpha is set to full opacity.
-	*/
+	/**
+	 * Sets the color from hexadecimal string data. The string length must be 6 characters and contain an RGB triplet. Alpha is set to full opacity.
+	 * @param {string} str Hexadecimal representation of a color, for example '#FF0000'
+	 */
 	set hex(str) {
+		if (str.startsWith('#')) var str = str.substring(1);
 		if (str.length == 6) {
 			this.r = parseInt(str[0] + str[1], 16);
 			this.g = parseInt(str[2] + str[3], 16);
@@ -417,9 +433,9 @@ class Color extends BaseColor {
 		}
 	}
 	
-	/*
-		Returns a 4-component array containing red, green, blue and alpha values respectively
-	*/
+	/**
+	 * Returns a 4-component array containing red, green, blue and alpha values respectively
+	 */
 	get array() {
 		return Array.from(this.value);
 	}
@@ -440,6 +456,27 @@ class Color extends BaseColor {
 	 */
 	static Lerp (s, t, n) {
 		return new Color(lerp(s.r, t.r, n), lerp(s.g, t.g, n), lerp(s.b, t.b, n), lerp(s.a, t.a, n));
+	}
+
+	/**
+	 * 
+	 * @param {Color} color 
+	 * @returns 
+	 */
+	static RGBToHex(color){
+		var result = '#';
+		for (var i = 0; i < 3; i++) result += AE.pad(color.value[i].toString(16), 2);			
+		return result;		
+	}
+
+	static HexToRGB(str) {
+		if (str.startsWith('#')) var str = str.substring(1);
+		if (str.length == 6) {			 
+			return new Color(parseInt(str[0] + str[1], 16),
+			    			 parseInt(str[2] + str[3], 16),
+							 parseInt(str[4] + str[5], 16),
+							 255);
+		}
 	}
 }
 
