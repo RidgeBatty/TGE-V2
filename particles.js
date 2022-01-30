@@ -135,6 +135,14 @@ class Emitter extends EventBroadcaster {
 						if (!['radial', 'square'].includes(init.velocity)) throw `Invalid velocity parameter: "${init.velocity}".`;
 					}
 				}
+
+				if ('shape' in init) {
+					if (!('type' in init.shape)) throw 'Shape type is missing in params.initParticle.shape';
+					if (!ParticleShapes.includes(init.shape.type)) throw `Shape type "${init.shape.type}" is not supported in params.initParticle.shape`;
+				}
+			}
+			if ('gravity' in params) {			
+				if (params.gravity.type != 'point') throw `Only point gravity is currently supported -> params.gravity : { type : 'point' }`;
 			}
 		} catch (e) {
 			console.error(e);
@@ -183,6 +191,23 @@ class Emitter extends EventBroadcaster {
 			this.arc         = calc('arc', params);											// TO-DO: not implemented yet
 		}
 
+		if (params.gravity) {			
+			this.evolveGravity = {
+				position : Vec2.FromStruct(params.gravity.position),
+				mass     : params.gravity.mass
+			}
+		}
+
+		this.zIndex    = ('zIndex' in params) ? params.zIndex : 1;
+		this.surface   = ('surface' in params) ? params.surface : Engine.renderingSurface;		
+						
+		if ('imgUrl' in params) {
+			const urls      = Array.isArray(params.imgUrl) ? params.imgUrl : [params.imgUrl];
+			this._imageList = await preloadImages({ urls });
+		}
+
+		// initParticle and evolveParticle are PER PARTICLE SETTINGS!
+
 		// deserialize init params:
 		if (params.initParticle) {
 			const shape = params.initParticle.shape;
@@ -200,7 +225,7 @@ class Emitter extends EventBroadcaster {
 		}
 
 		// deserialize evolve params:
-		if (params.evolveParticle) {
+		if (params.evolveParticle) {					
 			const tint = params.evolveParticle.tint;
 			if (tint) {
 				this.evolveTargetColor = deserializeColorProperty('targetColor', tint);			
@@ -208,14 +233,7 @@ class Emitter extends EventBroadcaster {
 			}
 			if (this.evolveParticleTick == null && ('tick') in params.evolveParticle) this.evolveParticleTick = params.evolveParticle.tick;	// evolve tick function for each particle (saved in emitter)
 		}
-
-		this.zIndex    = ('zIndex' in params) ? params.zIndex : 1;
-		this.surface   = ('surface' in params) ? params.surface : Engine.renderingSurface;		
-						
-		if ('imgUrl' in params) {
-			const urls      = Array.isArray(params.imgUrl) ? params.imgUrl : [params.imgUrl];
-			this._imageList = await preloadImages({ urls });
-		}
+		
 		this._createParticles(params.maxDrawCount);
 	}
 	
@@ -392,11 +410,7 @@ class Emitter extends EventBroadcaster {
 		
 		// delay the update by "delay" frames (comes from emitter)
 		if (this.delay > 0) { this.delay--; return }		
-		
-		// point gravity
-		const pointG  = this.params.pointGravity;
-		if (pointG) pointG.offset = Vec2.FromStruct(pointG.offset);		
-
+				
 		// delayed spawn
 		for (const p of this.particles) if (p.delay > 0) p.delay--; 
 					
@@ -433,13 +447,14 @@ class Emitter extends EventBroadcaster {
 			if (p.angularSpeed) p.angle += p.angularSpeed;
 			p.velocity.add(Vec2.FromAngle(p.angle, p.angularWeight));
 
-			// point gravity
-			if (pointG) {				
-				let dx = pointG.offset.x - p.position.x;
-				let dy = pointG.offset.y - p.position.y;
+			// apply gravity
+			const g = this.evolveGravity;
+			if (g) {								
+				let dx = p.position.x - g.position.x;
+				let dy = p.position.y - g.position.y;
 				let distSq = Math.max(dx * dx + dy * dy, 4000);
-				let f = pointG.mass / (distSq * Math.sqrt(distSq));
-				p.velocity.add(new Vec2(dx * f, dy * f));
+				let f = g.mass / (distSq * Math.sqrt(distSq));
+				p.velocity.add(new Vec2(-dx * f, -dy * f));
 			}								
 
 			p.position.add(p.velocity);			

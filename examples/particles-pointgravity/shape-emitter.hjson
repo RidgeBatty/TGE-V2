@@ -1,0 +1,35 @@
+{	                                                                        # at the root level you define the emitter settings
+    name: 'shapes'                                                          # user defined name, ParticleSystem.emitterByName() can be used to find a named emitter
+    angle: 0                                                               # emitter rotation
+    type : 'circle'                                                         # circle emitter has several additional parameters (optional)
+    radius : 5                                                              # radius of spawn area    
+    position: { x: 540, y: 335 },                                           # NOTE! the position is the center point of the emitter
+    maxDrawCount: 800                                                       # draw max. 500 particles at any given time
+    emitSpeed: 5                                                            # emit 5 particles/frame    
+    initParticle: {                                                         # how particles are initialized at birth?
+        shape: {                                                            # use a shape instead of an image
+            type: 'circle'            
+            radius: 1            
+        }
+        scale: { min:0.5, max:2 }
+        life:  { min:200, max:250 }
+        angle: { min:-0.04, max:0.04 }
+        speed: { min: 1, max:3 }
+    }	
+    evolveParticle: {                                                       # how individual particles evolve during EVERY tick?
+        opacity: 'lifetime'                                                 # opacity tracks lifetime of particles (fade out)
+        tint: {
+            targetColor : 'red'                                             # this gives more control over the initial particle color (initParticle.shape.fill)
+            colorStops : ['white', 'yellow', 'orange',                      # this does not allow any programming of the colors (this overrides tint.targetColor)
+            'orange', 'red', 'red', 'maroon', 'black'],                     
+        }
+        force : { x:0, y:0 },                                               # add constant force to particles        
+        scale : 1.005                                                       # multiply particle scale by this scalar                
+    }    
+    gravity : {
+        type : 'point'
+        position : { x:0, y:-200 }
+        mass: 1000
+    }
+    zIndex :1                                                               # define the render layer of the effect
+}
