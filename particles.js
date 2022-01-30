@@ -21,6 +21,7 @@ import { Engine, Types } from './engine.js';
 import { EventBroadcaster } from './eventBroadcaster.js';
 import { wrapBounds, preloadImages, imgDims } from './utils.js';
 import { Polygon } from './shapes.js';
+import { Vector2 } from './types.js';
 
 const Vec2    = Types.Vector2;
 const Color   = Types.Color;
@@ -33,7 +34,7 @@ const Filters = {
 	'saturate'    : '',
 	'sepia'       : ''
 }
-const ParticleShapes = ['none', 'circle', 'square', 'ring', 'triangle', 'polygon', 'star'];
+const ParticleShapes = ['none', 'circle', 'square', 'ring', 'triangle', 'polygon', 'star', 'custom'];
 
 class ParticleData {
 	constructor(p) {
@@ -145,14 +146,14 @@ class Emitter extends EventBroadcaster {
 	 * Set initial state for this emitter. Called internally by Emitter.start()
 	 */
 	async _initEmitter(params) {		
-		this._params     = params;
+		this._params     = AE.clone(params);
 		
 		Object.seal(this._params.initParticle);
 		Object.seal(this._params.evolveParticle);
 
 		this.name	     = ('name') in params ? params.name : null;
 		this.emitSpeed   = params.emitSpeed || 1;				// how many particles to emit per tick?	1 = 60/second
-		this.angle 	 	 = params.angle || 0;					// rotation of the emitter				
+		this.angle 	 	 = calc('angle', params);	  // rotation of the emitter				
 		this.delay	     = calc('delay', params);	  // emitter start delay
 		this.maxDelay    = params.delay || 0;		
 		this.textContent = params.textContent || '';			
@@ -359,6 +360,7 @@ class Emitter extends EventBroadcaster {
 				if (p.shape == 4) p.points = Polygon.Triangle(1);
 				if (p.shape == 5) p.points = Polygon.Ngon(calc('points', init.shape));
 				if (p.shape == 6) p.points = Polygon.Star(calc('innerRadius', init.shape), calc('outerRadius', init.shape), Math.round(calc('points', init.shape)));				
+				if (p.shape == 7) p.points = init.shape.points.map(e => e);		
 			}
 
 			// precalculate evolve parameters for particles
@@ -466,63 +468,62 @@ class Emitter extends EventBroadcaster {
 		const alpha = ctx.globalAlpha;												// opacity
 		
 		for (const particle of this.particles) {
-			pos.set(particle.position);						
-			if (this.angle != 0) pos.rotate(this.angle * Math.PI);
-			pos.add(this.position);			
+			if (!particle.active) continue;
 			
-			if (particle.active) {			
-				this.activeParticleCount++;
-				if (particle.visible) {
-					ctx.globalAlpha = particle.alpha;					
-					ctx.setTransform(particle.scale, 0, 0, particle.scale, pos.x, pos.y);
-					ctx.rotate((particle.rotation + particle.angle) * Math.PI);
-								
-					// apply filter
-					if (particle.filter) ctx.filter = particle.filter;
-
-					// image 
-					if (particle.img) {
-						if (particle.tintColor) {										// colorization? particle.tintColor applies only to images and cannot evolve!
-							tmp.size = particle._cachedSize;
-							
-							tmp.ctx.globalCompositeOperation = 'source-over';
-							tmp.drawImage(null, particle.img);			
-
-							tmp.ctx.globalCompositeOperation = 'color';											
-							tmp.drawRectangle(0,0, tmp.size.x, tmp.size.y, { fill:particle.tintColor });
-							
-							tmp.ctx.globalCompositeOperation = 'destination-in';
-							tmp.drawImage(null, particle.img);			
-											
-							ctx.drawImage(tmp.canvas, -particle._cachedSize.x / 2, -particle._cachedSize.y / 2);
-						} 					
-
-						// image default processing:
-						if (particle.tintColor == null) ctx.drawImage(particle.img, -particle._cachedSize.x / 2, -particle._cachedSize.y / 2);
-					}
-
-					// shape
-					if (particle.shape) {
-						const fill = ('outColor' in particle) ? particle.outColor.css : particle.fillColor.css;
-						if (particle.shape == 1) this.surface.drawCircle(Vec2.Zero(), 1, { fill });
-						if (particle.shape == 2) this.surface.drawRectangle(-1, -1, 2, 2, { fill });						
-						if (particle.shape == 3) this.surface.drawPolyCut(particle.points.a, particle.points.b, { fill });
-						if (particle.shape >= 4) this.surface.drawPoly(particle.points, { fill });
-					}
-
-					// text operations
-					if (particle.textContent) {
-						if (particle.textSettings.color == 'particle' || this.evolveTargetColor) {
-							const copy = Object.assign({}, this.initTextSettings, { color:particle.outColor.css });
-							this.surface.textOut(Vec2.Zero(), particle.textContent, copy);			
-						}
-							else this.surface.textOut(Vec2.Zero(), particle.textContent, particle.textSettings);			
-					}
+			this.activeParticleCount++;
+			if (!particle.visible) continue;
+			
+			pos.set(particle.position);											// set particle position
+			if (this.angle != 0) pos.rotate(this.angle * Math.PI);
+			pos.add(this.position);												// add emitter position
+			
+			ctx.globalAlpha = particle.alpha;					
+			ctx.setTransform(particle.scale, 0, 0, particle.scale, pos.x, pos.y);
+			ctx.rotate((particle.rotation + particle.angle) * Math.PI);
 									
-					// reset filter
-					if (particle.filter) ctx.filter = 'none';
-				}				
+			if (particle.filter) ctx.filter = particle.filter;						// apply filter
+
+			// image 
+			if (particle.img) {
+				if (particle.tintColor) {											// colorization? particle.tintColor applies only to images and cannot evolve!
+					tmp.size = particle._cachedSize;
+					
+					tmp.ctx.globalCompositeOperation = 'source-over';
+					tmp.drawImage(null, particle.img);			
+
+					tmp.ctx.globalCompositeOperation = 'color';											
+					tmp.drawRectangle(0,0, tmp.size.x, tmp.size.y, { fill:particle.tintColor });
+					
+					tmp.ctx.globalCompositeOperation = 'destination-in';
+					tmp.drawImage(null, particle.img);			
+									
+					ctx.drawImage(tmp.canvas, -particle._cachedSize.x / 2, -particle._cachedSize.y / 2);
+				} 					
+
+				// image default processing:
+				if (particle.tintColor == null) ctx.drawImage(particle.img, -particle._cachedSize.x / 2, -particle._cachedSize.y / 2);
 			}
+
+			// shape
+			if (particle.shape) {
+				const fill = ('outColor' in particle) ? particle.outColor.css : particle.fillColor.css;
+				if (particle.shape == 1) this.surface.drawCircle(Vec2.Zero(), 1, { fill });
+				if (particle.shape == 2) this.surface.drawRectangle(-1, -1, 2, 2, { fill });						
+				if (particle.shape == 3) this.surface.drawPolyCut(particle.points.a, particle.points.b, { fill });
+				if (particle.shape >= 4) this.surface.drawPoly(particle.points, { fill });
+			}
+
+			// text operations
+			if (particle.textContent) {
+				if (particle.textSettings.color == 'particle' || this.evolveTargetColor) {
+					const copy = Object.assign({}, this.initTextSettings, { color:particle.outColor.css });
+					this.surface.textOut(Vec2.Zero(), particle.textContent, copy);			
+				}
+					else this.surface.textOut(Vec2.Zero(), particle.textContent, particle.textSettings);			
+			}
+							
+			// reset filter
+			if (particle.filter) ctx.filter = 'none';			
 		}	
 
 		if (this.compositeOperation) ctx.globalCompositeOperation = savedCompositeState;		
