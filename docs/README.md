@@ -1,10 +1,10 @@
 # Docs
 
-Here are some good practices to setting up and building your TGE game.
+Here are some good practices for setting up and building your TGE game.
 
 ## Primer
 
-Basic structure of a TGE game main file:
+Basic structure of a TGE game main file may look something like this:
 
 ```
 import * as TGE from '../../engine.js';
@@ -12,9 +12,11 @@ const Engine = TGE.Engine;
 
 // your games main execution point:
 const main = async () => {        
-
-    // First let's set up the engine        
-    Engine.setRootElement('game');              
+    
+    // ID of the HTML element where the game engine should draw
+    Engine.setRootElement('game');                              
+    
+    // Actors should respect the viewport edges and Engine should create a Canvas element for rendering
     Engine.setFlags({ hasEdges:false, hasRenderingSurface:true });
 
     // do game stuff here...
@@ -23,7 +25,8 @@ const main = async () => {
     Engine.start(tick); 
 }
 
-Engine.init(main);    // calls your function to start the game
+// Call your function to start the game
+Engine.init(main);    
 ```
 
 ## Changing levels/ending a game
