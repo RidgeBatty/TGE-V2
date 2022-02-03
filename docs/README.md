@@ -25,7 +25,7 @@ const main = async () => {
     Engine.start(tick); 
 }
 
-// Call your custom function to start the game
+// Calls your custom function to start the game when init is completed
 Engine.init(main);    
 ```
 
