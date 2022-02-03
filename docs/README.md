@@ -10,7 +10,7 @@ Basic structure of a TGE game main file may look something like this:
 import * as TGE from './v2/engine.js';
 const Engine = TGE.Engine;	
 
-// your game's main execution point:
+// Your game's main execution point:
 const main = async () => {        
     
     // ID of the HTML element where the game engine should draw
@@ -25,7 +25,7 @@ const main = async () => {
     Engine.start(tick); 
 }
 
-// Call your function to start the game
+// Call your custom function to start the game
 Engine.init(main);    
 ```
 
