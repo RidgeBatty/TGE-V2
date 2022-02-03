@@ -6,7 +6,7 @@ Here are some good practices for setting up and building your TGE game.
 
 Basic structure of a TGE game main file may look something like this:
 
-```
+```javascript
 import * as TGE from './v2/engine.js';
 const Engine = TGE.Engine;	
 
