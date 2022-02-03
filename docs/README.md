@@ -32,12 +32,12 @@ Engine.init(main);
 ## Changing levels/ending a game
 
 To pause the game loop, including all timers, particles, animations and actors, etc.
-```
+```javascript
 GameLoop.pause();     
 ```
 
 Another option is to keep things happening and only disable collisions:
-```
+```javascript
 GameLoop.flags.collisionsEnabled = false;
 ```
 
