@@ -11,7 +11,6 @@ import { Controllers } from '../gameController.js';
 import { UI } from '../html-ui.js';
 import { arraysEqual } from '../utils.js';
 import Debug from '../tools/debug.js';
-import { Vector2 } from '../types.js';
 
 const Vec2 = Types.Vector2;
 
@@ -28,21 +27,23 @@ let keyDownActors = [],
 /**
  * Set up the UI
  */
-UI.autoReplaceParent = false;
-const panel           = UI.add({ type:'panel', name:'buttons', style:'right:0px' });
-const cbPanel         = panel.add({ type:'panel', name:'checkboxes', className:'relative' });
+UI.autoReplaceParent  = false;
+const btPanel         = UI.add({ type:'panel', name:'buttons', style:'right:0px' });
+const cbPanel         = btPanel.add({ type:'panel', name:'checkboxes', className:'relative' });
 
-const cbShowColliders = cbPanel.add({ type:'checkbox', caption:'Show Colliders' });
-const cbShowBB        = cbPanel.add({ type:'checkbox', caption:'Show Bounding Boxes' });
+const btPauseEngine   = btPanel.add({ type:'button', name:'pause', caption:'Pause' });
+const btFiles         = btPanel.add({ type:'button', name:'files', caption:'Files' });
 
-const btPauseEngine   = panel.add({ type:'button', name:'pause', caption:'Pause' });
-const btFiles         = panel.add({ type:'button', name:'files', caption:'Files' });
+const cbShowColliders = cbPanel.add({ type:'checkbox', name:'cb-colliders', caption:'Show Colliders' });
+const cbShowBB        = cbPanel.add({ type:'checkbox', name:'cb-aabbs',  caption:'Show Bounding Boxes' });
 
 const selWin          = UI.add({ type:'window', name:'sel-actors', caption:'Selected Actors', position:new Vec2(1600, 160), size: new Vec2(240, 200) });
 const lbSelectActor   = selWin.add({ type:'listbox', name:'sel-actor-lb' });
 
 const objectWin       = UI.add({ type:'window', name:'object-inspector', caption:'Object Inspector', position:new Vec2(2, 160), size: new Vec2(360, 480) });
 const objectInspector = objectWin.add({ type:'keyvaluelist', name:'kvl' });
+
+console.log(UI);
 
 btPauseEngine.addEvent('click', _ => { 
     pauseEngine();            

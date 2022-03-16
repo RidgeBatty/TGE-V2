@@ -4,231 +4,366 @@
  @desc Tiny Game Engine: Audio/Sound Effects subsystem	
  Implements a simplified interface for using Web Audio API in games	
 */
+import { getJSON } from './utils.js';
 
 const AudioContext = window.AudioContext || window.webkitAudioContext;
 
 /**
 	@desc Instance of a single sound effect/file.	
 */
-class SFX {	
+
+class AudioParams {
+	constructor(o= {}, defaults= { loop:false, volume:1, pan:0, rate:1}) {
+		this.loop   = AE.isBoolean(o.loop) ? o.loop : defaults.loop;
+		this.volume = AE.isNumeric(o.volume) ? o.volume : defaults.volume;	
+		this.pan    = AE.isNumeric(o.pan) ? o.pan : defaults.pan;		
+		this.rate   = AE.isNumeric(o.rate) ? o.rate : defaults.rate;	
+	}
+}
+
+class RangedVar {
+	constructor(value, min = 0, max = 1, defaultValue = 0) {
+		if (!AE.isNumeric(value) || !AE.isNumeric(min) || !AE.isNumeric(max)|| !AE.isNumeric(defaultValue)) throw 'All parameters must be numeric';		
+		this.min = min;
+		this.max = max;
+		this._value = value;
+	}
+
+	set value(v) {
+		if (!AE.isNumeric(v)) var v = this.defaultValue;
+		if (v < this.min) this.value = this.min;
+			else if (v > this.max) this.value = this.max;
+				else this._value = v;
+	}
+
+	get value() {
+		return this._value;
+	}
+}
+class Track {	
 	/**
-	@param {Sounds} sounds - Owner of this SFX, must be an instance on Sounds object.
+	@param {AudioLib} audioLib - Owner of this Track, must be an instance on AudioLib object.
 	@param {Object} o - Parameter object.
 	@param {String} o.name - Name of the audio file. Names should be unique but no automatic checking is done.
 	@param {String} o.file - URL to the audio file.
 	@param {Function} o.onLoaded - Callback fired when the audio file is loaded.
 	*/
-	constructor(sounds, o) {
-		if (!(sounds instanceof Sounds)) {
-			throw 'Sounds class instance does not exist'; 
-			return;
+	constructor(o) {
+		if (!('audio' in o && o.audio instanceof AudioLib)) {
+			throw 'AudioLib class instance does not exist'; 			
 		}
-		this.sounds = sounds;
+
+		this._createParams = o;
+		Object.freeze(this._createParams);
+
+		this.owner  = o.audio;
 		this.name   = o.name;
-		this.loop   = 1;			// how many loops to play?
+
+		this.audioParams  = new AudioParams(o);
+
 		this._mutedVolume = -1;
-		this.webAudio     = null;
-		this.nodes        = {};
-				
-		this.elem   = new Audio(o.file);		
-		AE.addEvent(this.elem, 'loadeddata', _ => { if (AE.isFunction(o.onLoaded)) o.onLoaded.call(this, o.name) });		
-		AE.addEvent(this.elem, 'ended',      _ => { 
-			this.loop--; 
-			if (this.loop != null && this.loop > 0) {
-				this.currentTime = 0;
-				this.play(); 
-			}
-		});
+		this.instances    = [];
 		
+		this.elem = new Audio(o.file);		
+		
+		AE.addEvent(this.elem, 'loadeddata', (track) => { if (AE.isFunction(o.onLoaded)) o.onLoaded.call(this, track) });		
+
 		this.elem.load();	// required by Safari mobile?		
-	}	
+	}
+
+	/**
+	 * Deletes all instances of this track.
+	 */
+	clear() {
+		for (const i of this.instances) i.destroy();
+	}
+
+	destroy() {
+		this.elem.remove();
+		this.clear();
+	}
+}
+class SFX {
+	constructor(o) {
+		this.owner      = o.track;		
+		this.audioLib   = o.track.owner;
+		this.nodes      = {};
+		this._playState = 'initial';
+		this._fadeInfo  = null;
+		this._isMuted   = false;
+
+		this._volume      = 1;
+		this.audioParams  = new AudioParams(o, this.owner.audioParams);		
+		this.fadeVolume   = new RangedVar(1);
+	}
+
+	async init() {		
+		const audioContext = this.audioLib.audioContext;								// AudioLib
 		
-	set volume(value)      { if (this.webAudio) this.nodes.gain.gain.value = value; else this.elem.volume = value; }
-	get volume()		   { return (this.webAudio) ? this.nodes.gain.gain.value : this.elem.volume; }
-	set currentTime(value) { this.elem.currentTime = value; }				// seconds	
+		const gain   = audioContext.createGain();										// Create gain node		
+		const pan    = new StereoPannerNode(audioContext, { pan: 0 });
+				
+		let source;
+		await fetch(this.owner.elem.src)
+			.then(r => r.arrayBuffer())
+			.then(b => audioContext.decodeAudioData(b))
+			.then(a => {
+				source        = audioContext.createBufferSource();
+				source.buffer = a;
+				source.loop   = false;				
+				
+				source.connect(gain).connect(pan).connect(audioContext.destination);				
+			})
+			.catch(e => {
+				console.warn('Failed to get the file.');
+				console.log(e);
+			});
+
+		this.nodes   = {
+			source,
+			gain,
+			pan
+		}	
+	}
+
+	set volume(value)    { 
+		if (this._isMuted || this.audioLib._isMuted) this.nodes.gain.gain.value = 0;
+			else this.nodes.gain.gain.value = value * this.audioLib.masterVolume.value * this.audioLib._fadeInfo.ratio.value * this.fadeVolume.value; 
+		this._volume = value; 
+	}
+	get volume()		  { return this._volume; }
 	
-	set pan(value)	   	   { if (this.webAudio && 'pan' in this.nodes) this.nodes.pan.pan.value = value; }
-	get pan()	   	   	   { if (this.webAudio && 'pan' in this.nodes) return this.nodes.pan.pan.value; }
+	set pan(value)	   	 { if ('pan' in this.nodes) this.nodes.pan.pan.value = value; }
+	get pan()	   	   	     { if ('pan' in this.nodes) return this.nodes.pan.pan.value; }
 	
-	set rate(value)		   { if (this.webAudio) this.webAudio.playbackRate.value = value; else this.elem.playbackRate = value; }
+	set rate(value)		 { this.nodes.source.playbackRate.value = value; }
+	get rate()			 { return this.nodes.source.playbackRate.value; }
+
+	set loop(value)	    { this.nodes.source.loop = value; }
+	get loop()	        { return this.nodes.source.loop; }
+
+	get status()		 { return this._playState; }
+
+	applyParams(p) {
+		Object.entries(p).forEach(n => { this[n[0]] = n[1]; });
+	}
 	
-	play(loops= 1) {
-		if (this.webAudio) return this.webAudio.start();		
-		if (loops != null) this.loop = loops;
-		this.elem.play();
+	play(o) {				
+		if (o == null) var o = {};		
+
+		Object.entries(o).forEach(n => { if (n[0]) this.audioParams[n[0]] = n[1]; });		// copy params from 'o' to this.audioParams		
+		this.applyParams(this.audioParams);	// apply current parameters
+
+		if (this._playState == 'initial') this.nodes.source.start();				
+		if (this._playState == 'stopped') this.nodes.source.connect(this.nodes.gain).connect(this.nodes.pan).connect(this.audioLib.audioContext.destination);				
+		this._playState = 'playing';
 	}
 	
 	stop() {		
-		if (this.webAudio) return this.webAudio.stop();
-		this.elem.pause();
-		this.elem.currentTime = 0;
+		this.nodes.source.disconnect();
+		this._playState = 'stopped';
 	}
 	
 	/**
 		Works on flip-flop principle
 	*/
 	mute() {
-		if (this._mutedVolume == -1) {
-			this._mutedVolume = this.volume;			
-			this.volume = 0;
-		} else {
-			this.volume = this._mutedVolume;
-			this._mutedVolume = -1;
-		}
+		this._isMuted = !this._isMuted;
+		this.volume   = this.volume;
 	}
 	
 	/**
 	 * @param {Object} o Parameter object
 	 * @param {Number} o.duration milliseconds
-	 * @param {Number} o.targetVolume
-	 * @param {Number} o.resolution milliseconds
+	 * @param {Number} o.endVolume normalized volume level when ending the fade
+	 * @param {Number} o.startVolume normalized volume level when starting the fade
 	 */	
-	async fade(o) { // o:{ duration:Number (milliseconds), targetVolume:Number, resolution:Number (milliseconds) }
+	async fade(o) { 
 		return await new Promise(resolve => {
-			const tslice = o.resolution || 50;
-			let   d      = Math.ceil(o.duration / tslice);
-			const inc    = (o.targetVolume - this.volume) / d;
-			const _this  = this;
-			
-			const adjust = () => { 
-				const vol = _this.volume + inc; 
-				d--; 
-				_this.volume = AE.clamp(vol, 0, 1); 
-				if (d > 0) setTimeout(_ => adjust(), tslice); 
-					else {
-						this.stop();
-						resolve(); 
-					}
-			}
-			setTimeout(_ => adjust(), tslice);
+			this._fadeInfo = Object.assign({}, o);
 		});
 	}
 		
-	/* 
-		Upgrades this audio element to utilize Web Audio API 
-	*/
-	async upgrade() {
-		if (Object.keys(this.nodes).length > 0) return;							// already upgraded
-		
-		const audioContext = this.sounds.audioContext;
-		
-		const gain   = audioContext.createGain();								// gain		
-		const pan    = new StereoPannerNode(audioContext, { pan: 0 });
-		
-		this.nodes   = {
-			gain,
-			pan
-		}
-		
-		await fetch(this.elem.src)
-			.then(r => r.arrayBuffer())
-			.then(b => audioContext.decodeAudioData(b))
-			.then(a => {
-				const source   = audioContext.createBufferSource();
-				source.buffer  = a;
-				source.loop    = true;				
-				
-				source.connect(gain).connect(pan).connect(audioContext.destination);		
-				
-				this.webAudio  = source;
-			})
-			.catch(e => {
-				console.warn('Failed to get the file.');
-				console.log(e);
-			});
-	}
-	
 	destroy() {
-		AE.removeElement(this.elem);
-		this.webAudio = null;
+		const n = this.owner.instances.findIndex(this);
+		if (n > -1) {
+			console.log('Destroying sound instance');
+			this.owner.instances.splice(n, 1);
+		}
 	}
 }
 
 /**
 	@desc Main class (singleton) for audio subsystem
  */
-class Sounds {
+class AudioLib {
 	/**
 	 * 
-	 * @param {TinyGameEngine} engine Instance of the owning TinyGameEngine which the audio subsystem will be linked to. A reference to Sounds instance is saved in <a href="module-Engine-TinyGameEngine.html#audio">Engine.audio</a> property.
+	 * @param {TinyGameEngine} engine Instance of the owning TinyGameEngine which the audio subsystem will be linked to. A reference to Audio instance is saved in <a href="module-Engine-TinyGameEngine.html#audio">Engine.audio</a> property.
 	 */
 	constructor(engine) {
-		if (engine.audio != null) throw 'Audio instance already created!';
+		if (engine.audio != null) throw 'AudioLib instance already created!';
 		engine.audio      = this;
 		
 		this.engine       = engine;
 		this.audioContext = new AudioContext();
 		this.tracks       = {};
-		
-		/** Global volume level */
-		this.masterVolume = 1;
+		this._isMuted     = false;
+
+		this._fadeInfo    = { status : 'in', ratio:new RangedVar(1) };
+
+		/** Global volume levels */
+		this.masterVolume = new RangedVar(1);		
 	}	
+
+	get isMuted() {
+		return this._isMuted;
+	}
+
+	get fadeVolume() {
+		return this._fadeInfo.ratio.value;
+	}
 	
 	mute() {		
-		this.track.forEach(track => track.mute());
+		this._isMuted = !this._isMuted;
+		this.forSFX(e => e.mute());
 	}
 	
+	/**
+	 * Deletes all tracks and sound instances. Does NOT reset any parameters or settings.
+	 */
 	clear() {
-		this.tracks.forEach(track => track.destroy());
+		Object.values(this.tracks).forEach(track => track.destroy());
 		this.tracks = {};
 	}
+
+	/**
+	 * Loops through all SFX instances. The callback function will send current SFX instance and Track as parameters.
+	 * @param {function} callback
+	 */
+	forSFX(callback) {
+		Object.values(this.tracks).forEach(track => { for (const instance of track.instances) callback(instance, track); });
+	}
 	
-	async add(name, url) {		
-		return new Promise((resolve, reject) => {
-			this.tracks[name] = new SFX(this, { name, file:url, onLoaded:function(e) { resolve(this, name); } });
+	/**
+	 * Adds a new sound into the internal audio library, which can be later accessed via Audio.tracks array.
+	 * @param {o} object
+	 * @param {string} o.name
+	 * @param {string} o.url 
+	 * @returns 
+	 */
+	async add(o) {		
+		return new Promise((resolve, reject) => {			
+			if (!AE.isString(o.url))  reject('Url must be specified.');
+			if (!AE.isString(o.name)) reject('Name must be specified.');
+
+			this.tracks[o.name] = new Track({ 
+				audio:this, 
+				name:o.name, 
+				file:o.url, 
+				volume:'volume' in o ? o.volume : 1, 
+				pan:'pan' in o ? o.pan : 0, 
+				onLoaded:(track) => { 								
+					resolve(track); 
+				} 
+			});
 		});
 	}
 	
-	async addBunch(list) {	// list:[{ name:String, url:String }]
+	/**
+	 * Adds a bunch of new tracks in to the track library
+	 * @param {[object]} list 
+	 * @returns {Track|String}
+	 */
+	async addBunch(list) {
 		return new Promise(async resolve => {
 			let group = [];
-			for (const s of list) group.push(this.add(s.name, s.url));
+			for (const s of list) group.push(this.add(s));
 			await Promise.all(group);	
 			resolve();
 		});
 	}
-	
+
 	/**
-	 * Looks up a sound by the "name" parameter and plays it.
-	 * @param {object} o 
-	 * @param {string} o.name Name of the audio track
-	 * @param {number=} o.volume Volume in normalized 0..1 range (Default = 1)
-	 * @param {number=} o.delay Delay before starting playback (in seconds)
-	 * @param {number=} o.startTime Offset from the beginning of the track (in seconds)
-	 * @param {number=} o.loop How many times to play back the track? (Default = 1)
+	 * Spawns new audio SFX instance
+	 * @param {string} name 
+	 * @param {object|boolean} playParams Play parameters object OR boolean 'true' to start playing with track's default settings
+	 * @returns 
 	 */
-	play(o) {	
-		const track = this.tracks[o.name];
-		if (o.name && track) {
-			
-			let volume   = 'volume' in o ? o.volume : 1;
-			track.volume = this.masterVolume * volume;			
-			
-			if (AE.isNumeric(o.startTime)) this.seek(o.name, o.startTime); 
-			if (AE.isNumeric(o.delay)) setTimeout(_ => track.play(o.loop), o.delay * 1000);
-				else track.play(o.loop);			
+	async spawn(name, playParams) {
+		const track = this.tracks[name];
+		if (track) {
+			const sfx = new SFX({ track });
+			await sfx.init();
+			track.instances.push(sfx);			
+			if (playParams) sfx.play(playParams === true ? {} : playParams);
+			return sfx;
 		}
 	}
 	
-	seek(name, seconds) {
-		if (this.tracks[name]) this.tracks[name].currentTime = seconds;
-	}
-	
 	/**
-	 * Fade out all audio tracks
+	 * Fade out all audio instances
 	 * @param {number} time Duration (in seconds)
 	 * @returns 
 	 */
-	async fadeOut(time) {	
-		return await new Promise((resolve, reject) => {
-			if (isNaN(time)) reject();
-			for (const t of Object.values(this.tracks)) t.fade({ duration:time, targetVolume:0 });
-			setTimeout(_ => { 
-				for (const t of Object.values(this.tracks)) t.stop();
-				resolve();
-			}, time / 1000);
-		});
+	async fadeOut(time = 1) {	
+		this._fadeInfo = {
+			status    : 'fade-out',
+			duration  : time * 1000,
+			startTime : +new Date(),
+			ratio     : new RangedVar(1)
+		}			
+	}
+
+	/**
+	 * Fade in all audio instances
+	 * @param {number} time Duration (in seconds)
+	 * @returns 
+	 */
+	 async fadeIn(time = 1) {	
+		this._fadeInfo = {
+			status    : 'fade-in',
+			duration  : time * 1000,
+			startTime : +new Date(),
+			ratio     : new RangedVar(0)
+		}	
+	}
+
+	async fadeMute(time = 1) {
+		if (this._fadeInfo.status == 'in') await this.fadeOut(time);
+            else if (this._fadeInfo.status == 'out') await this.fadeIn(time);		
+	}
+
+	async loadFromFile(url) {
+		return await getJSON(url);		
+	}
+
+	/**
+	 * Automatically called by the GameLoop on every tick event
+	 * This updates the volume levels when fading in and out
+	 */
+	tick() {								
+		const f = this._fadeInfo;
+
+		if (f && !['in', 'out'].includes(f.status)) {
+			let v = (+new Date() - f.startTime) / f.duration;			
+			f.ratio.value = (f.status == 'fade-out') ? 1 - v : v;
+
+			if (f.ratio.value == 0 && f.status == 'fade-out') return f.status = 'out';
+			if (f.ratio.value == 1 && f.status == 'fade-in')  return f.status = 'in';			
+			
+			this.forSFX(sfx => { sfx.volume = sfx.volume; } );
+		}		
 	}
 }
 
-export { Sounds, SFX }
+/**
+ * Simple wrapper to creates an Audio instance (singleton) without using New keyword
+ * @param {object} engine Reference to Engine
+ * @returns {Audio} 
+ */
+const InitAudio = (engine) => {
+	return new AudioLib(engine);
+}
+
+export { InitAudio, AudioLib, AudioParams, Track, SFX }

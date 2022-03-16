@@ -27,7 +27,7 @@ class Layer {
         if ('scale' in o) {
             if (typeof o.scale == 'number') this.scale = new Vec2(o.scale, o.scale); 
                 else this.scale = Vec2.FromStruct(o.scale); 
-        } else o.scale = Vec2.One();
+        } else this.scale = Vec2.One();
 
         Engine.gameLoop.zLayers[this.zIndex].push(this);
 

@@ -32,14 +32,15 @@ const main = async () => {
         if (t == 'Step') Engine.gameLoop.step();
         if (t == 'Save As...') { saveHandle = await saveToFile(ID('editor').value); ID('filename').textContent = saveHandle.name; }
         if (t == 'Save') { await saveToFile(ID('editor').value, saveHandle); }
-        if (t == 'Load') { const file = await getFromFile(); if (file) ID('editor').value = file.data; saveHandle = file.handle; ID('filename').textContent = file.handle.name; }
+        if (t == 'Load') { const file = await getFromFile(); console.log('Loaded file:', file.handle.name); if (file) ID('editor').value = file.data; saveHandle = file.handle; ID('filename').textContent = file.handle.name; compile(); }
         if (t == 'Clear') { ID('editor').value = ''; }
     });
-    AE.addEvent(ID('divider'), 'mousedown', async (e) => {         
+    AE.addEvent(ID('divider'), 'mousedown', async (e) => {    
         resize.downPos = new Vec2(e.clientX, e.clientY);       
         resize.down    = true;
     });
-    AE.addEvent(window, 'mouseup', async (e) => { if (resize.down) Engine._onResizeWindow(); resize.down = false; });
+    AE.addEvent(window, 'keyup', async (e) => updateCaretPos());
+    AE.addEvent(window, 'mouseup', async (e) => { if (resize.down) Engine._onResizeWindow(); resize.down = false; updateCaretPos();});
     AE.addEvent(window, 'mousemove', async (e) => {         
         if (resize.down) {
             const delta = Vec2.Sub(new Vec2(e.clientX, e.clientY), resize.downPos);
@@ -51,16 +52,41 @@ const main = async () => {
         resize.downPos = new Vec2(e.clientX, e.clientY);       
         resize.down    = true;
     });
-    AE.addEvent(ID('editor'), 'input', (e) => { 
-        const f = PE.fromEditorContent(ID('editor').value);
-        if (f != null) {
-            const t = String(f);
-            ID('statusbar').textContent = t.substring(0, t.indexOf('>>>'));
-        } else
-            ID('statusbar').textContent = '';
-    });
+    AE.addEvent(ID('editor'), 'input', (e) => compile());
 
     Engine.start();
+}     
+
+const updateCaretPos = () => {
+    const lines = ID('editor').value.split('\n');
+    const s = ID('editor').selectionStart;
+    let pos  = 0;
+    let lnum = 0;
+    let pl   = 0;
+    for (const l of lines) {
+        const col = (s - pos - l.length);
+        
+        if (s < pos) { 
+            console.log(s - pos + pl - lnum + 1)
+            ID('caretpos').textContent = col + ':' + lnum; return 
+        }
+        pl = l.length;
+        pos += l.length;
+        //console.log(s, pos - l.length)
+        
+        lnum++;
+    }
+    //ID('caretpos').textContent =     
+}
+
+const compile = () => {
+    console.log('Compiling...');
+    const f = PE.fromEditorContent(ID('editor').value);
+    if (f != null) {                                                    // compile error
+        const t = String(f);
+        ID('statusbar').textContent = t.substring(0, t.indexOf('>>>'));
+    } else
+        ID('statusbar').textContent = '';
 }
 
 /**
@@ -89,7 +115,7 @@ async function getFromFile() {
     }
     const fileHandles = await window.showOpenFilePicker(pickerOpts);
     if (fileHandles.length == 1) {
-        const contents = await fileHandles[0].getFile();    
+        const contents = await fileHandles[0].getFile();            
         const data     = await contents.text();
         return { data, handle:fileHandles[0] }
     }

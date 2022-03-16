@@ -30,6 +30,8 @@ class CanvasSurface {
 		this.ctx 	  = canvas.getContext('2d', o.flags);
 		this.canvas   = canvas;
 		
+		this.isCanvasSurface = true;
+		
 		this.pixelSmooth = ('pixelSmooth' in o) ? o.pixelSmooth : true;		
 	}
 
@@ -88,6 +90,11 @@ class CanvasSurface {
 		}		
 	}
 	
+	/**
+	 * Creates a CanvasSurface instance using image dimensions and draws the image on it.
+	 * @param {HTMLImageElement} img 
+	 * @returns {CanvasSurface} New canvasSurface instance
+	 */
 	static FromImage(img) {
 		const dims = new Vector2(img.naturalWidth, img.naturalHeight);
 		const s    = new CanvasSurface({ dims });		
@@ -95,15 +102,22 @@ class CanvasSurface {
 		return s;
 	}
 	
+	/**
+	 * Clears the canvasSurface (makes all pixels fully transparent)
+	 */
 	clear() {
 		this.ctx.clearRect(0, 0, this.width, this.height);
 	}
 	
-	/*
-		Draw a line between two Vector2 points (or point-like objects)
-	*/
-	drawLine(p0, p1, style) {		// p0:Vector2, p1:Vector2, style:string
-		if (style) this.ctx.strokeStyle = style;		
+	/**
+	 * Draws a line between points p0 and p1. Note, that since you can't fill a line, the stroke style MAY be given directly as a string.
+	 * @param {Vector2} p0 
+	 * @param {Vector2} p1 
+	 * @param {string|object} [style] Style as a string or as an object property
+	 * @param {string=} style.stroke
+	 */
+	drawLine(p0, p1, style) {		
+		if (style) this.ctx.strokeStyle = style.stroke ? style.stroke : style;		
 		this.ctx.beginPath();
 		this.ctx.moveTo(~~p0.x + 0.5, ~~p0.y + 0.5);
 		this.ctx.lineTo(~~p1.x + 0.5, ~~p1.y + 0.5);
@@ -119,7 +133,8 @@ class CanvasSurface {
 	 * @param {number} [o.width=1] Arrow thickness
 	 * @param {number} [o.head=10] Arrow head size (in pixels)
 	 * @param {number} [o.sweep=0.75] Sweep angle strength of the arrow
-	 * @param {string} style 
+	 * @param {string|object} [style] Style as a string or as an object property
+	 * @param {string=} style.stroke	 
 	 */
 	drawArrow(p, o, style) {	
 		const h = (o.sweep ? o.sweep : 0.75) * Math.PI;
@@ -127,7 +142,7 @@ class CanvasSurface {
 		const a = o.angle;
 		const w = ('width' in o) ? o.width : 1;
 
-		if (style) this.ctx.strokeStyle = style;		
+		if (style) this.ctx.strokeStyle = style.stroke ? style.stroke : style;		
 		this.ctx.beginPath();		
 
 		let ps, t, b;
@@ -160,11 +175,15 @@ class CanvasSurface {
 		} else 
 			this.ctx.stroke();		
 	}
-	/*
-		Draw a line segment on canvas. Accepts Types.LineSegment or an array of coordinates (x0, y0, x1, y1) as parameters.
-	*/
-	drawSeg(line, style) {		// line:Types.LineSegment|[number], style:String
-		if (style) this.ctx.strokeStyle = style;		
+	
+	/**
+	 * Draw a line segment on canvas. Accepts Types.LineSegment or an array of coordinates (x0, y0, x1, y1) as parameters.
+	 * @param {Types.LineSegment|[number]} line 
+	 * @param {string|object} [style] Style as a string or as an object property
+	 * @param {string=} style.stroke	 
+	 */
+	drawSeg(line, style) {	
+		if (style) this.ctx.strokeStyle = style.stroke ? style.stroke : style;		
 		this.ctx.beginPath();
 		if (Array.isArray(line)) {
 			this.ctx.moveTo(line[0], line[1]);
@@ -179,8 +198,9 @@ class CanvasSurface {
 	/**	
 	 * Draw a polygon on canvas. Accepts an array of Vector2 as parameter
 	 * @param {[Vector2]} points 
-	 * @param {string} p.stroke Stroke (outline color)
-	 * @param {string=} p.fill Fill color	  
+	 * @param {object} [p] Options style object
+	 * @param {string} [p.stroke='black'] Stroke (outline color)
+	 * @param {string=} p.fill Optional fill color	   
 	 */
 	drawPoly(points, p = { stroke:'black' }) {	
 		this.ctx.beginPath();
@@ -201,8 +221,9 @@ class CanvasSurface {
 	 * Draw a polygon on canvas with a cutout. Accepts two arrays of Vector2 as parameter. First is the filled shape, seconds in the cutout.
 	 * @param {[Vector2]} fillPoints
 	 * @param {[Vector2]} cutPoints
-	 * @param {string} p.stroke Stroke (outline color)
-	 * @param {string=} p.fill Fill color	  
+	 * @param {object} [p] Options style object
+	 * @param {string} [p.stroke='black'] Stroke (outline color)
+	 * @param {string=} p.fill Optional fill color	  
 	 */
 	 drawPolyCut(fillPoints, cutPoints, p = { stroke:'black' }) {	
 		if (!Array.isArray(fillPoints) || fillPoints.length < 2 || !Array.isArray(cutPoints) || cutPoints.length < 2) return;
@@ -223,7 +244,7 @@ class CanvasSurface {
 		this.ctx.closePath();		
 		if (p.stroke)	{ this.ctx.strokeStyle = p.stroke; this.ctx.stroke(); }
 		if (p.fill)		{ this.ctx.fillStyle   = p.fill;   this.ctx.fill(); }
-	 }
+	}
 	
 	drawPolyInt(points, p = { stroke:'black' }) {		// points:[Vector2], ?p:{ ?stroke:String, ?fill:String }
 		this.ctx.beginPath();
@@ -239,10 +260,14 @@ class CanvasSurface {
 		if (p.stroke)	{ this.ctx.strokeStyle = p.stroke; this.ctx.stroke(); }
 		if (p.fill)		{ this.ctx.fillStyle   = p.fill;   this.ctx.fill(); }
 	}
-	
-	/*
-		Draw a quad on canvas. Accepts an array of Number as parameter
-	*/
+		
+	/**
+	 * Draw a quad on canvas. Accepts an array of Number as parameter
+	 * @param {[Vector2]} points 	 
+	 * @param {object} [p] Options style object
+	 * @param {string} [p.stroke='black'] Stroke (outline color)
+	 * @param {string=} p.fill Fill color	  
+	 */
 	drawQuad(points, p = { stroke:'black' }) {		// points:[Number], ?p:{ ?stroke:String, ?fill:String }
 		this.ctx.beginPath();
 		
@@ -285,9 +310,9 @@ class CanvasSurface {
 	 * @param {number} y 
 	 * @param {number} w Width
 	 * @param {number} h Height 
-	 * @param {Object} [p={stroke="black"}] Parameters object { stroke, fill [optional]] }
-	 * @param {string} p.stroke Stroke (outline color)
-	 * @param {string=} p.fill Fill color	 
+	 * @param {object} [p] Options style object
+	 * @param {string} [p.stroke='black'] Stroke (outline color)
+	 * @param {string=} p.fill Optional fill color	  
 	 */
 	drawRectangle(x, y, w, h, p = { stroke:'black' }) {
 		if (p.fill) { 
@@ -303,9 +328,9 @@ class CanvasSurface {
 	/**
 	 * Draws a rectangle on the canvas
 	 * @param {Types.Rect} r 
-	 * @param {object} p 
-	 * @param {string} p.stroke Stroke (outline color)
-	 * @param {string=} p.fill Fill color	  
+	 * @param {object} [p] Options style object
+	 * @param {string} [p.stroke='black'] Stroke (outline color)
+	 * @param {string=} p.fill Optional fill color	  
 	 */
 	drawRect(r, p = { stroke:'black' }) {
 		if (p.fill) { 
@@ -322,10 +347,10 @@ class CanvasSurface {
 	 * @desc Draws a circle on the canvas
 	 * @param {Vector2} center
 	 * @param {Number} radius
-	 * @param {Object} [p={stroke="black"}] Parameters object { stroke, fill [optional] }
-	 * @param {string} p.stroke Stroke (outline) color
-	 * @param {string=} p.fill Fill color 	 
-	 */			
+	 * @param {Object} [p] Parameters object { stroke, fill [optional] }
+	 * @param {string} [p.stroke="black"] Stroke (outline) color
+	 * @param {string} [p.fill] Fill color 	 
+	*/			
 	drawCircle(center, radius, p = { stroke:'black' }) {		// center:Vector2, radius:Number, ?p:{ ?stroke:String, ?fill:String }
 		this.ctx.beginPath();		
 		this.ctx.arc(center.x, center.y, radius, 0, Math.PI * 2);			

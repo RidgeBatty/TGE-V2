@@ -117,7 +117,7 @@ class Actor extends Root {
 		 * @member {Object} 
 		 * 
 		*/
-		this.flags = Object.assign(this.flags,{ isDestroyed:false, isFlipbookEnabled:false, isGravityEnabled:false, isPhysicsEnabled:false, hasEdges:true });
+		this.flags = Object.assign(this.flags,{ isDestroyed:false, isFlipbookEnabled:false, isGravityEnabled:false, isPhysicsEnabled:false, hasEdges:true, mouseEnabled:false });
 
 		/**
 		 * @member {number}
@@ -145,7 +145,6 @@ class Actor extends Root {
 		this._target     = null;											// follow/tracking target (actor or some object with a position)
 		this._follower   = null;
 		this.weapons     = [];		
-		this.children    = [];												// child nodes of this actor		
 		this._zIndex     = ('zIndex' in o) ? o.zIndex : 1;					// render order
 		this.origin      = new Vec2(-0.5, -0.5);					  // relative to img dims, normalized coordinates - i.e. { -0.5, -0.5 } = center of the image
 		this._renderPosition = Vec2.Zero();		
@@ -206,9 +205,15 @@ class Actor extends Root {
 	}
 	
 	addChild(o = {}) {
-		const c = new ChildActor(this, o);
+		const c = new Actor(o);
+		c.parent = this;
 		this.children.push(c);
 		return c;
+	}
+    	
+	getChildByName(name) {
+		for (const c of this.children) if (c.name == name) return c;
+		return null;
 	}
 
 	/**
@@ -218,15 +223,6 @@ class Actor extends Root {
 	addCollider(o) {
 		this.hasColliders = true;
 		this.colliders.add(o);
-	}
-	
-	getChildByName(name) {
-		for (const c of this.children) if (c.name == name) return c;
-		return null;
-	}
-	
-	setVelocity(v) {	// v:Vector2
-		this.velocity.set(v);
 	}
 	
 	forWeapons(cb) {
@@ -252,8 +248,9 @@ class Actor extends Root {
 	
 	destroy() { 		
 		if (!this.flags.isDestroyed) {
-			this.flags.isDestroyed = true;
 			this._fireEvent('destroy');			
+			this.release();
+			this.flags.isDestroyed = true;			
 		}
 	}	
 	
@@ -265,7 +262,7 @@ class Actor extends Root {
 	 */	
 	clone(actor) {
 		if (!(actor instanceof Actor)) return;		
-		this.createParams = actor.createParams;
+		this.createParams = Object.assign({}, actor.createParams);
 		
 		this.owner       = actor.owner;						// by reference
 		this.position    = actor.position.clone();		
@@ -318,56 +315,55 @@ class Actor extends Root {
 	}	
 
 	addImpulse(v) {
-		if (this.velocity) {
-			this.velocity.add(v);
-			var len = this.velocity.length;
-			if (len > this.movement.maxVelocity) this.velocity.normalize().mulScalar(this.movement.maxVelocity);
-		}		
+		this.velocity.add(v);
+		var len = this.velocity.length;
+		if (len > this.movement.maxVelocity) this.velocity.normalize().mulScalar(this.movement.maxVelocity);	
 	}
 
 	/**
 	 *	Update method draws all the graphics needed to display this actor with minimal possible overhead
 	 */	
 	update() {		
-		if (this.isVisible) {
-			const c = Engine.renderingSurface.ctx;
+		if (!this.isVisible) return;
+
+		const c = Engine.renderingSurface.ctx;
+		
+		let img = this.img;		
+		
+		c.globalAlpha = this.opacity;
+
+		if (this.flipbook) {
+			this.flipbook.update();						// select a frame from a flipbook if the actor has one specified			
+
+			const n = this.flipbook.customRender;
 			
-			let img = this.img;		
-			
-			c.globalAlpha = this.opacity;
-
-			if (this.flipbook) {
-				this.flipbook.update();						// select a frame from a flipbook if the actor has one specified			
-
-				const n = this.flipbook.customRender;
-				
-				if (this.flipbook.isAtlas && n.img) {
-					c.setTransform(this.scale, 0, 0, this.scale, this.position.x, this.position.y);
-					c.scale(this.renderHints.mirrorX ? -1 : 1, this.renderHints.mirrorY ? -1 : 1);
-					c.rotate(this.rotation);					
-					c.drawImage(n.img, n.a * n.w, n.b * n.h, n.w, n.h, -n.w / 2, -n.h / 2, n.w, n.h);
-					img = null;	
-				} 
-
-				if (!this.flipbook.isAtlas && n.img) {		// let the rendering go through to code below
-					this.size.x = n.w;
-					this.size.y = n.h;
-					img = n.img;
-				}
-			}
-					
-			if (img) {										// if the Actor has an image attached, directly or via flipbook, display it
+			if (this.flipbook.isAtlas && n.img) {
 				c.setTransform(this.scale, 0, 0, this.scale, this.position.x, this.position.y);
 				c.scale(this.renderHints.mirrorX ? -1 : 1, this.renderHints.mirrorY ? -1 : 1);
-				c.rotate(this.rotation);				
-				c.drawImage(img, -this.size.x / 2, -this.size.y / 2);			
+				c.rotate(this.rotation);					
+				c.drawImage(n.img, n.a * n.w, n.b * n.h, n.w, n.h, -n.w / 2, -n.h / 2, n.w, n.h);
+				img = null;	
+			} 
+
+			if (!this.flipbook.isAtlas && n.img) {		// let the rendering go through to code below
+				this.size.x = n.w;
+				this.size.y = n.h;
+				img = n.img;
 			}
-
-			c.globalAlpha = 1;
-
-			if (this.hasColliders && this.renderHints.showColliders && this.owner.flags.showColliders) this.colliders.update();			
-			if (this.owner.flags.showBoundingBoxes && this.renderHints.showBoundingBox && this.onDrawBoundingBox) this.onDrawBoundingBox(this);
 		}
+				
+		if (img) {										// if the Actor has an image attached, directly or via flipbook, display it
+			c.setTransform(this.scale, 0, 0, this.scale, this.position.x, this.position.y);
+			c.scale(this.renderHints.mirrorX ? -1 : 1, this.renderHints.mirrorY ? -1 : 1);
+			c.rotate(this.rotation);
+			if (img.isCanvasSurface) c.drawImage(img.canvas, -this.size.x / 2, -this.size.y / 2);							
+				else c.drawImage(img, -this.size.x / 2, -this.size.y / 2);			
+		}
+
+		c.globalAlpha = 1;
+
+		if (this.hasColliders && this.renderHints.showColliders && this.owner.flags.showColliders) this.colliders.update();			
+		if (this.owner.flags.showBoundingBoxes && this.renderHints.showBoundingBox && this.onDrawBoundingBox) this.onDrawBoundingBox(this);		
 	}
 
 	/**
@@ -445,6 +441,7 @@ class Actor extends Root {
 	 *  @param {Actor} other 
 	 */	
 	testOverlaps(other) {
+		if (!this.owner.flags.collisionsEnabled) return;
 		try {
 			if (this.colliders.resolveOverlap(other)) {		// 'this' and 'other' actor are currently overlapped
 				if (this.overlaps.indexOf(other) == -1) {
@@ -474,7 +471,7 @@ class Actor extends Root {
 	 */
 
 	overlapsWith(other) {
-		if (!this.colliders || !other.colliders) return;		
+		if (!this.owner.flags.collisionsEnabled || !this.colliders || !other.colliders) return;		
 		return this.colliders.resolveOverlap(other);
 	}
 

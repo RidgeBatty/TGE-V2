@@ -60,7 +60,7 @@ class BaseUIComponent {
         if ('name' in o)  e.setAttribute('name', o.name);		
         if ('id' in o)    e.setAttribute('id', o.id);        
         if ('style in o') AE.style(e, o.style);
-        
+                
         this.elem     = e;        
     }
     /**
@@ -73,8 +73,9 @@ class BaseUIComponent {
      * @returns {BaseUIComponent}
      */
     add(o) {
-        if ('name' in o) this.children[o.name] = o;        
-        return new Constructors[o.type].className(this, o);
+        const newElem = new Constructors[o.type].className(this, o);
+        if ('name' in o) this.children[o.name] = newElem;        
+        return newElem;
     }
 
     addEvent(name, handler, eventTarget) {                
@@ -91,14 +92,29 @@ class BaseUIComponent {
     get isEnabled() {
         return getComputedStyle(this.elem).pointerEvents === 'auto' ? true : false;
     }
+
+    findByName(name) {
+        function find(node, name) {
+            if ('name' in node && node.name == name) return node;
+            for (const n of Object.value(node.children)) find(n, name);
+        }
+        return find(this, name);            
+    }
 }
 
 class HTMLUserInterface extends BaseUIComponent {
     constructor(o) {
-        super({ elem:Engine._rootElem }, { tagName:'tge-ui' });
+        const root = document.createElement('tge-ui-root');
+        const s = root.attachShadow({ mode: "closed" });
 
-        this.parent            = Engine._rootElem;        
-        this.autoReplaceParent = true;                                                  // watch for Engine._rootElem changes to automatically replace the UI root element
+        super({ elem:s }, { tagName:'tge-ui' });
+
+        this.parent = Engine._rootElem;
+        
+        this.parent.appendChild(root);
+
+
+        this.autoReplaceParent = true;                                                  // watch for Engine._rootElem changes to automatically replace the UI root element?
 
         // check if Engine.rootElem is mutated
         const config    = { childList: true };
@@ -113,6 +129,13 @@ class HTMLUserInterface extends BaseUIComponent {
         }
         const observer = new MutationObserver((e) => onMutate(this, e));
         observer.observe(Engine._rootElem, config);
+
+        // custom stylesheet
+        /*
+        const linkElem = document.createElement('link');
+        linkElem.setAttribute('rel', 'stylesheet');
+        linkElem.setAttribute('href', 'style.css');        
+        */
     }
 
     setParentElem(elem) {

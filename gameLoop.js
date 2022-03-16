@@ -71,6 +71,7 @@ class GameLoop {
 	 * 
 	 * @param {object} o 
 	 * @param {string=} o.name User defined name
+	 * @param {Actor=} o.actor Ties timer to an actor. When the actor is destroyed, the timer is also removed
 	 * @param {number} o.duration How many ticks between 
 	 * @param {number} o.repeat How many times the timer should repeat?
 	 * @param {function=} o.onTick Fires on every tick
@@ -78,9 +79,10 @@ class GameLoop {
 	 * @param {function=} o.onComplete Fires when the repeats are used up and the timer is destroyed
 	 */
 	addTimer(o) {
-		if (!('repeat' in o)) o.repeat = 1;
-		const timerObj = Object.assign({ ticksLeft : o.duration, repeatsLeft : o.repeat }, o);
-		this.timers.push(timerObj);
+		const repeatsLeft = ('repeat' in o) ? o.repeat : 1;
+		const timer = Object.assign({ ticksLeft : o.duration, repeatsLeft, isPaused:false }, o);
+		this.timers.push(timer);
+		return timer;
 	}
 
 	/**
@@ -89,13 +91,27 @@ class GameLoop {
 	clearTimers() {
 		this.timers.length = 0;
 	}
+
+	/**
+	 * Deletes a timer by name or reference.
+	 * @param {Timer|string} nameOrRef Name of the timer or reference to the timer
+	 * @returns {boolean} true if the timer was deleted
+	 */
+	deleteTimer(nameOrRef) {
+		const index = typeof (nameOrRef == 'string') ? this.timers.findIndex(e => e.name == nameOrRef) : this.timers.findIndex(e => e == nameOrRef);		
+		if (index > -1) {
+			this.timers.splice(index, 1);	
+			return true;
+		}
+	}
 	
 	/**
 	 * Loops through all actors and issues a callback
 	 * @param {function} cb 	 
 	 */
 	forActors(cb) {
-		for (const actor of this.actors) cb(actor);
+		const a = this.actors;
+		for (let i = a.length; i--;) if (a[i].flags.isDestroyed == false) cb(a[i]);
 	}
 		
 	/**
@@ -110,6 +126,9 @@ class GameLoop {
 		return list;
 	}	
 
+	findTimerByName(name) {
+		return this.timers.find(e => e.name == name);
+	}
 	/**
 	 * Loops through all actors and returns an array of actors based on their flag values	
 	 * @param {string} name 
@@ -246,8 +265,8 @@ class GameLoop {
 		if (this.onBeforeRender) this.onBeforeRender();		
 		
 		for (const layer of this.zLayers) {			
-			for (const object of layer) {
-				object.update();				
+			for (let i = 0; i < layer.length; i++) {				
+				layer[i].update();				
 			}			
 		}
 		
@@ -279,6 +298,7 @@ class GameLoop {
 				
 		// run the ticks:
 		if (this.onBeforeTick) this.onBeforeTick(this.actors);
+		if (this.engine.audio) this.engine.audio.tick();
 		for (const t of this.tickables) t.tick();
 		for (const t of this.zLayers) for (const o of t) if (o.tick) o.tick();
 		
@@ -306,7 +326,7 @@ class GameLoop {
 		}
 
 		// loop all actors in the gameloop		
-		for (let i = actorsArray.length; i--;) {			
+		for (let i = 0; i < actorsArray.length; i++) {			
 			const actor = actorsArray[i];
 
 			actor.tick();										// tick all actors (actor.tick() returns immediately if actor is destroyed)
@@ -329,7 +349,8 @@ class GameLoop {
 		} 	
 
 		// take care of destroying the actors AFTER checking for collisions, because typically actors get destroyed in collisions/overlaps			
-		for (const actor of destroyed) {
+		for (let i = 0; i < destroyed.length; i++) {			
+			const actor = destroyed[i];
 			// signal 'endoverlap' to all actors which this actor overlaps with:
 			for (const olap of actor.overlaps) {				
 				olap.overlaps = olap.overlaps.filter(e => e != actor);			// remove destroyed actor from (all the) other actors' overlaps list!				
@@ -347,19 +368,26 @@ class GameLoop {
 		// tick timers:
 		for (let i = this.timers.length; i--;) {
 			const evt = this.timers[i];
-			
-			if ('onTick' in evt) evt.onTick(evt); 
 
-			evt.ticksLeft--;			
-			if (evt.ticksLeft == 0) { 						
-				if ('onRepeat' in evt) evt.onRepeat(evt); 					
-				
-				evt.repeatsLeft--;		
-				evt.ticksLeft = evt.duration;
-				
-				if (evt.repeatsLeft == 0 && evt.ticksLeft) {
-					this.timers.splice(i, 1); 
-					if ('onComplete' in evt) evt.onComplete(evt); 
+			if ('actor' in evt && evt.actor.isDestroyed) {
+				this.timers.slice(i, 1);				
+				continue;
+			}
+			
+			if (!evt.isPaused) {
+				if ('onTick' in evt) evt.onTick(evt); 
+
+				evt.ticksLeft--;			
+				if (evt.ticksLeft == 0) { 						
+					if ('onRepeat' in evt) evt.onRepeat(evt); 					
+					
+					evt.repeatsLeft--;		
+					evt.ticksLeft = evt.duration;
+					
+					if (evt.repeatsLeft == 0 && evt.ticksLeft) {
+						this.timers.splice(i, 1); 
+						if ('onComplete' in evt) evt.onComplete(evt); 
+					}
 				}
 			}
 		}

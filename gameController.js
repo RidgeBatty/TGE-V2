@@ -267,7 +267,7 @@ class PointerController {
 		}
 	}
 
-	resetJoystick = (j) => {	
+	resetJoystick(j) {	
 		j.isActive = false;
 		j.id       = null;
 		j.angle    = 0;

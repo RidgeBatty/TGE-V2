@@ -76,6 +76,7 @@ const main = async () => {
                         Engine.renderingSurface.drawCircle(e.position, 25, { stroke:'yellow' });
                         Engine.renderingSurface.drawArrow(e.position, { angle:targetAngle, length:e.movement._targetDistance, width:1, sweep:0.85, head:10 }, 'red');
                         Engine.renderingSurface.textOut(e.position.clone().add(new Vec2(30, 7)), (targetAngle / Math.PI * 180).toFixed(0)+'°', { color:'white', font:'20px arial' });
+                        Engine.renderingSurface.drawCircle()
                     }
                 }
             });

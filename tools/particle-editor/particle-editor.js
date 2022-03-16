@@ -1,6 +1,6 @@
 import * as TGE from '../../engine.js';
 import { ParticleSystem }  from '../../particles.js';
-import { getJSON } from '../../utils.js';
+import { getJSON, loadedJsonMap } from '../../utils.js';
 import '../../ext/hjson.min.js';
 
 const Engine = TGE.Engine;	
@@ -19,6 +19,7 @@ class ParticleEditor {
     }
 
     fromParams(params) {
+        console.log('Recreate the emitter');
         this.recreatePS();
 
         const emitter = this.particleSystem.addEmitter(params);                
@@ -41,12 +42,30 @@ class ParticleEditor {
     }
 
     async loadFromFile(f) {
-        const params = await getJSON(f);
-        const text   = await fetch(f).then(response => response.text());        
-
-        this._text   = text;
-
+        const params = await getJSON(f, true);
+        this._text   = loadedJsonMap.get(params).text;
         this.fromParams(params);
+    }
+
+    parse(text, filename, recreate) {        
+        const isHjson = filename.split('.').pop().toLowerCase() == 'hsjon';
+        let p;
+
+        if (isHjson) {
+            try { 
+                p = Hjson.parse(text);              
+            } catch (e) { 
+                return e;
+            }
+        } else {
+            try { 
+                p = JSON.parse(text);              
+            } catch (e) { 
+                return e;
+            }            
+        }                
+        if (recreate && p) this.params(p);
+        return p;
     }
 
     _onEmitterTick(e) {

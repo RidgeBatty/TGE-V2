@@ -1,0 +1,94 @@
+/*
+	Written by Ridge Batty (c) 2020-2021
+	Default stylesheet for engine v2
+	
+	Many arcade style games do not respond well to pixel resolution changes.
+	You should define a fixed resolution for your game, especially if it differs from PPG frame size (1152 x 648 pixels).
+*/
+
+html, body {					/* Makes sure the parent frame is fully utilized and the game will float inside it */
+	display:flex;
+	position:absolute;
+	margin:0;
+	top:0;
+	left:0;
+	right:0;
+	bottom:0;	
+	background:black;
+	justify-content:center;
+	align-items:center;
+	overflow:hidden;
+	user-select:none;
+}
+.cover {
+	position:absolute;
+	left:0;
+	top:0;
+	right:0;
+	bottom:0;
+}
+#game {					
+	position:relative;
+	width:1152px;				/* Change width/height to match your game resolution. PPG frame size is 1152 x 648 pixels (16:9) */
+	min-width:1152px;
+	height:648px;
+	min-height:648px;	
+	overflow:hidden;
+	background-color: gray;
+	zoom:1;
+	perspective: 800px;
+}
+
+#cover {
+	position: absolute;
+	z-index:2;
+	display: flex;
+	font:64px arial;
+	color:white;
+	inset:0px;
+	justify-content: center;
+	align-items: center;
+}
+#cover.fold {
+	animation: fold;
+	animation-duration: 1s;
+	animation-fill-mode: forwards;
+}
+@keyframes fold {
+	0% { transform: rotateX(0deg); opacity:1; }	
+	100% { transform: rotateX(720deg) scale(0); opacity:0; }
+}
+
+#game > .btt {
+	position:absolute;
+	width: 5em;
+	height: 5em;
+	display: flex;
+	border:1px solid gray;	
+	z-index: 1;
+	border-radius: 0.3em;
+	background-color: rgba(50,50,50,0.5);
+	color:white;
+	justify-content: center;
+	align-items: center;
+	font:14px arial;
+	transition:300ms background-color;	
+}
+#game > .btt:hover {
+	background-color: rgba(255,0,0,0.5);
+}
+#game > .btt.pressed {
+	animation-name: pressed;
+	animation-duration: 0.5s;
+}
+@keyframes pressed {
+	0%   { background-color: rgba(255,0,0,0.5); }	
+	20%  { background-color: rgba(50,50,50,0.5); }
+	40%  { background-color: rgba(255,0,0,0.5); }	
+	60%  { background-color: rgba(50,50,50,0.5); }
+	80%  { background-color: rgba(255,0,0,0.5); }	
+	100% { background-color: rgba(50,50,50,0.5); }	
+}
+#game > .btt.check-off {
+	color:black;
+}

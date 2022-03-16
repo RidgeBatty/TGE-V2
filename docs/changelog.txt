@@ -93,3 +93,7 @@ Version 2.0.7
 - To further make particle systems more robust and avoid problems with typos in property names, emitter instances are no longer extendable. 
 - If you need to add custom properties to emitters, use emitter.data object which will be ignored by the particle engine.
 - Multiple ParticleSystem instances can now be created. The engine maintains of list of all instances (Engine.gameLoop.particleSystems array)
+- Fixed particle system gravity
+- Added particle system gravity example
+- Audio subsystem update
+- Audio demo added

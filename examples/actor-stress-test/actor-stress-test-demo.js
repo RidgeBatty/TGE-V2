@@ -7,16 +7,20 @@
 */
 import * as TGE from '../../engine.js';
 import Debug from '../../tools/debug.js';
+import { preloadImages } from '../../utils.js';
+import { CanvasSurface } from '../../canvasSurface.js';
 
 const Engine = TGE.Engine;	
 const { Vector2:Vec2 } = TGE.Types;
+let ass, image;
 
-const tick = () => {
+const tick = () => {    
+    
     if (Engine.getFPS() >= 60) {
         // if frame rate is at 60fps, create a new actor at random spot on the screen and give it random velocity
         const index    = Math.floor(Math.random() * 3) + 1;
         const position = Vec2.Add(Vec2.Random().mul(Engine.dims.sub(new Vec2(32, 32))), new Vec2(16, 16));
-        const asteroid = Engine.addActor('actor', { name:'asteroids', imgUrl:`img/asteroid${index}.png`, position });
+        const asteroid = Engine.addActor('actor', { name:'asteroids', img:image, position });
         asteroid.velocity = Vec2.RandomDir();
         asteroid.rotation = Vec2.RandomDir().toAngle();
         asteroid.scale    = 0.1 + Math.random() * 0.1;
@@ -38,6 +42,9 @@ const tick = () => {
 }
 
 const main = async () => {        
+    ass   = await preloadImages({ urls:[`img/explosion.png`]});
+    image = CanvasSurface.FromImage(ass[0]);
+
     // First let's set up the engine        
     Engine.setRootElement('game');              
     Engine.setFlags({ hasEdges:false, hasRenderingSurface:true });

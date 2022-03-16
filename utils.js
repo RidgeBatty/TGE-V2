@@ -204,21 +204,24 @@ const randomInRange = (arr) => {
 	return Math.random() * Math.abs(arr[0] - arr[1]) + arr[0];
 }	
 
+/**
+ * loadedJsonMap stores the url's and raw text of the loaded (h)json files. 
+ * Why? Because getJson() promise can't return multiple parameters + most of the time this additional data is not needed + the signature would change if the getJSON() returned an object
+ */
+const loadedJsonMap = new WeakMap();
+
 const getJSON = (url, getText) => {
 	return new Promise(async (resolve, reject) => {		
 		try {
 			let text;
-			if (url.split('.').pop() == 'hjson') {
-				const o = await fetch(url)
-					.then(response => { const t = response.text(); if (getText) text = t; return t; })
-					.then(text => Hjson.parse(text));
-				resolve(o, text);
-			} else {
-				const o = await fetch(url)
-					.then(response => { const t = response.text(); if (getText) text = t; return t; })
-					.then(text => JSON.parse(text));
-				resolve(o, text);
-			}
+			const isHjson = (url.split('.').pop() == 'hjson');
+			fetch(url)
+				.then(response => response.text())
+				.then(asText => { text = asText; return isHjson ? Hjson.parse(text) : JSON.parse(text); })
+				.then(json => {
+					if (getText) loadedJsonMap.set(json, { text, url });
+					resolve(json);
+				});			
 		} catch (e) {
 			reject(e, url);			
 		}
@@ -328,6 +331,7 @@ const Mixin = (target, source, createParams) => {
 }
 	
 export { 
+	loadedJsonMap,
 	delay, 
 	shuffle, 
 	preloadImages, 

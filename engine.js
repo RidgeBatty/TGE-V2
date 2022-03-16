@@ -130,7 +130,8 @@ class TinyGameEngine {
 			if (this._mouse.cb_move) this._mouse.cb_move({ 
 				position: this._mouse.position.clone(), 
 				dragging: this._mouse.dragging, 
-				delta: Vector2.Sub(this._mouse.position, this._mouse.dragStart) 
+				delta: Vector2.Sub(this._mouse.position, this._mouse.dragStart),
+				target: e.target
 			});
 		}
 		const onMouseDown = (e) => {
@@ -143,7 +144,7 @@ class TinyGameEngine {
 			m.left       = e.button == 0;
 			m.right      = e.button == 2;
 			m.dragging   = true;
-			if (m.cb_down) m.cb_down({ position: m.position.clone() });
+			if (m.cb_down) m.cb_down({ position: m.position.clone(), button:e.button, target: e.target });
 		}
 
 		const onMouseUp = (e) => { 
@@ -155,10 +156,10 @@ class TinyGameEngine {
 			m.left       = e.button != 0;
 			m.right      = e.button != 2;
 			m.dragging   = false;
-			if (m.cb_up) m.cb_up({ position : m.position.clone(), delta: Vector2.Sub(m.position, m.dragStart) });
+			if (m.cb_up) m.cb_up({ position : m.position.clone(), delta: Vector2.Sub(m.position, m.dragStart), button:e.button, target: e.target });
 
 			// to-do: optimize with a container that has only actors which have 'click' event installed
-			for (const actor of this.gameLoop.actors) {
+			for (const actor of this.gameLoop.actors) if (actor.flags.mouseEnabled) {
 				for (const evt of actor._events.click) {
 					actor._clickEventHandler({ name:'click', button:e.button, position:Engine.mousePos.clone() });
 				}

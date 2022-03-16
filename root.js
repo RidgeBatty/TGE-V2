@@ -9,6 +9,7 @@
 */
 import { Collider } from "./collider.js";
 import * as Types from './types.js';	
+import { TNode } from './tnode.js';
 
 const Vector2 = Types.Vector2;
 
@@ -43,29 +44,19 @@ const HitTestFlag = {
 /**
  	@desc Root class for Objects which have a transform and collisions	
  */
-class Root {
+class Root extends TNode {
 	/**	
 	 * @param {Object} [o={}] Parameters object 
 	 * @param {GameLoop} o.owner Gameloop which owns this Root object
 	 * @param {Vector2} o.position Position of the Root
 	 */
-	constructor(o = {}) {
-		if ('scale' in o && !AE.isNumeric(o.scale)) throw 'Parameter "scale" must be a Number';
+	constructor(o = {}) {		
+		super(o);
 		
 		this.owner        = o.owner;		
 		this.createParams = Object.assign({}, o);
 		this.createParams.toString = function(){ return '[ActorCreateParams]' };
-				
-		/**
-		 * @type {Vector2} Position of the Root
-		 */
-		this.position     = ('position' in o) ? o.position : Vector2.Zero();
-		this.rotation     = ('rotation' in o) ? o.rotation : 0;		
-		this.scale        = ('scale' in o) ? o.scale : 1;		
-		
-		this.velocity     = Vector2.Zero();		
-		this.pivot		  = Vector2.Zero(); // middle of the bounding box
-		
+						
 		this.data         = ('data' in o) ? o.data : {}; // user data	
 		this.flags        = { hasColliders:false };
 		this.renderHints  = { showColliders:false };

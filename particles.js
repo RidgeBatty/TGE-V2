@@ -22,6 +22,7 @@ import { EventBroadcaster } from './eventBroadcaster.js';
 import { wrapBounds, preloadImages, imgDims } from './utils.js';
 import { Polygon } from './shapes.js';
 import { Vector2 } from './types.js';
+import { getJSON } from './utils.js';
 
 const Vec2    = Types.Vector2;
 const Color   = Types.Color;
@@ -560,6 +561,7 @@ class ParticleSystem {
 
 		this.gameLoop = Engine.gameLoop;
 		this.emitters = [];	
+		this.stash    = new Map();														// stash contains a list of parameter objects loaded from urls by loadFromFile() method
 	}
 
 	destroy() {
@@ -601,8 +603,32 @@ class ParticleSystem {
 		for (let e of this.emitters) e.update();				
 	}
 	
-	loadFromFile(hjson) {
-		// TO-DO return a promise
+	/**
+	 * The first parameter is either a string or an array of strings which contain the url to the file(s). Optional second parameters is a path prepended to all urls.
+	 * @param {string|[string]} urls 
+	 * @param {string} [path=string]
+	 * @returns {[object]} list of loaded json objects
+	 */
+	loadFromFile(urls, path = '') {
+		return new Promise((resolve, reject) => {
+			const jobs  = [];
+			var   files = (typeof urls == 'string') ? [urls] : urls;
+			for (const url of files) {
+				jobs.push(getJSON(path + url));
+			}
+			Promise.all(jobs)
+			.then(values => { 
+				for (const v of values) {
+					const name = v.name;
+					if (this.stash.has(name)) throw 'Duplicate stash key: "' + name + '"'; 
+					this.stash.set(name, v);
+				}
+				return resolve(this.stash);
+			})
+			.catch(e => {
+				return reject(e);
+			});
+		});
 	}
 	
 	/**
