@@ -3,7 +3,7 @@ Clone the repository and start making games. Examples folder contains code snipp
 
 # Motivation
 There are many excellent frameworks and engines for making browser games. But sometimes the existing solutions do not tick all the boxes. Couple of things affected the birth of TGE.
-- Learning experience. First of all I wanted to understand how browser works as a gaming platform. Everything from real time audio processing to gamepad controls. While existing products may help with that, it does not come close to walking the walk yourself.
+- Learning experience. First of all I wanted to understand how browser works as a gaming platform. Everything from real time audio processing to gamepad controls. While poking around existing game engines will probably do the same thing, it does not come close to walking the walk yourself.
 - Small footprint. Some of the existing solutions are jam packed with features and it shows. The footprint can be quite substantial. TGE is supposed to do all you need in less about 250kB code (compressed).
 - Retro games. While there are indeed existing 2D and retro game engines, it is a much narrower market than ALL javascript game engines. In addition, using engines which render all game assets in 3D to mimic 2D is not exactly the same thing.
  
