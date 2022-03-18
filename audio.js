@@ -291,14 +291,17 @@ class AudioLib {
 	 * @returns 
 	 */
 	async spawn(name, playParams) {
-		const track = this.tracks[name];
-		if (track) {
-			const sfx = new SFX({ track });
-			await sfx.init();
-			track.instances.push(sfx);			
-			if (playParams) sfx.play(playParams === true ? {} : playParams);
-			return sfx;
-		}
+		return new Promise(async (resolve, reject) => {
+			const track = this.tracks[name];
+			if (track) {
+				const sfx = new SFX({ track });
+				await sfx.init();
+				track.instances.push(sfx);			
+				if (playParams) sfx.play(playParams === true ? {} : playParams);
+				resolve(sfx);
+			}
+			reject('Track named ' + name + ' not found.');
+		});
 	}
 	
 	/**

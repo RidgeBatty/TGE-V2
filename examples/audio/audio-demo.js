@@ -27,7 +27,7 @@ const launchRocket = () => {
     m.velocity.add(Vec2.Up());
     m.data.pan = missileId / 5 - 1;
 
-    Engine.audio.spawn('launch', { pan:m.data.pan });
+    Engine.audio.spawn('launch', { pan:m.data.pan }).then(r => console.log(r));
 
     Engine.gameLoop.addTimer({ actor:m, duration:180, onComplete:(timerEvent) => { 
         const actor = timerEvent.actor;        
@@ -45,7 +45,8 @@ const onClick = async (e) => {
         const audio = InitAudio(Engine);
         const data  = await audio.loadFromFile('./sfx/sounds.hjson');                              
         await audio.addBunch(data);     
-        const i = await audio.spawn('theme', true);                         // play theme music        
+        const i = await audio.spawn('theme', true);                         // play theme music                
+
     }
     
     if (e.target.id == 'mute')        { buttonPress('mute'); Engine.audio.mute(); }

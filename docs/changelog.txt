@@ -97,3 +97,7 @@ Version 2.0.7
 - Added particle system gravity example
 - Audio subsystem update
 - Audio demo added
+
+-----------------------------------------------------------------
+Version 2.0.8
+- Fixed: Audio SFX now returns a promise
