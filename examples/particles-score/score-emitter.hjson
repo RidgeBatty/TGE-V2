@@ -1,0 +1,27 @@
+{	                                                                        # at the root level you define the emitter settings
+    name: 'score'                                                          # user defined name, ParticleSystem.emitterByName() can be used to find a named emitter
+    type : 'point'                                                         # circle emitter has several additional parameters (optional)    
+    maxDrawCount: 100                                                       # draw max. 100 particles at any given time
+    emitSpeed: 0                                                           # emit 1 particles/frame        
+    initParticle: {                                                         # how particles are initialized at birth?
+        textSettings: {
+            font: 'bold 32px arial'
+            color: 'white'
+            textAlign: 'center'            
+        }
+        textContent: '100'        
+        life: 90        
+        speed: 2
+    }	
+    evolveParticle: {                                                       # how individual particles evolve during EVERY tick?
+        opacity: 'lifetime'                                                 # opacity tracks lifetime of particles (fade out)
+        tint: {
+            targetColor : 'red'                                             # this gives more control over the initial particle color (initParticle.shape.fill)
+            colorStops : ['white', 'yellow', 'orange',                      # this does not allow any programming of the colors (this overrides tint.targetColor)
+            'orange', 'red', 'red', 'maroon', 'black'],                     
+        }
+        force : { x:0, y:0.01 },                                               # add constant force to particles        
+        scale : 1.005                                                       # multiply particle scale by this scalar                
+    }        
+    zIndex :1                                                               # define the render layer of the effect
+}

@@ -117,7 +117,7 @@ class Actor extends Root {
 		 * @member {Object} 
 		 * 
 		*/
-		this.flags = Object.assign(this.flags,{ isDestroyed:false, isFlipbookEnabled:false, isGravityEnabled:false, isPhysicsEnabled:false, hasEdges:true, mouseEnabled:false });
+		this.flags = Object.assign(this.flags,{ isDestroyed:false, isFlipbookEnabled:false, isGravityEnabled:false, isPhysicsEnabled:false, hasEdges:true, mouseEnabled:false, boundingBoxEnabled:false });
 
 		/**
 		 * @member {number}
@@ -240,10 +240,12 @@ class Actor extends Root {
 	}
 
 	_clickEventHandler(e) {		// called by Engine when mouseup is fired
-		if (this.AABB) {
-			e.isInsideAABB = this.AABB.isPointInside(e.position);
-		}
-		this._fireEvent('click', e);
+		if (this.hasColliders) {						
+			if (this.colliders.isPointInside(e.position)) {
+				const hitPosition = e.position;				
+				this._fireEvent('click', { hitPosition });
+			}
+		}		
 	}
 	
 	destroy() { 		
@@ -374,6 +376,8 @@ class Actor extends Root {
 		
 		this._fireEvent('tick');
 
+		if (this.flags.boundingBoxEnabled) this._updateBoundingBox();
+
 		if (this.flipbook) this.flipbook.tick();										// select a frame from a flipbook if the actor has one specified			
 		
 		// update location by adding velocity:
@@ -432,6 +436,19 @@ class Actor extends Root {
 		
 		// finally move by velocity
 		this.moveBy(this.velocity);		
+	}
+
+	_updateBoundingBox() {
+		const p1  = new Vec2(-this.size.x / 2, -this.size.y / 2);			
+		const p2  = new Vec2(this.size.x / 2, -this.size.y / 2);			
+		const p3  = new Vec2(this.size.x / 2, this.size.y / 2);			
+		const p4  = new Vec2(-this.size.x / 2, this.size.y / 2);
+
+		const r   = this.transformPoints([p1, p2, p3, p4]);
+		const smx = r.map(e => e.x);
+		const smy = r.map(e => e.y);
+		
+		this.AABB = new Types.Rect(Math.min(...smx), Math.min(...smy), Math.max(...smx), Math.max(...smy));				
 	}
 
 	/** 

@@ -48,11 +48,13 @@ class Layer {
         }
 	}
 
-	update() {
-        if (this._img) Engine.renderingSurface.drawImageRepeat({
+	update() {        
+        if (!this.img) return;
+        Engine.renderingSurface.resetTransform();        
+        Engine.renderingSurface.drawImageRepeat({
 			targetRect: this.viewport,
 			position: this.position,
-			img: this._img,
+			img: this.img,
 			repeat: this.repeat,
 			size: this.size,
 			scale: this.scale,

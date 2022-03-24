@@ -288,7 +288,7 @@ class AudioLib {
 	 * Spawns new audio SFX instance
 	 * @param {string} name 
 	 * @param {object|boolean} playParams Play parameters object OR boolean 'true' to start playing with track's default settings
-	 * @returns 
+	 * @returns {promise}
 	 */
 	async spawn(name, playParams) {
 		return new Promise(async (resolve, reject) => {

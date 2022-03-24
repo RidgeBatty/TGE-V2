@@ -484,10 +484,10 @@ class CanvasSurface {
 	 */
 	textOut(pos, text, params) {
 		if (params) {
-			if ('font' in params)  this.ctx.font      = params.font;
+			if ('font' in params)  this.ctx.font = params.font;
 			if ('color' in params) this.ctx.fillStyle = params.color;
 			if ('textAlign' in params) this.ctx.textAlign = params.textAlign;
-			if ('textBaseline' in params) this.ctx.textBaseline = params.textBaseline;
+			if ('textBaseline' in params) this.ctx.textBaseline = params.textBaseline;			
 		}
 		this.ctx.fillText(text, pos.x, pos.y);
 	}

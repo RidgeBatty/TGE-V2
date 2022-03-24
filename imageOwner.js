@@ -44,8 +44,9 @@ class ImageOwner {
 	 */
 	loadImage(o) {                
 		if ('imgUrl' in o) {            
-			preloadImages({ urls:[o.imgUrl] }).then((images) => {                
-				this.img = images[0];				
+			preloadImages({ urls:[o.imgUrl] }).then((images) => {                                
+                this._img = images[0];				                                
+                this._determineImageSize();
 			})						
 		}
 	}	

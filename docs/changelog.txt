@@ -101,3 +101,9 @@ Version 2.0.7
 -----------------------------------------------------------------
 Version 2.0.8
 - Fixed: Audio SFX now returns a promise
+
+-----------------------------------------------------------------
+Version 2.0.9
+- Added Particle-Score demo
+- Improved particle system
+- Fixed bug in layers.js where renderingSurface transform was not reset before drawing the image

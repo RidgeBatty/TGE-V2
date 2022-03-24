@@ -273,7 +273,7 @@ class Emitter extends EventBroadcaster {
 		}				
 	}
 	
-	emitParticles() {
+	getSpawnCount() {
 		this._emitFrac += this.params.emitSpeed;
 		let emit        = this._emitFrac | 0;					// how many particles to emit on current frame?
 					
@@ -284,115 +284,129 @@ class Emitter extends EventBroadcaster {
 		
 		return emit;
 	}
-	
-	spawn() {		
-		const init   = this.params.initParticle;				// information about the particle initial state		
-		let emit     = this.emitParticles();		
+
+	createParticle(p) {
+		const init = this.params.initParticle;				// information about the particle initial state		
+		
+		switch (this.params.type) {	// using emitter parameters:
+			case 'box': {																	// size:vec2
+				p.position.x = Math.random() * this.size.x - this.size.x / 2;
+				p.position.y = Math.random() * this.size.y - this.size.y / 2;
+				break;
+			}
+			case 'circle': {																// start and end angle (to create an arc), innerRadius, radius					
+				let a        = (this.startAngle != null) ? (Math.random() * Math.PI * this.endAngle + Math.random() * Math.PI * this.startAngle) : Math.random() * Math.PI * 2;		
+				if ('arc' in this) {
+					// TO-DO
+				}
+
+				const r      = Math.random() * (this.radius - this.innerRadius) ** 2;
+				const ir     = this.innerRadius ** 2;
 				
+				p.position.x =  Math.sin(a) * Math.sqrt(r + ir);
+				p.position.y = -Math.cos(a) * Math.sqrt(r + ir);
+				break;
+			}
+			case 'point': p.position = Vec2.Zero();	
+		}
+
+		if (this.pivot) p.position.add(this.pivot.clone().sub(this.position).rotate(-this.angle * Math.PI));
+		
+		// if particle has img defined, use it - otherwise try to fall back to img defined in emitter
+		p.img    = ('img' in init) ? init.img : this.img;
+
+		p.scale  = 1;
+		p.scaleX = 1;
+		p.scaleY = 1;
+
+		if ('scale' in init) {
+			p.scale = calc('scale', init);					
+		} else {
+			if ('scaleX' in init) p.scaleX = calc('scaleX', init);
+			if ('scaleY' in init) p.scaleY = calc('scaleY', init);				
+		}
+		
+		p.lifeTime      = calc('life', init);
+		p.maxLife       = p.lifeTime;
+		p.angle         = calc('angle', init);				
+		p.rotation      = calc('rotation', init);
+		p.angularSpeed  = calc('angularSpeed', init);
+		p.angularWeight = calc('angularWeight', init);
+		p.speed         = calc('speed', init);
+		p.opacity       = calc('opacity', init, 1);
+		p.textContent   = init.textContent;
+		p.textSettings  = this.initTextSettings;
+
+		// apply filters
+		if ('filters' in init) {
+			p.filter = '';
+			for (const f of init.filters) {
+				const value = calc('value',f);				
+				p.filter += `${f.name}(${value}${Filters[f.name]})`;
+			}				
+		}
+
+		// colorize
+		if ('tint' in init) {				
+			p.tintColor = calc('color', init.tint);				
+		}
+		
+		// initial particle velocity
+		if ('velocity' in init) {
+			if (init.velocity == 'radial') p.velocity = p.position.clone().normalize().mulScalar(p.speed);				
+				else
+			if (init.velocity == 'square') {
+				const ang  = (Math.floor((wrapBounds(p.position.clone().toAngle(), 0, Math.PI * 2) + Math.PI * 0.25) / (Math.PI * 0.5)) % 4);
+				
+				if (ang == 0) p.velocity = new Vec2(0, -1);
+				if (ang == 1) p.velocity = new Vec2(1, 0);
+				if (ang == 2) p.velocity = new Vec2(0, 1);
+				if (ang == 3) p.velocity = new Vec2(-1, 0);
+
+				p.velocity.mulScalar(p.speed);
+			}
+				else p.velocity = Vec2.FromStruct(init.velocity);										
+		} else
+			p.velocity   = Vec2.FromAngle(p.angle * Math.PI, p.speed);			
+
+		if ('shape' in init) {
+			p.shape     = ParticleShapes.findIndex(e => e == init.shape.type);
+			p.fillColor = calc('fill',this);				
+			if (p.shape == 3) p.points = Polygon.Ring(calc('innerRadius', init.shape), calc('outerRadius', init.shape), Math.round(calc('points', init.shape)));
+			if (p.shape == 4) p.points = Polygon.Triangle(1);
+			if (p.shape == 5) p.points = Polygon.Ngon(calc('points', init.shape));
+			if (p.shape == 6) p.points = Polygon.Star(calc('innerRadius', init.shape), calc('outerRadius', init.shape), Math.round(calc('points', init.shape)));				
+			if (p.shape == 7) p.points = init.shape.points.map(e => e);		
+		}
+
+		// precalculate evolve parameters for particles
+		const evolve = this.params.evolveParticle;				
+		if (evolve) {
+			if ('force'   in evolve) p.evolveForce           = Vec2.FromStruct(evolve.force);
+			if ('tint'    in evolve) {					
+				if (this.evolveTargetColor) p.evolveTint = calc('evolveTargetColor', this);			
+			}
+			if ('opacity' in evolve)      p.evolveOpacity      = evolve.opacity;
+			if ('acceleration' in evolve) p.evolveAcceleration = evolve.acceleration;
+			if ('scale' in evolve)        p.evolveScale        = evolve.scale;
+		}	
+
+		return p;
+	}
+	
+	spawn(singleParticle) {		
+		let spawned = null;
+
+		if (!singleParticle) {
+			var emit = this.getSpawnCount();		
+		} else {
+			var emit = 1;
+		}
+		
 		for (const p of this.particles) if (!p.active && emit > 0) {			
 			if (this.emitCount >= this.emitMax) break;
 
-			switch (this.params.type) {	// using emitter parameters:
-				case 'box': {																	// size:vec2
-					p.position.x = Math.random() * this.size.x - this.size.x / 2;
-					p.position.y = Math.random() * this.size.y - this.size.y / 2;
-					break;
-				}
-				case 'circle': {																// start and end angle (to create an arc), innerRadius, radius					
-					let a        = (this.startAngle != null) ? (Math.random() * Math.PI * this.endAngle + Math.random() * Math.PI * this.startAngle) : Math.random() * Math.PI * 2;		
-					if ('arc' in this) {
-						// TO-DO
-					}
-
-					const r      = Math.random() * (this.radius - this.innerRadius) ** 2;
-					const ir     = this.innerRadius ** 2;
-					
-					p.position.x =  Math.sin(a) * Math.sqrt(r + ir);
-					p.position.y = -Math.cos(a) * Math.sqrt(r + ir);
-					break;
-				}
-				case 'point': p.position = Vec2.Zero();	
-			}
-
-			if (this.pivot) p.position.add(this.pivot.clone().sub(this.position).rotate(-this.angle * Math.PI));
-			
-			// if particle has img defined, use it - otherwise try to fall back to img defined in emitter
-			p.img    = ('img' in init) ? init.img : this.img;
-
-			p.scaleX = 1;
-			p.scaleY = 1;
-
-			if ('scale' in init) {
-				p.scale = calc('scale', init);					
-			} else {
-				if ('scaleX' in init) p.scaleX = calc('scaleX', init);
-				if ('scaleY' in init) p.scaleY = calc('scaleY', init);				
-			}
-			
-			p.lifeTime      = calc('life', init);
-			p.maxLife       = p.lifeTime;
-			p.angle         = calc('angle', init);				
-			p.rotation      = calc('rotation', init);
-			p.angularSpeed  = calc('angularSpeed', init);
-			p.angularWeight = calc('angularWeight', init);
-			p.speed         = calc('speed', init);
-			p.opacity       = calc('opacity', init, 1);
-			p.textContent   = init.textContent;
-			p.textSettings  = this.initTextSettings;
-
-			// apply filters
-			if ('filters' in init) {
-				p.filter = '';
-				for (const f of init.filters) {
-					const value = calc('value',f);				
-					p.filter += `${f.name}(${value}${Filters[f.name]})`;
-				}				
-			}
-
-			// colorize
-			if ('tint' in init) {				
-				p.tintColor = calc('color', init.tint);				
-			}
-			
-			// initial particle velocity
-			if ('velocity' in init) {
-				if (init.velocity == 'radial') p.velocity = p.position.clone().normalize().mulScalar(p.speed);				
-					else
-				if (init.velocity == 'square') {
-					const ang  = (Math.floor((wrapBounds(p.position.clone().toAngle(), 0, Math.PI * 2) + Math.PI * 0.25) / (Math.PI * 0.5)) % 4);
-					
-					if (ang == 0) p.velocity = new Vec2(0, -1);
-					if (ang == 1) p.velocity = new Vec2(1, 0);
-					if (ang == 2) p.velocity = new Vec2(0, 1);
-					if (ang == 3) p.velocity = new Vec2(-1, 0);
-
-					p.velocity.mulScalar(p.speed);
-				}
-					else p.velocity = Vec2.FromStruct(init.velocity);										
-			} else
-				p.velocity   = Vec2.FromAngle(p.angle * Math.PI, p.speed);			
-
-			if ('shape' in init) {
-				p.shape     = ParticleShapes.findIndex(e => e == init.shape.type);
-				p.fillColor = calc('fill',this);				
-				if (p.shape == 3) p.points = Polygon.Ring(calc('innerRadius', init.shape), calc('outerRadius', init.shape), Math.round(calc('points', init.shape)));
-				if (p.shape == 4) p.points = Polygon.Triangle(1);
-				if (p.shape == 5) p.points = Polygon.Ngon(calc('points', init.shape));
-				if (p.shape == 6) p.points = Polygon.Star(calc('innerRadius', init.shape), calc('outerRadius', init.shape), Math.round(calc('points', init.shape)));				
-				if (p.shape == 7) p.points = init.shape.points.map(e => e);		
-			}
-
-			// precalculate evolve parameters for particles
-			const evolve = this.params.evolveParticle;				
-			if (evolve) {
-				if ('force'   in evolve) p.evolveForce           = Vec2.FromStruct(evolve.force);
-				if ('tint'    in evolve) {					
-					if (this.evolveTargetColor) p.evolveTint = calc('evolveTargetColor', this);			
-				}
-				if ('opacity' in evolve)      p.evolveOpacity      = evolve.opacity;
-				if ('acceleration' in evolve) p.evolveAcceleration = evolve.acceleration;
-				if ('scale' in evolve)        p.evolveScale        = evolve.scale;
-			}	
+			spawned = this.createParticle(p);
 			
 			// custom function:
 			if (this.initParticleTick) this.initParticleTick(p);
@@ -402,6 +416,8 @@ class Emitter extends EventBroadcaster {
 
 			this.emitCount++;		// add total emitted counter
 		}
+		
+		if (singleParticle) return spawned;
 	}
 	
 	tick() {
