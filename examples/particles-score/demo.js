@@ -24,7 +24,8 @@ const onClickActor = (e) => {
     const particle = emitter.spawn(true);
 
     // subtract half of the viewport dimensions, because emitter is in the middle of the viewport
-    particle.position = Vec2.Sub(p, Engine.dims.mulScalar(0.5));                
+    particle.position = Vec2.Sub(p, Engine.dims.mulScalar(0.5)); 
+    particle.textContent = Math.floor((0.1 + Math.random()) * 10) + '00';    
 }
 
 const main = async () => {    
