@@ -29,7 +29,7 @@ const main = async () => {
     Engine.setRootElement('game');                                                    // First let's set up the engine    
     Engine.setFlags({ hasEdges:false, hasRenderingSurface:true });
     
-    const mInfo = CreateMissileInfo({ homingSpeed:0.01, initialFlightTicks:180 }); // init a MissileInfo object    
+    const mInfo = CreateMissileInfo({ homingSpeed:0.01, initialFlightTicks:360 }); // init a MissileInfo object    
         
     let images;
     try {                                                                                 // put all vulnerable code (such as loading of images over internet) inside a try..catch block               

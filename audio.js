@@ -66,7 +66,7 @@ class Track {
 		
 		this.elem = new Audio(o.file);		
 		
-		AE.addEvent(this.elem, 'loadeddata', (track) => { if (AE.isFunction(o.onLoaded)) o.onLoaded.call(this, track) });		
+		AE.addEvent(this.elem, 'loadeddata', (track) => { if (AE.isFunction(o.onLoaded)) o.onLoaded(this, track) });		
 
 		this.elem.load();	// required by Safari mobile?		
 	}
@@ -91,6 +91,7 @@ class SFX {
 		this._playState = 'initial';
 		this._fadeInfo  = null;
 		this._isMuted   = false;
+		this._position  = 0;
 
 		this._volume      = 1;
 		this.audioParams  = new AudioParams(o, this.owner.audioParams);		
@@ -99,27 +100,30 @@ class SFX {
 
 	async init() {		
 		const audioContext = this.audioLib.audioContext;								// AudioLib
-		
-		const gain   = audioContext.createGain();										// Create gain node		
-		const pan    = new StereoPannerNode(audioContext, { pan: 0 });
-				
-		let source;
+						
 		await fetch(this.owner.elem.src)
 			.then(r => r.arrayBuffer())
 			.then(b => audioContext.decodeAudioData(b))
-			.then(a => {
-				source        = audioContext.createBufferSource();
-				source.buffer = a;
-				source.loop   = false;				
-				
-				source.connect(gain).connect(pan).connect(audioContext.destination);				
+			.then(buffer => {
+				this.createSound(audioContext, buffer);
 			})
 			.catch(e => {
 				console.warn('Failed to get the file.');
 				console.log(e);
 			});
+	}
 
-		this.nodes   = {
+	createSound(audioContext, buffer) {
+		const gain    = audioContext.createGain();										// Create gain node		
+		const pan     = new StereoPannerNode(audioContext, { pan: 0 });					// Create panner
+
+		const source  = audioContext.createBufferSource();								// Create audiosource
+		source.buffer = buffer;
+		source.loop   = false;				
+		
+		source.connect(gain).connect(pan).connect(audioContext.destination);
+
+		this.nodes    = {
 			source,
 			gain,
 			pan
@@ -144,24 +148,41 @@ class SFX {
 
 	get status()		 { return this._playState; }
 
+	get muted()          { return this._isMuted; }
+
 	applyParams(p) {
 		Object.entries(p).forEach(n => { this[n[0]] = n[1]; });
 	}
 	
-	play(o) {				
-		if (o == null) var o = {};		
-
+	play(o = {}) {						
+		if (this._playState == 'stopped') {
+			this.createSound(this.audioLib.audioContext, this.nodes.source.buffer);		
+			this.nodes.source.start();
+		}
+		if (this._playState == 'paused')  this.nodes.source.start(0, this._position);
+		if (this._playState == 'initial') this.nodes.source.start();
+		
 		Object.entries(o).forEach(n => { if (n[0]) this.audioParams[n[0]] = n[1]; });		// copy params from 'o' to this.audioParams		
 		this.applyParams(this.audioParams);	// apply current parameters
-
-		if (this._playState == 'initial') this.nodes.source.start();				
-		if (this._playState == 'stopped') this.nodes.source.connect(this.nodes.gain).connect(this.nodes.pan).connect(this.audioLib.audioContext.destination);				
+		
 		this._playState = 'playing';
 	}
 	
 	stop() {		
-		this.nodes.source.disconnect();
+		this.nodes.source.stop();		
 		this._playState = 'stopped';
+	}
+
+	pause() {
+		if (this._playState == 'playing') {
+			this.stop();
+			this._position  = this.nodes.source.context.currentTime;
+			this._playState = 'paused';
+		} else if (this._playState == 'paused') {
+			this.createSound(this.audioLib.audioContext, this.nodes.source.buffer);
+			this.play();
+			this._playState = 'playing';
+		}		
 	}
 	
 	/**
@@ -238,7 +259,7 @@ class AudioLib {
 	}
 
 	/**
-	 * Loops through all SFX instances. The callback function will send current SFX instance and Track as parameters.
+	 * Iterates all SFX instances. The callback function will send current SFX instance and Track as parameters.
 	 * @param {function} callback
 	 */
 	forSFX(callback) {
@@ -258,11 +279,15 @@ class AudioLib {
 			if (!AE.isString(o.name)) reject('Name must be specified.');
 
 			this.tracks[o.name] = new Track({ 
-				audio:this, 
-				name:o.name, 
-				file:o.url, 
-				volume:'volume' in o ? o.volume : 1, 
-				pan:'pan' in o ? o.pan : 0, 
+				audio: this, 
+				name: o.name, 
+				file: o.url, 
+
+				volume: 'volume' in o ? o.volume : 1, 				// TO-DO: replace with AudioParams
+				pan: 'pan' in o ? o.pan : 0, 
+				loop: 'loop' in o ? o.loop : false,
+				rate: 'rate' in o ? o.rate : 1,
+
 				onLoaded:(track) => { 								
 					resolve(track); 
 				} 

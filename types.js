@@ -830,9 +830,11 @@ class Vector2 extends VectorBase {
         return new Vector2(this.x, this.y);
     }  
 	
-    add(vec) {
-        this.x += vec.x;
-        this.y += vec.y; 
+    add() {
+		for (const v of arguments) {
+        	this.x += v.x;
+        	this.y += v.y; 
+		}
         return this;       
     }
 	

@@ -8,6 +8,7 @@
 import './ext/random.js';
 import './ext/hjson.min.js';
 import * as Types from './types.js';
+import { VideoStream } from './videoStream.js';
 const Vec2 = Types.Vector2;
 
 /**

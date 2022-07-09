@@ -1,56 +1,47 @@
 -----------------------------------------------------------------
-Version 2.0.0
-=============
-- Series of initial 'alpha' releases
+Version 2.0.11
+- Relaxation of ParticleSystem.Emitter parameters. InitEmitter does not seal the params object any more
+- Fixed a bug which prevented images from being added into particles via "params.initParticle.img" parameter
+- Fixed bugs in Audio.js and added pause() method
 
 -----------------------------------------------------------------
-Version 2.0.1
-
-Major changes:
-- Added examples/controllers
-
-Minor changes:
-- Changelog added
-- Fixed issues with Engine 'edges'
-- Minor updates and fixes in Actors and Projectiles demos
+Version 2.0.10
+- Fixed async image loading problem in _initEmitter() by moving the image loading as last executed thing
 
 -----------------------------------------------------------------
-Version 2.0.2
-
-Major changes:
-- Refactoring of the particle engine. Breaking changes.
-
------------------------------------------------------------------
-Version 2.0.3
-
-Major changes:
-- Reworked debug.js to fully support 2.0
-- Added devtools.js and examples/debugging demo
-- Improved PointerController added support for 2 virtual joysticks
-- Improved ParticleSystem
-
-Minor changes:
-- Minor refactoring and improvements in Engine, GameLoop, Actor, and CanvasSurface
-- Fixed bugs in Types
-- Added docs/roadmap.txt
-- Improved documentation
+Version 2.0.9
+- Added Particle-Score demo
+- Improved particle system
+- Fixed bug in layers.js where renderingSurface transform was not reset before drawing the image
 
 -----------------------------------------------------------------
-Version 2.0.4
+Version 2.0.8
+- Fixed: Audio SFX now returns a promise
 
-- Improved documentation
-- Fixed bugs in Actor, Colliders, collision detection, Projectiles, GameLoop
-- Added/Improved Projectile Actor homing parameters and behavior
-- Added Actor.addCollider() convenience function
-- Added Enemy Actor
-- Automatic collision handling between Player, PlayerShot, Enemy, EnemyShot. Create the Actors, attach Colliders and go!
-- Added html-ui.js module with basic UI components
-- Added some UI components in DevTools
-- Improved MultiCast functionality and performance. Event delegate arrays are now created on-demand.
-- Implemented Engine.flags.mouseEnabled to allow disabling of Engine mouse events
-- Fixed missing implementation of PointerController.isActive 
-- Vastly improved particle engine
-- Rewritten examples/particles demo 
+-----------------------------------------------------------------
+Version 2.0.7
+
+- Fixed Types.Color color conversion process from CSS color values to native Type.Color 
+- Improved particles.js (breaking changes)
+- Particles no longer modify params object. Instead, it creates local copies of the params properties.
+- To further make particle systems more robust and avoid problems with typos in property names, emitter instances are no longer extendable. 
+- If you need to add custom properties to emitters, use emitter.data object which will be ignored by the particle engine.
+- Multiple ParticleSystem instances can now be created. The engine maintains of list of all instances (Engine.gameLoop.particleSystems array)
+- Fixed particle system gravity
+- Added particle system gravity example
+- Audio subsystem update
+- Audio demo added
+
+-----------------------------------------------------------------
+Version 2.0.6
+
+- Added particle system editor (devtools)
+- Improved audio.js documentation
+- Improved actor rendering
+- flags.js finalized (sort of)
+- Improved particles.js
+- Added gameLoop.step()
+- Added preventKeyDefaults flag and preventedKeys object into Engine class
 
 -----------------------------------------------------------------
 Version 2.0.5
@@ -74,36 +65,54 @@ Version 2.0.5
 - Added actor-stress-test, actor-target, and particles2 examples
 
 -----------------------------------------------------------------
-Version 2.0.6
+Version 2.0.4
 
-- Added particle system editor (devtools)
-- Improved audio.js documentation
-- Improved actor rendering
-- flags.js finalized (sort of)
-- Improved particles.js
-- Added gameLoop.step()
-- Added preventKeyDefaults flag and preventedKeys object into Engine class
-
------------------------------------------------------------------
-Version 2.0.7
-
-- Fixed Types.Color color conversion process from CSS color values to native Type.Color 
-- Improved particles.js (breaking changes)
-- Particles no longer modify params object. Instead, it creates local copies of the params properties.
-- To further make particle systems more robust and avoid problems with typos in property names, emitter instances are no longer extendable. 
-- If you need to add custom properties to emitters, use emitter.data object which will be ignored by the particle engine.
-- Multiple ParticleSystem instances can now be created. The engine maintains of list of all instances (Engine.gameLoop.particleSystems array)
-- Fixed particle system gravity
-- Added particle system gravity example
-- Audio subsystem update
-- Audio demo added
+- Improved documentation
+- Fixed bugs in Actor, Colliders, collision detection, Projectiles, GameLoop
+- Added/Improved Projectile Actor homing parameters and behavior
+- Added Actor.addCollider() convenience function
+- Added Enemy Actor
+- Automatic collision handling between Player, PlayerShot, Enemy, EnemyShot. Create the Actors, attach Colliders and go!
+- Added html-ui.js module with basic UI components
+- Added some UI components in DevTools
+- Improved MultiCast functionality and performance. Event delegate arrays are now created on-demand.
+- Implemented Engine.flags.mouseEnabled to allow disabling of Engine mouse events
+- Fixed missing implementation of PointerController.isActive 
+- Vastly improved particle engine
+- Rewritten examples/particles demo 
 
 -----------------------------------------------------------------
-Version 2.0.8
-- Fixed: Audio SFX now returns a promise
+Version 2.0.3
+
+Major changes:
+- Reworked debug.js to fully support 2.0
+- Added devtools.js and examples/debugging demo
+- Improved PointerController added support for 2 virtual joysticks
+- Improved ParticleSystem
+
+Minor changes:
+- Minor refactoring and improvements in Engine, GameLoop, Actor, and CanvasSurface
+- Fixed bugs in Types
+- Added docs/roadmap.txt
+- Improved documentation
 
 -----------------------------------------------------------------
-Version 2.0.9
-- Added Particle-Score demo
-- Improved particle system
-- Fixed bug in layers.js where renderingSurface transform was not reset before drawing the image
+Version 2.0.2
+
+Major changes:
+- Refactoring of the particle engine. Breaking changes.
+
+-----------------------------------------------------------------
+Version 2.0.1
+
+Major changes:
+- Added examples/controllers
+
+Minor changes:
+- Changelog added
+- Fixed issues with Engine 'edges'
+- Minor updates and fixes in Actors and Projectiles demos
+
+-----------------------------------------------------------------
+Version 2.0.0
+- Series of initial 'alpha' releases done with the same version number

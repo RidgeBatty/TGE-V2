@@ -1,0 +1,9 @@
+[
+    {
+        name : theme
+        url  : sfx/awake10_megaWall.mp3
+        volume : 0.2
+        pan : 0
+        loop : true
+    }    
+]

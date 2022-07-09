@@ -18,9 +18,9 @@
 *
 * Note that creation and use of World object is optional. All components should work with or without a World.
 * For example a space invaders, tetris, pong, asteroids, etc. might have no use of container for static World but a platformer game definitely has.
-*  
+*
 */
-const VersionNumber = '2.0.7';
+const VersionNumber = '2.0.11';
 
 import * as MultiCast from "./multicast.js";
 import * as Types from "./types.js";

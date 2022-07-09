@@ -156,10 +156,11 @@ class Emitter extends EventBroadcaster {
 	 */
 	async _initEmitter(params) {		
 		this._params     = AE.clone(params);
-		
-		Object.seal(this._params.initParticle);
-		Object.seal(this._params.evolveParticle);
-
+		// AE.clone can't clone an Image object!!!
+		if ('initParticle' in params && 'img' in params.initParticle && params.initParticle.img instanceof Image) {
+			this._params.initParticle.img = params.initParticle.img;
+		}
+				
 		this.name	     = ('name') in params ? params.name : null;
 		this.emitSpeed   = params.emitSpeed || 1;				// how many particles to emit per tick?	1 = 60/second
 		this.angle 	 	 = calc('angle', params);	  // rotation of the emitter				
@@ -199,13 +200,8 @@ class Emitter extends EventBroadcaster {
 			}
 		}
 
-		this.zIndex    = ('zIndex' in params) ? params.zIndex : 1;
+		this.zIndex    = ('zIndex'  in params) ? params.zIndex : 1;
 		this.surface   = ('surface' in params) ? params.surface : Engine.renderingSurface;		
-						
-		if ('imgUrl' in params) {
-			const urls      = Array.isArray(params.imgUrl) ? params.imgUrl : [params.imgUrl];
-			this._imageList = await preloadImages({ urls });
-		}
 
 		// initParticle and evolveParticle are PER PARTICLE SETTINGS!
 
@@ -234,8 +230,14 @@ class Emitter extends EventBroadcaster {
 			}
 			if (this.evolveParticleTick == null && ('tick') in params.evolveParticle) this.evolveParticleTick = params.evolveParticle.tick;	// evolve tick function for each particle (saved in emitter)
 		}
+				
+		// this must be the last thing we execute, because the emitter object is sealed after _initEmitter() executes, and preloadImages() is async!
+		if ('imgUrl' in params) {
+			const urls      = Array.isArray(params.imgUrl) ? params.imgUrl : [params.imgUrl];
+			this._imageList = await preloadImages({ urls });
+		}		
 		
-		this._createParticles(params.maxDrawCount);
+		this._createParticles(params.maxDrawCount);		
 	}
 	
 	start() {				
@@ -252,7 +254,6 @@ class Emitter extends EventBroadcaster {
 		
 		for (let i = count; i--;) {
 			const p = new ParticleData({
-				img          : null,
 				opacity		 : 1,
 				lifeTime     : 0,
 				maxLife      : 0,
@@ -313,8 +314,8 @@ class Emitter extends EventBroadcaster {
 		if (this.pivot) p.position.add(this.pivot.clone().sub(this.position).rotate(-this.angle * Math.PI));
 		
 		// if particle has img defined, use it - otherwise try to fall back to img defined in emitter
-		p.img    = ('img' in init) ? init.img : this.img;
-
+		p.img    = ('img' in init) ? init.img : this.img;		
+		
 		p.scale  = 1;
 		p.scaleX = 1;
 		p.scaleY = 1;
@@ -479,8 +480,8 @@ class Emitter extends EventBroadcaster {
 			if (this.evolveParticleTick)  this.evolveParticleTick(p);
 		}
 
-		// condition met for stopping the emitter?
-		if (this.emitCount == this.emitMax && deadParticles == this.particles.length) {
+		// TO-DO: Put this in the particle loop above, and early exit when condition is met?  condition met for stopping the emitter? 
+		if (this.emitCount == this.emitMax && deadParticles == this.particles.length) {			
 			this._running = false;
 			this._fireEvent('complete');
 		}
@@ -604,7 +605,7 @@ class ParticleSystem {
 	 * @param {string} name 
 	 * @returns {Emitter}
 	 */
-	emitterByName(name) {
+	emitterByName(name) {		
 		return this.emitters.find(e => e.name == name);
 	}
 	
