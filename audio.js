@@ -180,8 +180,7 @@ class SFX {
 			this._playState = 'paused';
 		} else if (this._playState == 'paused') {
 			this.createSound(this.audioLib.audioContext, this.nodes.source.buffer);
-			this.play();
-			this._playState = 'playing';
+			this.play();			
 		}		
 	}
 	

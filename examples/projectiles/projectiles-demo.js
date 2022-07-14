@@ -53,7 +53,7 @@ const main = async () => {
     
     GameLoop.addTimer({ name:'launch_missile', duration:80, repeat:Infinity,           // create an infinitely repeating timer which launches missiles every 80 ticks
         onRepeat:() => { 
-            const missile     = GameLoop.add('projectile', { img:images[0], zIndex:1, position:game.turret.position.clone(), rotation:game.turret.rotation, scale:0.4, lifeTime:60 * 1 });
+            const missile     = GameLoop.add('projectile', { img:images[0], zIndex:1, position:game.turret.position.clone(), rotation:game.turret.rotation, scale:0.4, lifeTime:60 * 5 });
             missile.target    = game.tank;
             missile.info      = mInfo;
 
