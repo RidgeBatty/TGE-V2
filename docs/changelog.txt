@@ -1,4 +1,8 @@
 -----------------------------------------------------------------
+Version 2.0.12
+- Fixed critical bug fix in root.js which caused engine to choke with relative low number of collision detections
+
+-----------------------------------------------------------------
 Version 2.0.11
 - Relaxation of ParticleSystem.Emitter parameters. InitEmitter does not seal the params object any more
 - Fixed a bug which prevented images from being added into particles via "params.initParticle.img" parameter

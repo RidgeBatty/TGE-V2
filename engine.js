@@ -20,7 +20,7 @@
 * For example a space invaders, tetris, pong, asteroids, etc. might have no use of container for static World but a platformer game definitely has.
 *
 */
-const VersionNumber = '2.0.11';
+const VersionNumber = '2.0.12';
 
 import * as MultiCast from "./multicast.js";
 import * as Types from "./types.js";

@@ -76,7 +76,7 @@ class Root extends TNode {
 	
 	_createCollisionChannels() {
 		this._hitTestGroup = this._defaultColliderType;				
-		this._hitTestFlag  = Object.assign(HitTestFlag);
+		this._hitTestFlag  = Object.assign({}, HitTestFlag);
 	}
 	
 	get hasColliders() { return this.flags.hasColliders; }		
