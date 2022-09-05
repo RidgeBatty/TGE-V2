@@ -85,7 +85,7 @@ class Scene extends Root {
 		this.size  = Vector2.Zero();
 		
 		// Scene tiles cannot move!
-		this._defaultColliderType = 'WorldStatic';		
+		this.colliderType = 'WorldStatic';		
 		this.hasColliders = true;
 			
 		if (o.url) this.loadFromFile(o.url, o.onMapLoaded);

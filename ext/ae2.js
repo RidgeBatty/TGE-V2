@@ -972,62 +972,55 @@ AE.randomStr = function(len, aCharset, useCrypto){
     return text;
 }
 
-/**
- * Loads non-module script or css into the <head> of the Document
- * @param {string} url 
- * @param {object=} settings 
- * @param {string|null} settings.fileType 
- * @param {function|null} settings.callback
- * @param {Document|null} settings.document
- * @returns 
- */
- AE.require = function(url, settings = {}) {  
-    return new Promise(resolve => {
-        var fileType  = ('fileType' in settings) ? settings.fileType : 'auto'; 
-        var verbose   = ('verbose' in settings) ? settings.verbose : true; 
-        var callback  = ('callback' in settings) ? settings.callback : null; 
-        var doc       = ('document' in settings) ? settings.document : document;
-        var integrity = ('integrity' in settings) ? settings.integrity : '';
-        
-        let file = url.split('/').pop().split('?').shift();
-        if (fileType == 'auto') fileType = file.split('.').pop();
-        let addr = (fileType == 'js') ? 'src' : 'href';
+/*
+	Loads JavaScript or CSS from specified URL by inserting it in the <HEAD> section of the document.
+	Callback function is executed after the file is loaded.
+	If the URL is already present in <HEAD> section, it is not loaded again, but the callback is still executed.	
+	
+	Callback function returns the URL of the loaded file and also a reference to the tag which was created in the <HEAD> section. 
+	If no tag was created (for example an error occurred in loading the file) the tag value will be set to null.
+*/
+AE.require = function(url, settings = {}) {  // url:string, settings:{ fileType:string|null, verbose:boolean|null, callback:function|null, document:HTMLDocument|null }
+	var fileType = ('fileType' in settings) ? settings.fileType : 'auto'; 
+	var verbose  = ('verbose' in settings) ? settings.verbose : true; 
+	var callback = ('callback' in settings) ? settings.callback : null; 
+	var doc      = ('document' in settings) ? settings.document : document;
+	
+    let file = url.split('/').pop().split('?').shift();
+	if (fileType == 'auto') fileType = file.split('.').pop();
+    let addr = (fileType == 'js') ? 'src' : 'href';
 
-    // check if requested URL is already in <head>, if not, load it:
-        let head = doc.head;
-        for (var i = 0; i < head.children.length; i++) { 
-            var tag = head.children[i];        
-            if (addr in tag && tag[addr].indexOf(url) != -1) { 
-                if (verbose) console.warn('Skipped file: ' + url); 
-                if (callback) callback(url, null);
-                resolve(url);
-                return false; 
-            }         
-        }
+// check if requested URL is already in <head>, if not, load it:
+    let head = doc.head;
+    for (var i = 0; i < head.children.length; i++) { 
+        var tag = head.children[i];        
+        if (addr in tag && tag[addr].indexOf(url) != -1) { 
+			if (verbose) console.warn('Skipped file: ' + url); 
+			if (callback) callback(url, null);
+			return false; 
+		}         
+    }
 
-        switch (fileType) { 
-            case 'css':             
-                var tag   = doc.createElement('link');
-                tag.rel   = 'stylesheet';
-                tag.type  = 'text/css';            
-                if (integrity) tag.setAttribute('integrity', integrity);            
-                tag.setAttribute('crossorigin', 'anonymous');
-                tag.href  = url;
-            break;
-            case 'js':            
-                var tag = doc.createElement('script');
-                if (integrity) tag.setAttribute('integrity', integrity);
-                tag.setAttribute('crossorigin', 'anonymous');
-                tag.src  = url;
-            break;
-            default:
-                console.warn('Filetype not detected:', url);
-        }
-        // if (verbose)  console.log('Loading: ' + url);
-        tag.onload = function() { if (callback) callback(url, tag); resolve(url); }
-        head.appendChild(tag);
-        return true;
-    });
+    switch (fileType) { 
+        case 'css':             
+            var tag   = doc.createElement('link');
+            tag.rel   = 'stylesheet';
+            tag.type  = 'text/css';
+            tag.href  = url;
+			tag.crossOrigin = 'anonymous';
+        break;
+        case 'js':            
+            var tag = doc.createElement('script');
+            tag.src  = url;
+        break;
+		default:
+			console.warn('Filetype not detected:', url);
+    }
+    if (verbose)  console.log('Loading: ' + url);
+	if (callback) tag.onload = function() { callback(url, tag); }
+    head.appendChild(tag);
+	
+	return true;
 }
 
 /*

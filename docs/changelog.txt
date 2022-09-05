@@ -1,7 +1,12 @@
 -----------------------------------------------------------------
-Version 2.0.12
-- Fixed critical bug fix in root.js which caused engine to choke with relative low number of collision detections
-
+Version 2.1
+- Major upgrades and fixes in GameLoop, Actor and Collider classes to improve collisions, collision detection algorithms and timing issues
+- Added collisionOptimizer, although not complete yet, allows for much more granular control of collision detection in the future by using quadtrees
+- Added Experimental sub-folder for saving tests of upcoming/experimental features as part of the engine
+- Three.js and rasterizer.js allow mathematically accurate software rendering of basic meshes (incomplete, but somewhat usable)
+- Server-side sub-folder added, which contains files for upcoming server side TGE compiler/interpreter which allows saving permanent game state and possibly multiplayer games in the future
+- Improved/updated raytracer.js and added a new demo (raytracer)
+- Added Engine.setup function which takes several common setup parameters/flags at once
 -----------------------------------------------------------------
 Version 2.0.11
 - Relaxation of ParticleSystem.Emitter parameters. InitEmitter does not seal the params object any more

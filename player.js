@@ -6,9 +6,10 @@
 import { Actor } from './actor.js';
 import * as Types from './types.js';
 import { KeyController, GamepadController, PointerController } from './gameController.js';
-import { Hitpoints } from './actor-hp.js';
+import { Enum_HitTestMode } from './engine.js';
 
 const Vector2 = Types.Vector2;
+const { Overlap, Ignore } = Enum_HitTestMode;		
 
 const Enum_PlayerMovement = {		
 	Default 		   : 1,
@@ -20,17 +21,40 @@ const Enum_PlayerMovement = {
 }
 
 class Player extends Actor {
-	constructor(o) {				
-		const params = Object.assign(o, { defaultColliderType : 'Player' });
+	constructor(o = {}) {				
+		const params = Object.assign(o, { colliderType : 'Player' });
 		super(params);
+
+		this.collisionResponseDefault = Ignore;
+		this.setCollisionResponseFlag({
+			Consumable  : Overlap,
+			WorldStatic : Overlap,
+			WorldDynamic: Overlap,
+			Enemy       : Overlap,
+			EnemyShot   : Overlap,			
+		});
 				
-		this.instigator    = ('instigator' in o) ? o.instigator : null;		
-		this.controllers   = {};	
-		this._movementType = Enum_PlayerMovement.Default;
+		this.instigator     = ('instigator' in o) ? o.instigator : null;		
+		this.controllers    = {};	
+		this._movementType  = Enum_PlayerMovement.Default;
 		this._isMovementCancelled = false;
-		this.lives		   = 1;
+		this.lives		    = ('lives' in o) ? o.lives : 1;
+		this.customMovement = null;
+
+		if ('controls' in o) {
+			const c = o.controls;
+			if (c.includes('keyboard')) this.attachKeyboard();
+			if (c.includes('gamepad')) this.attachGamepad();
+			if (c.includes('pointer')) this.attachPointer();
+		}
+		
+		if ('movement' in o) this.setMovementType(Enum_PlayerMovement[o.movement]);
 		
 		//if (Engine.useWorld) this.world = Engine.world;
+	}
+
+	setMovementType(value) {		
+		this.movementType = value;
 	}
 	
 	/*
@@ -41,9 +65,12 @@ class Player extends Actor {
 		if (typeof value == 'string') value = Enum_PlayerMovement[value.toLowerCase()];
 		
 		if (value == Enum_PlayerMovement.Arcade) {					
+			this.movement.maxVelocity  = 1;
 			this.movement.acceleration = 1;		
 			this.movement.friction     = 1;
 			this._movementType         = value;
+
+			this.flags.isPhysicsEnabled = true;
 			return;
 		}
 		if (value == Enum_PlayerMovement.FirstPersonShooter) {
@@ -54,7 +81,10 @@ class Player extends Actor {
 			this.movement.strafe       = 0.001;		
 			this.movement.acceleration = 0.001;		
 			this.movement.turnRate     = 0.002;
+			this.movement.friction     = 0.07;
 			this._movementType         = value;
+
+			this.flags.isPhysicsEnabled = true;
 			return;
 		}		
 		if (value == Enum_PlayerMovement.SpaceShip) {
@@ -138,12 +168,14 @@ class Player extends Actor {
 			
 			break; }	
 		case Enum_PlayerMovement.Arcade:
-		case Enum_PlayerMovement.Default:					
+		case Enum_PlayerMovement.Default:
 			if (ks.up)  	  p.velocity.add(new Vector2(0, -p.movement.acceleration));
 			if (ks.down)  	  p.velocity.add(new Vector2(0, p.movement.acceleration));			
 			if (ks.left)  	  p.velocity.add(new Vector2(-p.movement.acceleration,  0));
 			if (ks.right)  	  p.velocity.add(new Vector2(p.movement.acceleration, 0));
 			break;
+		case Enum_PlayerMovement.Custom:
+			if (this.customMovement) this.customMovement(ks);
 		}		
 	}
 }

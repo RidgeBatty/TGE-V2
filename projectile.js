@@ -27,8 +27,8 @@ class Projectile extends Actor {
 	constructor(o) {						
 		// if instigator is specified we can guess a good collider group for this Projectile		
 		if (o.instigator != null) {
-			if (o.instigator._type == Enum_ActorTypes.player) o.defaultColliderType = 'PlayerShot';			
-			if (o.instigator._type == Enum_ActorTypes.enemy)  o.defaultColliderType = 'EnemyShot';
+			if (o.instigator._type == Enum_ActorTypes.player) o.colliderType = 'PlayerShot';			
+			if (o.instigator._type == Enum_ActorTypes.enemy)  o.colliderType = 'EnemyShot';
 		}
 
 		super(o);
@@ -46,7 +46,7 @@ class Projectile extends Actor {
 	
 	get isProjectile() { return true; }
 	
-	tick() {				
+	tick() {						
 		const t = this._homingTarget;
 
 		if (t && t.flags.isDestroyed) { 

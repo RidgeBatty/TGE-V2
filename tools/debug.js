@@ -77,37 +77,39 @@ Actor.prototype.testOverlaps = function(other) {
 }
 
 Engine.gameLoop._render = function(ts) {
+	const gameLoop = Engine.gameLoop;
+
 	overlapCallCount = 0;
 	
-	onRender.call(Engine.gameLoop, ts);
+	onRender.call(gameLoop, ts);
 	
 	fps.current = Engine.getFPS();
 	if (isFinite(fps.current) && Engine.gameLoop.frameCount > 60) {
 		if (fps.current < fps.min) fps.min = fps.current;
 		if (fps.current > fps.max) fps.max = fps.current;
 	}
-	fps.total = Engine.gameLoop.frameCount;
+	fps.total = gameLoop.frameCount;
 	
-	logic.current = Engine.gameLoop._lastTick;
-	if (isFinite(logic.current) && Engine.gameLoop.tickCount > 60) {
+	logic.current = gameLoop._lastTick;
+	if (isFinite(logic.current) && gameLoop.tickCount > 60) {
 		if (logic.current < logic.min) logic.min = logic.current;
 		if (logic.current > logic.max) logic.max = logic.current;
 	}
 	if (logic.current > 5) logic.above5ms++;
 	
-	if (el.uptime) el.uptime.textContent = `Uptime: ${Engine.gameLoop.seconds.toFixed(2)} sec`;
+	if (el.uptime) el.uptime.textContent = `Uptime: ${gameLoop.runningTime.toFixed(2)} sec`;
 	if (el.fps)    el.fps.textContent    = `FPS: ${pad(fps.current)} | Min ${pad(fps.min)} | Max ${fps.max} | Total frames ${fps.total}`;
-	if (el.delta)  el.delta.textContent  = `Frame delta: ${Engine.gameLoop.frameDelta.toFixed(2)}ms`;
-	if (el.logic)  el.logic.textContent  = `Game logic: ${Engine.gameLoop.tickCount} ticks | ${Engine.gameLoop._tickQueue} queued | ${logic.current.toFixed(2)}ms | Min ${logic.min.toFixed(2)}ms | Max ${logic.max.toFixed(2)}ms | >5ms ${logic.above5ms} (${(logic.above5ms/fps.total*100).toFixed(2)}%)`;
-	if (el.actors) el.actors.textContent = `Actors: ${pad(Engine.gameLoop.actors.length, 3)} | zLayers: ${Engine.gameLoop.zLayers.length}`;
-	if (el.olaps)  el.olaps.textContent  = `Overlaps: Currently Testing ${pad(overlapCallCount)} | Total Detected ${pad(totalOverlaps)} `;
+	if (el.delta)  el.delta.textContent  = `Frame delta: ${gameLoop.frameDelta.toFixed(2)}ms`;
+	if (el.logic)  el.logic.textContent  = `Game logic: ${gameLoop.tickCount} ticks | ${gameLoop._tickQueue} queued | ${logic.current.toFixed(2)}ms | Min ${logic.min.toFixed(2)}ms | Max ${logic.max.toFixed(2)}ms | >5ms ${logic.above5ms} (${(logic.above5ms/fps.total*100).toFixed(2)}%)`;
+	if (el.actors) el.actors.textContent = `Actors: ${pad(gameLoop.actors.length, 3)} | zLayers: ${gameLoop.zLayers.length}`;
+	if (el.olaps)  el.olaps.textContent  = `Overlaps: Currently Testing ${pad(overlapCallCount)} | Total Detected ${pad(totalOverlaps)} | Collision Check Time ${gameLoop.collisionCheckTime.toFixed(2)}ms`;
 	if (el.edges)  el.edges.textContent  = `Edges: L=${Engine.edges.left} | T=${Engine.edges.top} | R=${Engine.edges.right} | B=${Engine.edges.bottom}`;
 	
-	const ps = Engine.gameLoop.particleSystem;
+	const ps = gameLoop.particleSystems;
 	if (ps) {
-		let dc = 0, ac = 0;
-		ps.emitters.forEach(e => { dc += e.particles.length; ac += e.activeParticleCount; });
-		if (el.particles)  el.particles.textContent  = `Particles: Emitters ${ps.emitters.length} | Draw Count: ${dc} | Active: ${ac}`;
+		let pc = 0, ac = 0, ec = 0;
+		ps.forEach(ps => ps.emitters.forEach(e => { ec++; pc += e.particles.length; ac += e.activeParticleCount; }));
+		if (el.particles)  el.particles.textContent  = `Particle System: Emitters ${ec} | Particles: ${pc} | Active: ${ac}`;
 	}
 
 	if (controlLayer) {		

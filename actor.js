@@ -12,6 +12,7 @@ import { ImageOwner, Mixin } from "./imageOwner.js";
 const { Vector2:Vec2, Rect } = Types;
 const Events  = ['click', 'tick', 'beginoverlap', 'endoverlap', 'collide', 'destroy'];
 
+let actorUID  = 0;
 /**
  * @readonly
  * @enum {number}
@@ -93,6 +94,7 @@ class Actor extends Root {
 	constructor(o = {}) {
 		super(o);
 
+		this._uid = actorUID++;
 		/**
 		 * @type {Vector2}
 		 */
@@ -146,7 +148,7 @@ class Actor extends Root {
 		this._follower   = null;
 		this.weapons     = [];		
 		this._zIndex     = ('zIndex' in o) ? o.zIndex : 1;					// render order
-		this.origin      = new Vec2(-0.5, -0.5);					  // relative to img dims, normalized coordinates - i.e. { -0.5, -0.5 } = center of the image
+		this.origin      = new Vec2(-0.5, -0.5);							// relative to img dims, normalized coordinates - i.e. { -0.5, -0.5 } = center of the image
 		this._renderPosition = Vec2.Zero();		
 
 		/**
@@ -156,7 +158,11 @@ class Actor extends Root {
 		
 		if ('hasColliders' in o) this.hasColliders = o.hasColliders;		// get colliders flag state from create parameters
 
-		Mixin(this, ImageOwner, o);		
+		Mixin(this, ImageOwner, o);			
+	}
+
+	get uid() {
+		return this._uid;
 	}
 
 	get zIndex() {
@@ -248,6 +254,9 @@ class Actor extends Root {
 		}		
 	}
 	
+	/**
+	 * Schedules actor for destruction and releases the colliders so that interaction is no longer possible
+	 */
 	destroy() { 		
 		if (!this.flags.isDestroyed) {
 			this._fireEvent('destroy');			
@@ -411,7 +420,7 @@ class Actor extends Root {
 			if (this.movement._targetDir.length > this.movement.targetProximity) this.movement.speed += this.movement.acceleration;
 				else this.movement.speed -= this.movement.acceleration;
 				
-			if (this.movement.speed > this.movement.maxVelocity) this.movement.speed = this.movement.maxVelocity;			
+			if (this.movement.speed > this.movement.maxVelocity) this.movement.speed = this.movement.maxVelocity;
 		}
 
 		this.rotation += this.movement._angularSpeed;
@@ -435,6 +444,7 @@ class Actor extends Root {
 		}
 		
 		// finally move by velocity
+		if (this.movement.speed > this.movement.maxVelocity) this.movement.speed = this.movement.maxVelocity;
 		this.moveBy(this.velocity);		
 	}
 
@@ -458,7 +468,7 @@ class Actor extends Root {
 	 *  @param {Actor} other 
 	 */	
 	testOverlaps(other) {
-		if (!this.owner.flags.collisionsEnabled) return;
+		if (!this.owner.flags.collisionsEnabled || !this.flags.hasColliders) return;
 		try {
 			if (this.colliders.resolveOverlap(other)) {		// 'this' and 'other' actor are currently overlapped
 				if (this.overlaps.indexOf(other) == -1) {
@@ -488,6 +498,7 @@ class Actor extends Root {
 	 */
 
 	overlapsWith(other) {
+
 		if (!this.owner.flags.collisionsEnabled || !this.colliders || !other.colliders) return;		
 		return this.colliders.resolveOverlap(other);
 	}

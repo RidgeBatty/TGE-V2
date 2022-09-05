@@ -19,9 +19,9 @@ const Vector2 = Types.Vector2;
  * @enum {HitTestMode}
  */
 const Enum_HitTestMode = {
+	Ignore  : 0,				// ignore hit testing altogether. does not fire any events
 	Overlap : 1,				// allow actors to overlap/pass through each other. fire beginoverlap and endoverlap events
 	Block   : 2,				// do not allow overlapping. collide actors. fire collide event
-	Ignore  : 3					// ignore hit testing altogether. does not fire any events
 }
 
 /**
@@ -34,6 +34,7 @@ const HitTestFlag = {
 	Enemy:			Enum_HitTestMode.Overlap,
 	PlayerShot:		Enum_HitTestMode.Overlap,
 	EnemyShot:		Enum_HitTestMode.Overlap,
+	Consumable:		Enum_HitTestMode.Overlap,
 	Obstacle:		Enum_HitTestMode.Block,
 	WorldStatic:	Enum_HitTestMode.Block,
 	WorldDynamic:	Enum_HitTestMode.Block,			
@@ -69,9 +70,11 @@ class Root extends TNode {
 		this.colliders    = null;  		// collider object			
 		this.overlaps     = [];			// this actor is currently overlapping all the other actors in the list
 		
-		this._defaultColliderType = o.defaultColliderType ? o.defaultColliderType : 'WorldDynamic';	// override in descendant class to change the default		
+		this._defaultColliderType = o.colliderType ? o.colliderType : 'WorldDynamic';	// override in descendant class to change the default		
 
 		AE.sealProp(this, 'name', ('name' in o) ? o.name : '');			
+		
+		this._createCollisionChannels();
 	}
 	
 	_createCollisionChannels() {
@@ -110,9 +113,23 @@ class Root extends TNode {
 	 * 
 	 */
 	setCollisionResponse(channelName, response) {		
-		if (channelName in this._hitTestFlag && Object.values(Enum_HitTestMode).indexOf(response) > -1) this._hitTestFlag[channelName] = response;
+		if (channelName in this._hitTestFlag && Object.values(Enum_HitTestMode).indexOf(response) > -1) {
+			this._hitTestFlag[channelName] = response;
+		}
 			else console.warn('Invalid parameters');
+	}
+
+	setCollisionResponseFlag(obj) {
+		for (const [k, v] of Object.entries(obj)) {
+			if ((k in this._hitTestFlag) && (v in Enum_HitTestMode)) this._hitTestFlag[k] = v;
+		}
+	}
+
+	set collisionResponseDefault(response) {
+		for (const channel of Object.keys(this._hitTestFlag)) {
+			this._hitTestFlag[channel] = response;
+		}
 	}
 }
 
-export { Root, Enum_HitTestMode }
+export { Root, Enum_HitTestMode, HitTestFlag }

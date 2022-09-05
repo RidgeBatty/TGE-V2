@@ -133,7 +133,7 @@ class Sequence {
 		const n = Math.floor(this.index);
 		
 		// If the animation has hit either end (first frame for reversed animation, or last frame for forward animation)
-		const outOfBounds = (this._dir == 1 && n > this.end) || (this._dir == -1 && n <= this.start);		
+		const outOfBounds = (this._dir == 1 && n > this.end) || (this._dir == -1 && n < this.start);		
 		
 		if (outOfBounds) {
 			this.index  = (n > this.end) ? this.end : this.start;

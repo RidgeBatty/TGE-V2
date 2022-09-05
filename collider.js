@@ -42,6 +42,11 @@ class Collider {
 		this.overlapInfo  = null;		
 		AE.sealProp(this, 'objects', []);
 	}
+
+	remove(object) {
+		const i = this.objects.indexOf(object);
+		if (i > -1) this.objects.splice(i, 1);
+	}
 	
 	destroy() {
 		this.objects.length = 0;
@@ -124,7 +129,7 @@ class Collider {
 			for (const a of colliders) for (const b of otherColliders) PhysicsShape.Collide(a, b);				
 		} else {
 			// OVERLAP:
-			if (aResp < 3 && bResp < 3) {					
+			if (aResp > 0 && bResp > 0) {					
 				for (const c of colliders)      c.isOverlapped = false;
 				for (const c of otherColliders) c.isOverlapped = false;				
 				

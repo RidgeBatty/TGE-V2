@@ -11,7 +11,7 @@ import { Hitpoints } from './actor-hp.js';
 
 class Enemy extends Actor {
 	constructor(o) {								
-		const params = Object.assign(o, { defaultColliderType : 'Enemy' });
+		const params = Object.assign(o, { colliderType : 'Enemy' });
 		super(params);
 				
 		this.instigator = ('instigator' in o) ? o.instigator : null;

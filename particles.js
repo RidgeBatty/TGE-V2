@@ -21,11 +21,9 @@ import { Engine, Types } from './engine.js';
 import { EventBroadcaster } from './eventBroadcaster.js';
 import { wrapBounds, preloadImages, imgDims } from './utils.js';
 import { Polygon } from './shapes.js';
-import { Vector2 } from './types.js';
 import { getJSON } from './utils.js';
 
-const Vec2    = Types.Vector2;
-const Color   = Types.Color;
+const { Vector2:Vec2, Color } = Types;
 const Filters = {
 	'blur'        : 'px',
 	'brightness'  : '',
@@ -91,6 +89,8 @@ class Emitter extends EventBroadcaster {
 		this._tmpCanvas     = null;
 		this.data           = {};								// user data
 		this.position		= Vec2.Zero();				
+		this._tickCount     = 0;								// internal tick count to adjust with gameloop fps
+		this._tickFraction  = 0;
 
 		this.initParticleTick    = null;
 		this.evolveParticleTick  = null;	
@@ -168,9 +168,11 @@ class Emitter extends EventBroadcaster {
 		this.maxDelay    = params.delay || 0;		
 		this.textContent = params.textContent || '';			
 		this.emitCount   = params.emitCount || 0;				// 0 = emit unlimited number of particles
+		this.emitSurface = params.emitSurface || false;
 		this.emitMax     = ('emitMax' in params) ? params.emitMax : Infinity;	// how many particles to emit total?		
 		this.activeParticleCount = 0;
 		this.compositeOperation  = ('compositeOperation' in params) ? params.compositeOperation : null;
+		this.destroyOnComplete   = ('destroyOnComplete' in params) ? params.destroyOnComplete : true;
 
 		if ('position' in params) this.position = Vec2.FromStruct(params.position);		
 		this.pivot	     = null;
@@ -244,6 +246,14 @@ class Emitter extends EventBroadcaster {
 		this._initEmitter(this.params);		
 		this._running = true;		
 	}
+
+	stop() {
+		this._running = false;
+	}
+
+	stopEmitting() {
+		this.spawnParticles = false;
+	}
 	
 	/** 
 	 * DO NOT CALL MANUALLY! This is called internally when all the particles need to be initialized to default state
@@ -290,9 +300,17 @@ class Emitter extends EventBroadcaster {
 		const init = this.params.initParticle;				// information about the particle initial state		
 		
 		switch (this.params.type) {	// using emitter parameters:
-			case 'box': {																	// size:vec2
-				p.position.x = Math.random() * this.size.x - this.size.x / 2;
-				p.position.y = Math.random() * this.size.y - this.size.y / 2;
+			case 'box': {																	// size:vec2				
+				if (this.emitSurface) {					
+					if ((Math.random() * this.size.y) < (Math.random() * this.size.y)) {
+						p.position.x = Math.random() < 0.5 ? -this.size.x / 2 : this.size.x / 2;
+					} else {
+						p.position.y = Math.random() < 0.5 ? -this.size.y / 2 : this.size.y / 2;
+					}
+				} else {
+					p.position.x = Math.random() * this.size.x - this.size.x / 2;
+					p.position.y = Math.random() * this.size.y - this.size.y / 2;	
+				}
 				break;
 			}
 			case 'circle': {																// start and end angle (to create an arc), innerRadius, radius					
@@ -304,8 +322,13 @@ class Emitter extends EventBroadcaster {
 				const r      = Math.random() * (this.radius - this.innerRadius) ** 2;
 				const ir     = this.innerRadius ** 2;
 				
-				p.position.x =  Math.sin(a) * Math.sqrt(r + ir);
-				p.position.y = -Math.cos(a) * Math.sqrt(r + ir);
+				if (this.emitSurface) {
+					p.position.x =  Math.sin(a) * this.radius;
+					p.position.y = -Math.cos(a) * this.radius;	
+				} else {
+					p.position.x =  Math.sin(a) * Math.sqrt(r + ir);
+					p.position.y = -Math.cos(a) * Math.sqrt(r + ir);
+				}
 				break;
 			}
 			case 'point': p.position = Vec2.Zero();	
@@ -398,24 +421,20 @@ class Emitter extends EventBroadcaster {
 	spawn(singleParticle) {		
 		let spawned = null;
 
-		if (!singleParticle) {
-			var emit = this.getSpawnCount();		
-		} else {
-			var emit = 1;
-		}
+		if (!singleParticle) var emit = this.getSpawnCount();		
+			else var emit = 1;
 		
 		for (const p of this.particles) if (!p.active && emit > 0) {			
 			if (this.emitCount >= this.emitMax) break;
 
 			spawned = this.createParticle(p);
-			
-			// custom function:
-			if (this.initParticleTick) this.initParticleTick(p);
+						
+			if (this.initParticleTick) this.initParticleTick(p);		// call custom particle tick function
 				
 			p.active = true;
-			emit--;					// decrement emitted particles counter	
+			emit--;														// decrement emitted particles counter	
 
-			this.emitCount++;		// add total emitted counter
+			this.emitCount++;											// add total emitted counter
 		}
 		
 		if (singleParticle) return spawned;
@@ -424,20 +443,19 @@ class Emitter extends EventBroadcaster {
 	tick() {
 		if (!this._running) return;
 		
-		this._fireEvent('tick');	// emitter tick
-		
-		// delay the update by "delay" frames (comes from emitter)
-		if (this.delay > 0) { this.delay--; return }		
+		this._tickCount++;												// skip tick if engine is overclocked and running faster than "particleSystem.fps" value
+		this._tickFraction += this.particleSystem.gameLoop._tickRate / (1000 / this.particleSystem.fps);
+		if (this._tickFraction % 1 != 0) return;
 				
-		// delayed spawn
-		for (const p of this.particles) if (p.delay > 0) p.delay--; 
-					
-		if ( this.spawnParticles ) this.spawn();					// if emitter is active, spawn new particle(s) 
+		this._fireEvent('tick');										// emitter tick
+				
+		if (this.delay > 0) { this.delay--; return }					// delay the update by "delay" frames (comes from emitter)
+		for (const p of this.particles) if (p.delay > 0) p.delay--; 	// delayed spawn					
+		if ( this.spawnParticles ) this.spawn();						// if emitter is active, spawn new particle(s) 
 				
 		let deadParticles = 0;
-		for (const p of this.particles) {							// apply transforms to spawned bits					
-			// decrement lifetime and inactivate dead particles			
-			p.lifeTime--;
+		for (const p of this.particles) {								// apply transforms to spawned bits								
+			p.lifeTime--;												// decrement lifetime and inactivate dead particles			
 			if (p.lifeTime < 1) p.active = false;
 			if ( !p.active ) {
 				deadParticles++;
@@ -481,9 +499,11 @@ class Emitter extends EventBroadcaster {
 		}
 
 		// TO-DO: Put this in the particle loop above, and early exit when condition is met?  condition met for stopping the emitter? 
-		if (this.emitCount == this.emitMax && deadParticles == this.particles.length) {			
-			this._running = false;
+		// Two "complete" conditions: either "emitCount" has reached "emitMax" OR "spawnParticles" is set to false and we've reached a state when there are only dead particles in the list
+		if ((this.emitCount == this.emitMax || this.spawnParticles == false) && deadParticles == this.particles.length) {			
+			this._running = false;			
 			this._fireEvent('complete');
+			if (this.destroyOnComplete) this.destroy();
 		}
 	}
 	
@@ -568,7 +588,7 @@ class Emitter extends EventBroadcaster {
 
 class ParticleSystem {
 	/**
-	 * 
+	 * Creates new particle system instance which is stored in Engine.gameLoop.particleSystems array. You do not need to maintain a reference to particle systems
 	 * @param {Engine} Engine 
 	 */
 	
@@ -579,6 +599,7 @@ class ParticleSystem {
 		this.gameLoop = Engine.gameLoop;
 		this.emitters = [];	
 		this.stash    = new Map();														// stash contains a list of parameter objects loaded from urls by loadFromFile() method
+		this.fps      = 60;
 	}
 
 	destroy() {
@@ -610,17 +631,6 @@ class ParticleSystem {
 	}
 	
 	/**
-	 * Called automatically in Engine.GameLoop
-	 */	
-	tick() {
-		for (let e of this.emitters) e.tick();		
-	}
-	
-	update() {
-		for (let e of this.emitters) e.update();				
-	}
-	
-	/**
 	 * The first parameter is either a string or an array of strings which contain the url to the file(s). Optional second parameters is a path prepended to all urls.
 	 * @param {string|[string]} urls 
 	 * @param {string} [path=string]
@@ -629,7 +639,7 @@ class ParticleSystem {
 	loadFromFile(urls, path = '') {
 		return new Promise((resolve, reject) => {
 			const jobs  = [];
-			var   files = (typeof urls == 'string') ? [urls] : urls;
+			var   files = (typeof urls == 'string') ? [urls] : urls;			
 			for (const url of files) {
 				jobs.push(getJSON(path + url));
 			}

@@ -14,6 +14,9 @@ import { Layer } from './layer.js';
 
 import { Vector2 } from './types.js';
 import { Engine } from './engine.js';
+import { HitTestFlag, Enum_HitTestMode } from './root.js';
+
+class HitTestGroups { constructor() { Object.keys(HitTestFlag).forEach(e => this[e] = []); }; clear() { Object.keys(HitTestFlag).forEach(e => this[e].length = 0); } }
 
 class GameLoop {	
 	constructor(o = {}) {
@@ -30,10 +33,13 @@ class GameLoop {
 		this.clearColor     = null;
 		
 		this.overlaps       = [];			// list of overlapping objects during the current frame, after overlap calculations
+		this.hitTestGroups  = new HitTestGroups();
+		this.overTests      = 0;
 		
 		// events:
 		this.onBeforeRender = ('onBeforeRender' in o && typeof o.onBeforeRender == 'function') ? o.onBeforeRender : null; 
 		this.onBeforeTick   = ('onBeforeTick' in o && typeof o.onBeforeTick == 'function') ? o.onBeforeTick : null; 
+		this.onPanic        = ('onPanic' in o && typeof o.onPanic == 'function') ? o.onPanic : null;
 		this.timers		    = [];
 		
 		// other:
@@ -50,6 +56,8 @@ class GameLoop {
 		this.frameTimes     = [];
 		this.requestID      = null;	
 
+		this.collisionCheckTime = 0;		// time spent checking for collisions/overlaps
+
 		this.container      = null;			// if defined, actors are created inside this container (overriding engine.rootElem)
 	}
 
@@ -63,8 +71,17 @@ class GameLoop {
 	/**
 	 * Returns GameLoop running time in seconds
 	 */
-	get seconds() {
+	get runningTime() {
 		return this.tickCount / (1000 / this._tickRate);
+	}
+
+	/**
+	 * Converts seconds to frames taking a custom FPS setting into account
+	 * @param {Number} sec - Number of seconds (float) to convert to frames (integer)
+	 * @returns 
+	 */
+	seconds(sec) {		
+		return Math.round(sec * (1000 / this._tickRate));
 	}
 
 	/**
@@ -129,8 +146,9 @@ class GameLoop {
 	findTimerByName(name) {
 		return this.timers.find(e => e.name == name);
 	}
+
 	/**
-	 * Loops through all actors and returns an array of actors based on their flag values	
+	 * Loops through all actors and returns the first actor with searched name
 	 * @param {string} name 
 	 * @returns {Actor}
 	 */
@@ -138,6 +156,22 @@ class GameLoop {
 		for (const actor of this.actors) if (actor.name == name) return actor;
 		return null;
 	}	
+
+	removeActor(actor) {		
+		for (const olap of actor.overlaps) {										// signal "endoverlap" to all actors which this actor overlaps with
+			olap.overlaps = olap.overlaps.filter(e => e != actor);					// remove destroyed actor from (all the) other actors' overlaps list!
+			actor._fireEvent('endoverlap', { actor, otherActor:olap });	
+		}
+		
+		const c = this.removeFromZLayers(actor);									// remove from zLayers
+
+		let success = false;
+		for (let i = this.actors.length; i--;) if (this.actors[i] == actor) {
+			this.actors.splice(i, 1);
+			success = true;
+			if (!actor.flags.isDestroyed) actor.destroy();
+		}		
+	}
 
 	get isRunning() { return this.flags.isRunning; }
 	set isRunning(b) { this.flags.isRunning = (b === true) ? true : false; }
@@ -169,7 +203,7 @@ class GameLoop {
 
 	/**
 	 * Creates a new game object instance and adds it in the GameLoop
-	 * @param {String} aType Object type to create, one of level|player|projectile|enemy|layer|consumable|obstacle|npc
+	 * @param {String} aType Object type to create, one of: level player projectile enemy layer consumable obstacle npc
 	 * @param {object} o Actor parameter object
 	 * @param {string} o.name User defined name
 	 * @param {image} o.img HTMLImageElement or Canvas
@@ -203,7 +237,7 @@ class GameLoop {
 				case 'consumable'   : { var a = new Actor(o); a._type = Enum_ActorTypes.consumable; break; }
 				case 'obstacle'     : { var a = new Actor(o); a._type = Enum_ActorTypes.obstacle; break; }
 				case 'npc'  		: { var a = new Actor(o); a._type = Enum_ActorTypes.npc; break; }
-				default 	  		: { var a = new Actor(o); a._type = Enum_ActorTypes.default; }
+				default 	  		: { var a = new aType(o); a._type = Enum_ActorTypes.default; }
 			}
 			a.objectType = aType;
 			this.zLayers[a.zIndex].push(a);	
@@ -223,23 +257,15 @@ class GameLoop {
 	 * DO NOT USE! This is called internally!
 	 */	
 	_render(timeStamp) {
-
-		// schedule frame
-		this.requestID       = window.requestAnimationFrame(t => this._render(t));
-
-		if (!this._flags.isRunning && this._oneShotRender == false) {	   // frame processing cannot be cancelled when isRunning is false - otherwise debugger will not be able to run its injected code
-			this._lastTickLen    = performance.now();
-			this._frameStart     = this._lastTick;
+		if (!this._flags.isRunning && this._oneShotRender == false) {	  		// frame processing cannot be cancelled when isRunning is false - otherwise debugger will not be able to run its injected code
+			this._lastTickLen  = performance.now();
+			this._frameStart   = this._lastTick;
 			return;		
 		}
-
-		// reset transform
-		Engine.renderingSurface.resetTransform();
-
-		// clearColor
-		if (this.clearColor) Engine.renderingSurface.drawRectangle(0,0, Engine.dims.x, Engine.dims.y, { fill:this.clearColor });
 		
-		// tick
+		Engine.renderingSurface.resetTransform();								// reset transform (before ticks)
+		
+		// --- tick ---
 		const nextTick = this._lastTickLen + this._tickRate;
 		this._tickQueue = 0;
 		
@@ -248,8 +274,9 @@ class GameLoop {
 			this._tickQueue     = ~~(timeSinceTick / this._tickRate);
 		}
 		
-		if (this._tickQueue > 120) { 									// panic
+		if (this._tickQueue > 120) { 											// handle tick timer panic
 			this._lastTickLen = performance.now(); 
+			if (this.onPanic) this.onPanic(this._tickQueue);
 			return; 
 		}
 		
@@ -258,10 +285,14 @@ class GameLoop {
 			this._tick();
 		}
 		
-		// render
+		// --- render ---
 		if (this._frameStart == null) this._frameStart = timeStamp;		
-		this.frameDelta = timeStamp - this._frameStart;
-				
+		this.frameDelta = timeStamp - this._frameStart;		
+		
+		if (this.clearColor) {
+			if (this.clearColor == 'erase') Engine.renderingSurface.ctx.clearRect(0,0, Engine.dims.x, Engine.dims.y);			// clear
+				else Engine.renderingSurface.drawRectangle(0,0, Engine.dims.x, Engine.dims.y, { fill:this.clearColor });		// clear with color
+		}
 		if (this.onBeforeRender) this.onBeforeRender();		
 		
 		for (const layer of this.zLayers) {			
@@ -275,6 +306,8 @@ class GameLoop {
 		this.frameCount++;			
 		this._frameStart = timeStamp;
 		this._oneShotRender = false;
+
+		this.requestID = window.requestAnimationFrame(t => this._render(t));	// schedule next frame
 	}
 
 	removeFromZLayers(object) {
@@ -292,6 +325,8 @@ class GameLoop {
 	 * DO NOT USE! This is called internally!
 	 */	
 	_tick(forceSingleTick) {
+		const groups = this.hitTestGroups;
+
 		if (!this.flags.isRunning && !forceSingleTick) return;
 		
 		const tickStart = performance.now();
@@ -302,41 +337,37 @@ class GameLoop {
 		for (const t of this.tickables) t.tick();
 		for (const t of this.zLayers) for (const o of t) if (o.tick) o.tick();
 		
+		// temp constants
 		const actorsArray = this.actors;				
 		const destroyed   = [];					// list for destroyed actors, collected during actor.tick() 
 
-		if (this.flags.collisionsEnabled) {
-			// reset the color of all colliders of all actors 
-			//if (this.flags.showColliders) for (const actor of actorsArray) if (actor.flags.hasColliders) for (const c of actor.colliders.objects) actor.colliders._setHilite(c.elem, 'blue');			
-
-			// create hit test groups:		
-			var groups = {
-				Player:[],
-				Enemy:[],
-				PlayerShot:[],
-				EnemyShot:[],
-				Obstacle:[],
-				WorldStatic:[],
-				WorldDynamic:[],			
-				Decoration:[],
-				Environment:[],
-			}
-			for (const actor of actorsArray) if (actor.hasColliders) groups[actor.colliderType].push(actor);					
-			this.overlaps.length = 0;
+		/* 
+			Hit testing: The idea is to reduce number of hit test by looping though actors once and putting them in their respective hit test group arrays
+			This way only actor types which can interact with each other are compared
+		*/
+		this.overlapTests = 0;
+		if (this.flags.collisionsEnabled) {						
+			groups.clear();																													// clear hit test groups
+			for (const actor of actorsArray) if (actor.hasColliders && !actor.flags.isDestroyed) groups[actor.colliderType].push(actor);	// put all actors in their respective groups
+			this.overlaps.length = 0;														
 		}
 
 		// loop all actors in the gameloop		
+		this.collisionCheckTime = 0;
 		for (let i = 0; i < actorsArray.length; i++) {			
 			const actor = actorsArray[i];
 
 			actor.tick();										// tick all actors (actor.tick() returns immediately if actor is destroyed)
 			
 			// check for collisions and overlaps:
-			if (this.flags.collisionsEnabled && actor.flags.hasColliders) {
-				for (const g of Object.keys(groups)) {														// loop through every hit test group
-					if (actor._hitTestFlag[g] < 3) {
+			const collisionCheckTime = performance.now();
+
+			if (this.flags.collisionsEnabled && actor.flags.hasColliders && !actor.flags.isDestroyed) {
+				for (const g of Object.keys(groups)) {															// loop through every hit test group
+					if (actor._hitTestFlag[g] != Enum_HitTestMode.Ignore) {										// can we ignore the whole group?
 						for (const o of groups[g]) {
-							if (o != actor && !actor.flags.isDestroyed && !o.flags.isDestroyed) {				// do not test against self and destroyed actors
+							if (o != actor && !o.flags.isDestroyed) {				// do not test against self and destroyed actors
+								this.overlapTests++;
 								actor.testOverlaps(o);
 								if (o.flags.isDestroyed) destroyed.push(o);
 							}
@@ -344,33 +375,21 @@ class GameLoop {
 					}
 				}
 			}
+			this.collisionCheckTime += performance.now() - collisionCheckTime;
 			
 			if (actor.flags.isDestroyed) destroyed.push(actor);						
 		} 	
 
-		// take care of destroying the actors AFTER checking for collisions, because typically actors get destroyed in collisions/overlaps			
-		for (let i = 0; i < destroyed.length; i++) {			
-			const actor = destroyed[i];
-			// signal 'endoverlap' to all actors which this actor overlaps with:
-			for (const olap of actor.overlaps) {				
-				olap.overlaps = olap.overlaps.filter(e => e != actor);			// remove destroyed actor from (all the) other actors' overlaps list!				
-				actor._fireEvent('endoverlap', { actor, otherActor:olap });	
-			}
-			
-			// remove from zLayers:
-			this.removeFromZLayers(actor);
-			
-			// clean up:
-			actor.release();
-			this.actors = actorsArray.filter(e => e != actor);	// probably not efficient to replace the whole actors array, but rarely called					
-		}
+		// take care of destroying all actors with "isDestroyed" flag set AFTER checking for collisions, because typically actors get destroyed in collisions/overlaps			
+		// but the dev might have set the flag too.
+		for (const a of destroyed) this.removeActor(a);
 
 		// tick timers:
 		for (let i = this.timers.length; i--;) {
 			const evt = this.timers[i];
 
 			if ('actor' in evt && evt.actor.isDestroyed) {
-				this.timers.slice(i, 1);				
+				this.timers.splice(i, 1);				
 				continue;
 			}
 			
@@ -397,12 +416,13 @@ class GameLoop {
 	}
 
 	/**
-	 * Pauses the GameLoop
+	 * Pauses or resumes the GameLoop
 	 */
-	pause() {
-		window.cancelAnimationFrame(this.requestID);
-		this.requestID       = null;
-		this.flags.isRunning = false;				
+	pause(onBeforeTick) {
+		if (this.flags.isRunning) return this.stop();
+		// restart 
+		if (onBeforeTick) this.onBeforeTick = onBeforeTick;
+		this.start();
 	}
 	
 	/**
@@ -415,11 +435,17 @@ class GameLoop {
 		this._frameStart     = this._lastTick;
 		
 		try {			
-			this._render();
+			this._render();			
 		} catch (e) {
 			window.cancelAnimationFrame(this.requestID);
 			console.error(e);
 		}
+	}
+
+	stop() {
+		window.cancelAnimationFrame(this.requestID);
+		this.requestID       = null;
+		this.flags.isRunning = false;
 	}
 
 	step() {
@@ -431,6 +457,14 @@ class GameLoop {
 			this._frameStart    = this._lastTick;
 			this._render();
 		}
+	}
+
+	/**
+	 * Forces the engine to repaint current frame
+	 */
+	update() {
+		this._oneShotRender = true;
+		this._render();
 	}
 
 	toString() {

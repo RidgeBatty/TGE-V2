@@ -20,7 +20,7 @@ class Texture {
 		return new Promise((resolve, reject) => {
 			this.image         = new Image();
 			this.image.onerror = _ => { reject(this.image); }
-			this.image.onload  = _ => { resolve(this.image); }
+			this.image.onload  = _ => { this._imgLoaded(); resolve(this.image); }
 			this.image.src     = url;		
 		})
 	}
@@ -36,16 +36,16 @@ class Texture {
 		Internal callback function, executed when image is loaded in constructor
 	*/
 	_imgLoaded(cb) {
-		const i     = this.image;
+		const img = this.image;
 		
 		try {			
-			this.canvas = new OffscreenCanvas(i.naturalWidth, i.naturalHeight);		
+			this.canvas = new OffscreenCanvas(img.naturalWidth, img.naturalHeight);		
 		} catch(e) {
 			this.canvas = document.createElement('canvas');
 		}
 		
 		this.ctx    = this.canvas.getContext('2d');
-		this.ctx.drawImage(i, 0, 0);		
+		this.ctx.drawImage(img, 0, 0);		
 		
 		textures[this.name] = this;
 		

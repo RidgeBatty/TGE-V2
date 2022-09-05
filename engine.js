@@ -20,7 +20,7 @@
 * For example a space invaders, tetris, pong, asteroids, etc. might have no use of container for static World but a platformer game definitely has.
 *
 */
-const VersionNumber = '2.0.12';
+const VersionNumber = '2.1';
 
 import * as MultiCast from "./multicast.js";
 import * as Types from "./types.js";
@@ -477,6 +477,12 @@ class TinyGameEngine {
 		}
 		return scene;
 	}	
+
+	setup(o) {
+		if ('rootElem' in o) this.setRootElement(o.rootElem);
+		if ('clearColor' in o) this.gameLoop.clearColor = o.clearColor;
+		if ('flags' in o) this.setFlags(o.flags);				
+	}
 }
 
 console.log('Initializing TGE version ' + VersionNumber);

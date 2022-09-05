@@ -1,5 +1,4 @@
-
-import * as Types from './types.js';	
+import { Engine, Types } from './engine.js';
 
 const Vector2     = Types.Vector2;
 const Zero        = Vector2.Zero();
@@ -27,6 +26,8 @@ class PhysicsShape {
 		this.restitution = 1;
 		this.mass		 = 1;
 		this._angle      = 0;		
+		this.points      = [];
+
 		AE.sealProp(this, 'isEnabled', true);
 		AE.sealProp(this, 'data', {});
 	}
@@ -38,16 +39,59 @@ class PhysicsShape {
 	get angle() {	
 		return ((this._angle % PI2) + PI2) % PI2;
 	}	
+
+	/**
+	 * Returns the bounding box (in screen space) of the current shape using 4 values: minX, minY, maxX, maxY
+	 */
+	get extent() {
+		let minX = Number.POSITIVE_INFINITY;
+		let minY = Number.POSITIVE_INFINITY;
+		let maxX = Number.NEGATIVE_INFINITY;
+		let maxY = Number.NEGATIVE_INFINITY;
+
+		const pp = this.projectedPoints;
+		for (const p of pp) {
+			if (p.x < minX) minX = p.x;
+			if (p.y < minY) minY = p.y;
+			if (p.x > maxX) maxX = p.x;
+			if (p.y > maxY) maxY = p.y;
+		}
+		return { minX, minY, maxX, maxY }
+	}
+
+	/**
+	 * Returns average of all projected points
+	 * @returns {Vector2}
+	 */
+	get average() {
+		const pp = this.projectedPoints;
+		let x = 0, y = 0;
+		for (const p of pp) {
+			x += p.x;
+			y += p.y;
+		}
+		return new Vector2(x / pp.length, y / pp.length);
+	}
 	
-/*
-	Applies full transform to (p) resulting in screen space coordinate and returns the new point. The original (p) is not modified.
-	actor position
-	actor scale 
-	actor rotation 
-	actor pivot 
-	local position
-	local rotation
-*/
+	/**
+	 *	Applies full transform to all points of this polygon. Returns a new array with copies of points.
+	*/
+	get projectedPoints() {				
+		var result = [];
+		for (var i = 0; i < this.points.length; i++) result[i] = this.project(this.points[i]);		
+		return result;
+	}
+	
+	/**
+	 * Applies full transform to "p" resulting in screen space coordinate and returns the new point. The original "p" is not modified.
+	 * actor position
+	 * actor scale 
+	 * actor rotation 
+	 * actor pivot 
+	 * local position
+	 * local rotation
+	 * @param {Vector2} p - Point to be projected to screen space
+	 */
 	project(p) {
 		var p = p.clone();
 		const o = this.owner;
@@ -61,10 +105,13 @@ class PhysicsShape {
 		return p;
 	}
 
-/*
-	Test if PhysicsShapes A and B overlap each other
-*/
-	static Overlaps(a, b) {	// a:PhysicsShape, b:PhysicsShape, return:boolean
+	/**
+	 * Test if PhysicsShapes A and B overlap each other
+	 * @param {PhysicsShape} a 
+	 * @param {PhysicsShape} b 
+	 * @returns {Boolean}
+	 */
+	static Overlaps(a, b) {	
 		switch (b.type) {
 			case Enum_PhysicsShape.Circle: return a.overlapsCircle(b); break;
 			case Enum_PhysicsShape.AABB:   return a.overlapsAABB(b); break;
@@ -73,10 +120,13 @@ class PhysicsShape {
 		}
 	}	
 	
-/*
-	Test if PhysicsShapes A and B will collide
-*/
-	static Collide(a, b) { // a:PhysicsShape, b:PhysicsShape, return:boolean
+	/** 
+	 * Test if PhysicsShapes A and B will collide 
+	 * @param {PhysicsShape} a 
+	 * @param {PhysicsShape} b 
+	 * @returns {Boolean}
+	 */
+	static Collide(a, b) { 
 		if (b.type == Enum_PhysicsShape.Poly)   return a.collidePoly(b);				
 	}
 }
@@ -111,19 +161,26 @@ class Circle extends PhysicsShape {
 		c2.velocity.sub(pTan.mulScalar(c2.restitution));				
 	}
 	*/	
+
+	extent() {
+		const point  = this.project(Zero);		
+		const radius = this.radius * this.owner.scale;
+		return { minX : point.x - radius, minY : point.y - radius, maxX : point.x + radius, maxY : point.y + radius };
+	}
 	
-	/*
-		Returns true if point 'p' (screen space) is inside the this circle.
-	*/
-	isPointInside(p) {					// p:Vector2, return:boolean
+	/**
+	 * Returns true if point 'p' (screen space) is inside the this circle.
+	 * @param {Vector2} bp
+	 * @returns {Boolean}
+	 */
+	isPointInside(p) {
 		const point = this.project(Zero);		
 		return (this.radius * this.owner.scale) > Math.sqrt((p.x - point.x) ** 2 + (p.y - point.y) ** 2);
 	}
 	
 	overlapsCircle(b) {		
 		const apos = this.project(Zero);
-		const bpos = b.project(Zero);
-				
+		const bpos = b.project(Zero);				
 		const dist = Math.sqrt((apos.x - bpos.x) ** 2 + (apos.y - bpos.y) ** 2);
 				
 		return dist < (this.radius * this.owner.scale + b.radius * b.owner.scale);
@@ -176,18 +233,18 @@ class AABB extends PhysicsShape {
 		this.halfSize = Vector2.DivScalar(size, 2);		
 	}
 	
-/*
-	Creates an AABB from literal coordinate values of a rectangle	
-*/
+	/**
+	 * Creates an AABB from literal coordinate values of a rectangle	
+	 */
 	static FromRect(left, top, right, bottom) {		// left:number, top:number, right:number, bottom:number
 		const width  = (right - left);
 		const height = (bottom - top);
 		return new AABB(new Vector2(left + width * 0.5, top + height * 0.5), new Vector2(width, height));
 	}
 	
-/*
-	Creates an AABB from rectangle coordinates (left, top, right, bottom) stored in an array
-*/	
+	/**
+	 * Creates an AABB from rectangle coordinates (left, top, right, bottom) stored in an array
+	 */
 	static FromArray(a) {
 		return AABB.FromRect(a[0], a[1], a[2], a[3]);
 	}
@@ -238,13 +295,12 @@ class AABB extends PhysicsShape {
 */
 class Box extends AABB {
 	/**
-	 * 
+	 * Creates a Box which may be rotated unlike it's ancestor AABB
 	 * @param {Vector2} position 
 	 * @param {Vector2} size 
 	 * @param {number} angle 
-	 */
-	
-	constructor(position, size, angle = 0) { // position:Vector2, size:Vector2, angle:number
+	 */	
+	constructor(position, size, angle = 0) { 
 		super(position, size);
 		
 		this._angle = angle;
@@ -253,19 +309,10 @@ class Box extends AABB {
 		const hs    = this.halfSize;
 		this.points = [new Vector2(-hs.x, -hs.y), new Vector2(hs.x, -hs.y), new Vector2(hs.x, hs.y), new Vector2(-hs.x, hs.y)];
 	}
-
-	/*
-		Applies full transform to all points of this polygon. Returns a new array with copies of points.
-	*/
-	get projectedPoints() {				
-		var result = [];
-		for (var i = 0; i < this.points.length; i++) result[i] = this.project(this.points[i]);		
-		return result;
-	}
 		
-	/* 
-		Returns the rotation of the box relative to screen. The returned angle is between 0..2PI
-	*/
+	/**
+	 * Returns the rotation of the box relative to screen. The returned angle is between 0..2PI
+	 */
 	get screenAngle() {	// return:number
 		var v1 = this.project(this.points[0]);
 		var v2 = this.project(this.points[3]);
@@ -273,12 +320,14 @@ class Box extends AABB {
 		return Math.PI - Math.atan2(v1.x, v1.y);
 	}
 	
-	/*
-		Given point 'p' must be in screen space. 
-		This method projects the box into screen space and checks if a line drawn from the center of the box to the given point intersects
-		any edge of the box. If an intersection is found (p) is outside the box.
-	*/	
-	isPointInside(p) {				// p:Vector2, return:boolean				
+	/**
+	 * Given point 'p' must be in screen space. 
+	 * This method projects the box into screen space and checks if a line drawn from the center of the box to the given point intersects
+	 * any edge of the box. If an intersection is found (p) is outside the box.
+	 * @param {Vector2} p
+	 * @returns {Boolean} 
+	 */	
+	isPointInside(p) {
 		const b      = this.projectedPoints;				
 		const center = this.project(Zero);
 		
@@ -358,34 +407,31 @@ class Poly extends PhysicsShape {
 	constructor(position, angle = 0) { // position:Vector2, angle:number		
 		super();
 		Object.assign(this, { position, _angle:angle });
-		this.type   = Enum_PhysicsShape.Poly;
-		this.points = [];
+		this.type   = Enum_PhysicsShape.Poly;		
 		this.invalidate();	// reset cached points for the current frame
 	}
 	
-	/*
-		Resets projected points cache (this is designed to be used internally by Poly class)
-	*/	
+/**
+ * Resets projected points cache (this is designed to be used internally by Poly class)
+ */	
 	invalidate() {
 		this._projectedPointsCache = [];
 		this._linesCache = [];
 	}
 	
-	/*
-		Applies full transform to all points of this polygon. Returns a new array with copies of points.
-	*/
+/**
+ * Applies full transform to all points of this polygon. Returns a new array with copies of points.
+ */
 	get projectedPoints() {		
-		if (this._projectedPointsCache.length == 0) {
-			var result = [];
-			for (var i = 0; i < this.points.length; i++) result[i] = this.project(this.points[i]);		
-			this._projectedPointsCache = result;
+		if (this._projectedPointsCache.length == 0) {			
+			this._projectedPointsCache = super.projectedPoints();
 		} else result = this._projectedPointsCache;
 		return result;
 	}
 
-	/**
-		Creates points of polygon from flat array of values [x0, y0, x1, y1, x2, y2...] converting them to Vector2
-	*/
+/**
+ * Creates points of polygon from flat array of values [x0, y0, x1, y1, x2, y2...] converting them to Vector2
+ */
 	fromArray(arr) { // arr:[number]
 		if ( !Array.isArray(arr)) throw 'Parameter must be an array';
 		if (arr.length % 2 == 0) {
@@ -397,16 +443,16 @@ class Poly extends PhysicsShape {
 		}
 	}	
 
-	/*	
-		Is point inside a polygon?
-		
-		MIT license
-		ray-casting algorithm based on
-		// http://www.ecse.rpi.edu/Homepages/wrf/Research/Short_Notes/pnpoly.html
-		modified by Ridge Batty to work with Vector2 type
-		
-		Point in local space (p) 
-	*/
+	/**	
+	 * Is point inside a polygon?
+	 *	
+	 *	MIT license
+     *	ray-casting algorithm based on
+     *	// http://www.ecse.rpi.edu/Homepages/wrf/Research/Short_Notes/pnpoly.html
+     *	modified by Ridge Batty to work with Vector2 type
+     *		
+	 * @param {Vector2} p - Point in local space
+	 */
 	isPointInside(p) {	
 		const vs  = this.projectedPoints;
 		

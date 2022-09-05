@@ -3,14 +3,16 @@
 	Simple raytracer for 2D and 2.5D or "fake 3D" games
 
 */
-import { Types } from './engine.js';	
+import { Engine, Types } from './engine.js';	
+import { Layer } from './layer.js';
+import { Texture } from './texture.js';
 
-const Vector2 = Types.Vector2;
-const Seg     = Types.LineSegment;
+const { V2, Vector2:Vec2, LineSegment:Seg } = Types;
 
 const Enum_RaytracerTypes = {
-	Default		  : 1,
-	Wolfenstein3D : 1,			// restricted to single height level, all walls are equal height
+	Default	      : 1,
+	LineSegments  : 1,			// renders the map using line segments
+	Tiles         : 2,			// renders the map using fixed size tiles (allows only 90 degree angles in walls)
 }
 
 class Map {
@@ -19,45 +21,74 @@ class Map {
 		this.shapes    = [];
 		this.atanCache = [];
 	}
+
+	clear() {
+		this.shapes.length = 0;
+	}
 	
-	drawRect(a, b, w, h, flip) {
-		let map = this.shapes;
-		
-		let p0 = new Vector2(a, b);
-		let p1 = new Vector2(a + w, b);
-		let p2 = new Vector2(a + w, b + h);
-		let p3 = new Vector2(a, b + h);
-		
-		if (!flip) {
-			map.push(new Seg(p0, p1));
-			map.push(new Seg(p1, p2));
-			map.push(new Seg(p2, p3));
-			map.push(new Seg(p3, p0));
-		} else {
-			map.push(new Seg(p0, p3));
-			map.push(new Seg(p3, p2));
-			map.push(new Seg(p2, p1));
-			map.push(new Seg(p1, p0));	
-		}
+	drawRect(o) {
+		if (!('textures' in o)) o.textures = [0,0,0,0];
+		if (!('flip' in o))     o.flip = false;
+
+		const { x, y, w, h, textures, flip } = o;		
+		const p = [V2(x, y), V2(x + w, y), V2(x + w, y + h), V2(x, y + h)];
+
+		for (let i = 0; i < 4; i++) {
+			const current = !flip ? i : (3 - i);
+			const next    = !flip ? ((i == 3) ? 0 : i + 1) : ((i == 3) ? 3 : 2 - i);
+
+			const seg = new Seg(p[current], p[next]); 
+			seg._textureId = textures[i]; 
+			this.shapes.push(seg);
+		}					
 	}
 }
 
-class Raytracer {
-	constructor(engine) {
-		this.map       = new Map(engine);
+class Raytracer extends Layer {
+	constructor(params = {}) {
+		super({});
+
+		this.params    = params;
+		this.map       = new Map(Engine);
 		this.culled    = [];
 		this.cullIndex = 0;
 		this.textures  = [];
 		this.type      = Enum_RaytracerTypes.Default;
-		this.engine    = engine;
-		this.surface   = engine.world.surface;
+		this.engine    = Engine;
+		this.surface   = Engine.renderingSurface;
 		this.focalLength = 1;
 		this.rayLength   = 32;
+
+		// "this.position" comes from Layer		
+		this.rotation    = 0;
 		
 		this._useFog	       = true;
 		this._useHalfPrecision = true;
 		
 		this.updateViewport();
+	}
+
+	createMap(segments){
+		this.map.clear();
+		for (const s of segments) this.map.drawRect(s);
+	}
+
+	async addTexture(url, name) {
+		const t = new Texture(name);
+		await t.load(url);
+		this.textures.push(t);
+		return t;
+	}
+
+	addTextures(o) {
+		return new Promise((resolve, reject) => {
+			for (const t of o) this.addTexture(t.url, t.name).then(tex => {
+				if (this.textures.length == o.length) resolve();
+			}).catch(e => {
+				console.warn('Failed to load image:', t.url);
+				reject(t);
+			});			
+		});
 	}
 	
 	set useFog(value) { if (AE.isBoolean(value)) { this.surface.ctx.globalAlpha = 1.0; this._useFog = value; } }
@@ -67,8 +98,8 @@ class Raytracer {
 	get useHalfPrecision() 	  { return this._useHalfPrecision; }
 	
 	updateViewport() {
-		const width  = this.engine.screen.width;
-		const height = this.engine.screen.height;
+		const width  = this.engine.viewport.width;
+		const height = this.engine.viewport.height;
 		
 		let w = this._useHalfPrecision ? (width >> 1) : width;		
 		this.atanCache = new Array(w);
@@ -76,7 +107,7 @@ class Raytracer {
 		
 		if (this.canvas == null) {
 			this.canvas = new OffscreenCanvas(width, height);
-			this.ctx    = this.canvas.getContext('2d');
+			this.ctx    = this.canvas.getContext('2d');			
 		} else {
 			this.canvas.width  = width;
 			this.canvas.height = height;
@@ -85,7 +116,7 @@ class Raytracer {
 	
 	rayCast(fromPos, angle, rayLength) {		
 		let map    = this.culled;
-		let rayEnd = Vector2.Up().rotate(angle).mulScalar(rayLength).add(fromPos);
+		let rayEnd = Vec2.Up().rotate(angle).mulScalar(rayLength).add(fromPos);
 		let ray    = new Seg(fromPos, rayEnd);
 			
 		let closestLine = { index:-1, dist:Infinity };
@@ -93,7 +124,7 @@ class Raytracer {
 		for (var i = 0; i < this.cullIndex; i++) {		
 			let v = ray.getIntersection(map[i]);
 			if (v != null) {				
-				let r = Vector2.Distance(ray.p0, v);
+				let r = Vec2.Distance(ray.p0, v);
 				if (r < closestLine.dist) closestLine = { index:i, dist:r, intersectionPoint:v };
 			} 			
 		}
@@ -101,8 +132,8 @@ class Raytracer {
 		if (closestLine.index != -1) {	
 			let line = map[closestLine.index];
 			let v    = closestLine.intersectionPoint;						
-			let ofsx = Vector2.Distance(line.p0, v); // ray intersection point relative to length of the map line (texture mapping)
-			return { dist:closestLine.dist, texture:0, ofsx:ofsx - ~~ofsx }					
+			let ofsx = Vec2.Distance(line.p0, v); // ray intersection point relative to length of the map line (texture mapping)
+			return { dist:closestLine.dist, texture:line._textureId, ofsx:ofsx - ~~ofsx }					
 		}
 	}
 	
@@ -118,21 +149,21 @@ class Raytracer {
 	/*
 		Renders a frame by interating each pixel column on the display
 	*/
-	renderFrame(pos, angle) {
+	update() {
 		this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 		
-		let width = this.engine.screen.width / 2;
-		let midY  = this.engine.screen.height / 2;
+		let width = this.engine.dims.x / 2;
+		let midY  = this.engine.dims.y / 2;
 		
 		// cull backfacing walls:		
 		let map = this.map.shapes;
 		this.cullIndex = 0;
-		for (var i = 0; i < map.length; i++) if (!map[i].isLeft(pos)) this.culled[this.cullIndex++] = map[i];
+		for (var i = 0; i < map.length; i++) if (!map[i].isLeft(this.position)) this.culled[this.cullIndex++] = map[i];
 		
 		// raycast the camera fov:		
 		for (var x = 0; x < width; x++) {		
 			let fov    = this.atanCache[x];
-			let result = this.rayCast(pos, angle + fov, this.rayLength);
+			let result = this.rayCast(this.position, this.rotation + fov, this.rayLength);
 			
 			if (result != null) {
 				let z = result.dist * Math.cos(fov);
@@ -141,7 +172,14 @@ class Raytracer {
 			}				
 		}
 		
-		this.surface.ctx.drawImage(this.canvas, 0, 0);	// flip buffers		
+		this.surface.drawImage(V2(0, 0), this.canvas);	// flip buffers				
+	}
+
+	tick() {
+		if ('useActor' in this.params) {
+			this.position = this.params.useActor.position;
+			this.rotation = this.params.useActor.rotation;
+		}
 	}
 }
 

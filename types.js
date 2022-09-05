@@ -12,6 +12,7 @@
 *	30.11.2021, version 1.22 added Vector2.fma and static Vector2.Fma 	
 *	8.12.2021, version 1.23 added static Vector2|Vector.Lerp
 *   9.12.2021, version 1.24 added Rect.isPointInside()
+*   20.7.2022, version 1.25 added static Vector2.Avg
 */
 const lerp = (s, e, t) => { return s + (e - s) * t; }
 const wrapMax = (x, max) => { return (max + (x % max)) % max; }
@@ -568,8 +569,12 @@ class VectorBase {
 	/*
 		Returns the length of this vector
 	*/	
-    get length() {
-        return Math.sqrt(this.x ** 2 + this.y ** 2);
+    get length() {		
+		switch (this.constructor.name) {
+			case 'Vector2' : return Math.sqrt(this.x ** 2 + this.y ** 2);
+			case 'Vector'  : return Math.sqrt(this.x ** 2 + this.y ** 2 + this.z ** 2);
+			case 'Vector4' : return Math.sqrt(this.x ** 2 + this.y ** 2 + this.z ** 2 + this.w ** 2);
+		}        
     }
 	
     normalize() {		
@@ -642,7 +647,7 @@ class VectorBase {
 	 */
 	static Random() {			
 		const p = Math.random() * Math.PI * 2; 	
-		switch (this.name) {
+		switch (this.constructor.name) {
 			case 'Vector2' : return new Vector2(Math.random(), Math.random());
 			case 'Vector'  : return new Vector(Math.random(), Math.random(), Math.random());
 			case 'Vector4' : return new Vector4(Math.random(), Math.random(), Math.random(), Math.random());
@@ -656,7 +661,7 @@ class VectorBase {
 	 */
 	static RandomDir() {
 		const p = Math.random() * Math.PI * 2; 	
-		switch (this.name) {
+		switch (this.constructor.name) {
 			case 'Vector2' : return new Vector2(Math.cos(p), Math.sin(p));		
 			case 'Vector'  : {
 				const cosTheta = 2 * random() - 1;
@@ -961,7 +966,7 @@ class Vector2 extends VectorBase {
 		return Math.sqrt(((b.x - a.x) ** 2) + ((b.y - a.y) ** 2));
 	}
 	static Negate(v) {
-		return mulScalar(v, -1);		
+		return Vector2.MulScalar(v, -1);		
 	}
 	static Dot(a, b) {
         return a.x * b.x + a.y * b.y;
@@ -1004,6 +1009,20 @@ class Vector2 extends VectorBase {
 	 */
 	static Lerp(v1, v2, f) {
 		return new Vector2(lerp(v1.x,v2.x, f), lerp(v1.y,v2.y, f));
+	}
+
+	/**
+	 * Returns average vector2 of given array of vector2's
+	 * @param {[Vector2]} v2s 
+	 * @returns {Vector2}
+	 */
+	static Avg(v2s) {		
+		let x = 0, y = 0;
+		for (const v of v2s) {
+			x += v.x / v2s.length; 
+			y += v.y / v2s.length;
+		}
+		return new Vector2(x, y);
 	}
 }
 
@@ -1097,41 +1116,55 @@ class Matrix4x4 {
 			}
 	}
 	
+	clone() {
+		return new Matrix4x4(this.values);
+	}
+
 	mul(mat) {
-		let row0 = new Vector4(mat[ 0], mat[ 1], mat[ 2], mat[ 3]);
-		let row1 = new Vector4(mat[ 4], mat[ 5], mat[ 6], mat[ 7]);
-		let row2 = new Vector4(mat[ 8], mat[ 9], mat[10], mat[11]);
-		let row3 = new Vector4(mat[12], mat[13], mat[14], mat[15]);
+		const b  = mat.values;
+		let row0 = new Vector4(b[ 0], b[ 1], b[ 2], b[ 3]);
+		let row1 = new Vector4(b[ 4], b[ 5], b[ 6], b[ 7]);
+		let row2 = new Vector4(b[ 8], b[ 9], b[10], b[11]);
+		let row3 = new Vector4(b[12], b[13], b[14], b[15]);
 
 		let result0 = this.mulVector(row0);
 		let result1 = this.mulVector(row1);
 		let result2 = this.mulVector(row2);
 		let result3 = this.mulVector(row3);
 
-		return new Matrix4x4([
+		this.values = [
 			result0.x, result0.y, result0.z, result0.w,
 			result1.x, result1.y, result1.z, result1.w,
 			result2.x, result2.y, result2.z, result2.w,
 			result3.x, result3.y, result3.z, result3.w
-		]);
+		];
 	}
 	
-	mulVector(vec4) {
+	/*
+		Parameters can be infinitely long list of vectors
+	*/
+	mulVector() {
+		const matrix = this.values;
+
 		let c0r0 = matrix[ 0], c1r0 = matrix[ 1], c2r0 = matrix[ 2], c3r0 = matrix[ 3];
 		let c0r1 = matrix[ 4], c1r1 = matrix[ 5], c2r1 = matrix[ 6], c3r1 = matrix[ 7];
 		let c0r2 = matrix[ 8], c1r2 = matrix[ 9], c2r2 = matrix[10], c3r2 = matrix[11];
 		let c0r3 = matrix[12], c1r3 = matrix[13], c2r3 = matrix[14], c3r3 = matrix[15];		
 		
-		let x = vec4.x;
-		let y = vec4.y;
-		let z = vec4.z;
-		let w = vec4.w;
-		
-		let rX = (x * c0r0) + (y * c0r1) + (z * c0r2) + (w * c0r3);  
-		let rY = (x * c1r0) + (y * c1r1) + (z * c1r2) + (w * c1r3);
-		let rZ = (x * c2r0) + (y * c2r1) + (z * c2r2) + (w * c2r3);
-		let rW = (x * c3r0) + (y * c3r1) + (z * c3r2) + (w * c3r3);				
-		
+		let rX = 1, rY = 1, rZ = 1, rW = 1;
+
+		for (const v of arguments) {
+			let x = v.x;
+			let y = v.y;
+			let z = v.z;
+			let w = v.w;
+
+			rX *= (x * c0r0) + (y * c0r1) + (z * c0r2) + (w * c0r3);  
+			rY *= (x * c1r0) + (y * c1r1) + (z * c1r2) + (w * c1r3);
+			rZ *= (x * c2r0) + (y * c2r1) + (z * c2r2) + (w * c2r3);
+			rW *= (x * c3r0) + (y * c3r1) + (z * c3r2) + (w * c3r3);				
+		}
+
 		return new Vector4(rX, rY, rZ, rW);
 	}
 	
@@ -1144,19 +1177,19 @@ class Matrix4x4 {
 	}
 	
 	toCSSMatrix() {
-		return 'matrix3d(' + this.values.join(',') + ')';
+		return 'matrix4x4(' + this.values.join(',') + ')';
 	}
 	
 	fromCSSMatrix(str) {
 		try {
-			let a = str.toLowerCase().trim().split('matrix3d(')[1].split(')')[0].split(',');
+			let a = str.toLowerCase().trim().split('matrix4x4(')[1].split(')')[0].split(',');
 			if (Array.isArray(a) && a.length == 16) {
 				for (var i = 16; i--;) { 
 					let t = parseFloat(a[i]); 
 					if (!isNaN(t) && isFinite(t)) a[i] = t; 
 						else return null 
 				}
-				return new Matrix3D(a);
+				return new Matrix4x4(a);
 			}
 		} catch (e) {
 			return null;
@@ -1167,7 +1200,14 @@ class Matrix4x4 {
 		this.setIdentity();
 		this.values[12] = vec3.x;
 		this.values[13] = vec3.y;
-		this.values[14] = vec3.z;
+		this.values[14] = vec3.z;		
+		return this;
+	}
+
+	addTranslation(vec3) {
+		this.values[12] += vec3.x;
+		this.values[13] += vec3.y;
+		this.values[14] += vec3.z;		
 		return this;
 	}
 	
@@ -1215,15 +1255,38 @@ class Matrix4x4 {
 	}
 	
 	setIdentity() {
-		this.values = Float64Array.of(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
+		this.values = Float64Array.of(1, 0, 0, 0, 
+									  0, 1, 0, 0, 
+									  0, 0, 1, 0, 
+									  0, 0, 0, 1);
 		return this;
 	}
 	
 	static Identity() {
-		return new Matrix3D([1, 0, 0, 0,
-							 0, 1, 0, 0,
-							 0, 0, 1, 0,
-							 0, 0, 0, 1]);
+		return new Matrix4x4([1, 0, 0, 0,
+							  0, 1, 0, 0,
+							  0, 0, 1, 0,
+							  0, 0, 0, 1]);
+	}
+
+	static Mul(matA, matB) {
+		const b  = matB.values;
+		let row0 = new Vector4(b[ 0], b[ 1], b[ 2], b[ 3]);
+		let row1 = new Vector4(b[ 4], b[ 5], b[ 6], b[ 7]);
+		let row2 = new Vector4(b[ 8], b[ 9], b[10], b[11]);
+		let row3 = new Vector4(b[12], b[13], b[14], b[15]);
+
+		let result0 = matA.mulVector(row0);
+		let result1 = matA.mulVector(row1);
+		let result2 = matA.mulVector(row2);
+		let result3 = matA.mulVector(row3);
+
+		return new Matrix4x4([
+			result0.x, result0.y, result0.z, result0.w,
+			result1.x, result1.y, result1.z, result1.w,
+			result2.x, result2.y, result2.z, result2.w,
+			result3.x, result3.y, result3.z, result3.w
+		]);
 	}
 }
 
@@ -1244,9 +1307,9 @@ function IntToDWord(i) {
 }    
 
 // Convenience functions to avoid 'new' keyword cluttering the code. If mapped to local context with 'const { CreateVector2:Vec2 } = Types;' the code can be made very compact.
-const CreateVector2 = (x, y) => { return new Vector2(x, y); }
-const CreateVector = (x, y, z) => { return new Vector(x, y, z); }
-const CreateVector4 = (x, y, z, w) => { return new Vector4(x, y, z, w); }
+const V2 = (x, y) => { return new Vector2(x, y); }
+const V3 = (x, y, z) => { return new Vector(x, y, z); }
+const V4 = (x, y, z, w) => { return new Vector4(x, y, z, w); }
 
 export {
     Rect,
@@ -1261,7 +1324,7 @@ export {
     IntToDWord,
 	LineSegment,
 	Text,
-	CreateVector2,
-	CreateVector,
-	CreateVector4
+	V2,
+	V3,
+	V4
 }
