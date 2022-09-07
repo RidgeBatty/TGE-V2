@@ -14,6 +14,7 @@ const main = async () => {
     const player    = Engine.gameLoop.add('player', { controls:['keyboard'], movement:'FirstPersonShooter' });    
     const raytracer = new Raytracer({ useActor:player }); 
     raytracer.createMap([
+        { x:-6,  y:6, w:20, h:-20, flip:true },
         { x:1,  y:-3, w:2, h:-2 },
         { x:-3, y:-3, w:2, h:-2, textures:[1,1,1,1] },
         { x:-3, y:-6, w:2, h:-2 },
