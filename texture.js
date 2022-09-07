@@ -29,8 +29,8 @@ class Texture {
 		return this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);	
 	}
 	
-	get width()  { return this.image.naturalWidth; }
-	get height() { return this.image.naturalHeight; }
+	get width()  { return this.canvas.width; }
+	get height() { return this.canvas.height; }
 
 	/*
 		Internal callback function, executed when image is loaded in constructor
