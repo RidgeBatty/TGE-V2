@@ -6,7 +6,7 @@
 	- TileMap stores the tile graphics
 
 */
-import { Engine, Root, Types } from "./engine.js";
+import { TinyGameEngine, Engine, Root, Types } from "./engine.js";
 import { CanvasRenderer } from "./canvasRenderer.js";
 import * as MultiCast from "./multicast.js";
 import * as Colliders from "./collider.js";
@@ -177,19 +177,15 @@ class Scene extends Root {
 const Events = ['Select', 'AfterRender'];
 
 class World {
-	constructor(o) {								
-		if (!AE.isObject(o)) throw 'World must have parameters object specified!';
-		
-		const _this       = this;
+	constructor(o) {	
+		if ('owner' in o && !(o.owner instanceof TinyGameEngine)) throw 'World owner must be an instance of TinyGameEngine';
 		
 		this.owner        = o.owner;
 		this.owner.world  = this;
 		
 		this.createParams = o;
-		this.gravity      = new Vector2(0, 0.2);		
-		
-		this.surface  	  = o.owner.renderingSurface || new CanvasRenderer({ dims:o.dims || o.owner.dims });
-		this.objects      = [];										// list of additional objects to render (per frame). May be actors or static elements
+		this.gravity      = o.gravity;				
+		this.surface  	  = o.renderingSurface || this.owner.renderingSurface || new CanvasRenderer({ dims:o.dims || o.owner.dims });
 		
 		this.rescaleWindow();
 		this.activeScene  = null;
@@ -214,9 +210,9 @@ class World {
 		AE.sealProp(this, '_events', evt);		
 		
 		// hard events
-		MultiCast.addEvent('resize',    e => _this.rescaleWindow(), null);		
-		MultiCast.addEvent('mousedown', e => _this.onMouseDown(e), null);	
-		MultiCast.addEvent('mouseup',   e => _this.onMouseUp(e), null);			
+		MultiCast.addEvent('resize',    e => this.rescaleWindow(), null);		
+		MultiCast.addEvent('mousedown', e => this.onMouseDown(e), null);	
+		MultiCast.addEvent('mouseup',   e => this.onMouseUp(e), null);			
 	}
 	
 	addEvent(name, func) {

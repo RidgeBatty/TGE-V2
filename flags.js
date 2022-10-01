@@ -6,24 +6,33 @@
 class Flags {
     /**
      * 
-     * @param {[string]} flagNames 
+     * @param {object} flags 
+     * @param {name=value} flags.name 
      */
-    constructor(flagNames) {
+    constructor(flags = {}, onFlagChange) {
         this.register = {};
         this._value   = 0;          // all off
+        this.onFlagChange = [];
 
-        let  val = 0;
-        for (const name of flagNames) this.register[name] = val++;
+        if (onFlagChange) this.onFlagChange.push(onFlagChange);
+        
+        let v = 0;
+        for (const [name, value] of Object.entries(flags)) { 
+            this.register[name] = v++;           
+            this.setFlag(name, value);
+        }
     }
 
-    setFlag(name, value) {
+    setFlag(name, value = true) {
         if (!(name in this.register)) throw `Flag register does not contain key name "${name}".`;
         
         if (value) this._value |= (1 << this.register[name]);
             else this._value &= ~(1 << this.register[name]);        
+
+        for (const f of this.onFlagChange) f(name, value);
     }
 
-    setFlags(o) {
+    some(o) {
         for (const [k, v] of Object.entries(o)) this.setFlag(k, v);
     }
 

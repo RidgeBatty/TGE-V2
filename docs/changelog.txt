@@ -1,3 +1,7 @@
+Version 2.2
+- Reworked HTML UI system and UI components
+- Reworked engine module event handling (added events.js) currently the event system is still a bit of a mess 
+- Added tileMap and customLayer, which will be a replacement for World and Scene modules. World cannot be destoroyed yet because it has the code for the isometric renderer
 -----------------------------------------------------------------
 Version 2.1
 - Major upgrades and fixes in GameLoop, Actor and Collider classes to improve collisions, collision detection algorithms and timing issues

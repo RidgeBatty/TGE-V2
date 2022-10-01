@@ -6,7 +6,6 @@
 
 import { Types, Root, Engine } from "./engine.js";
 import { ChildActor } from "./childActor.js";
-import { PhysicsShape } from "./physics.js";
 import { ImageOwner, Mixin } from "./imageOwner.js";
 
 const { Vector2:Vec2, Rect } = Types;
@@ -26,6 +25,7 @@ const Enum_ActorTypes = {
 	consumable : 32,
 	obstacle   : 64,
 	npc		   : 128,
+	actor	   : 256,
 }
 
 class ActorMovement {
@@ -337,7 +337,9 @@ class Actor extends Root {
 	update() {		
 		if (!this.isVisible) return;
 
-		const c = Engine.renderingSurface.ctx;
+		const c   = Engine.renderingSurface.ctx;
+		const pos = this.position.clone().add(this.pivot);		
+		if ('offset' in this) pos.add(this.offset);
 		
 		let img = this.img;		
 		
@@ -349,7 +351,7 @@ class Actor extends Root {
 			const n = this.flipbook.customRender;
 			
 			if (this.flipbook.isAtlas && n.img) {
-				c.setTransform(this.scale, 0, 0, this.scale, this.position.x, this.position.y);
+				c.setTransform(this.scale, 0, 0, this.scale, pos.x, pos.y);
 				c.scale(this.renderHints.mirrorX ? -1 : 1, this.renderHints.mirrorY ? -1 : 1);
 				c.rotate(this.rotation);					
 				c.drawImage(n.img, n.a * n.w, n.b * n.h, n.w, n.h, -n.w / 2, -n.h / 2, n.w, n.h);
@@ -364,7 +366,7 @@ class Actor extends Root {
 		}
 				
 		if (img) {										// if the Actor has an image attached, directly or via flipbook, display it
-			c.setTransform(this.scale, 0, 0, this.scale, this.position.x, this.position.y);
+			c.setTransform(this.scale, 0, 0, this.scale, pos.x, pos.y);
 			c.scale(this.renderHints.mirrorX ? -1 : 1, this.renderHints.mirrorY ? -1 : 1);
 			c.rotate(this.rotation);
 			if (img.isCanvasSurface) c.drawImage(img.canvas, -this.size.x / 2, -this.size.y / 2);							

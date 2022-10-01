@@ -1,4 +1,4 @@
-/**
+ /**
  @module root
  @author Ridge Batty
  @desc
@@ -7,11 +7,17 @@
 	it may optionally contain colliders collection
 		
 */
-import { Collider } from "./collider.js";
+import { Collider } from './collider.js';
 import * as Types from './types.js';	
 import { TNode } from './tnode.js';
 
 const Vector2 = Types.Vector2;
+
+class Transform {
+	constructor(position = Vector2.Zero(), rotation = 0, scale = 1) {
+		Object.assign(this, { position, rotation, scale });
+	}
+}
 
 /**
  * @typedef HitTestMode
@@ -132,4 +138,4 @@ class Root extends TNode {
 	}
 }
 
-export { Root, Enum_HitTestMode, HitTestFlag }
+export { Root, Enum_HitTestMode, HitTestFlag, Transform }

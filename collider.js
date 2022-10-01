@@ -8,7 +8,8 @@
 	Collider provides debug visualizations to PhysicsShapes. These are not meant to be used in production.
 
 */
-import { Actor, Scene, Engine } from './engine.js';
+import { Transform } from './root.js';
+import { Root, Actor, Scene, Engine } from './engine.js';
 import { Types, PhysicsShape, Circle, AABB, Box, Enum_PhysicsShape } from './physics.js';
 
 const Vec2 = Types.Vector2;
@@ -25,14 +26,10 @@ class Collider {
 	 */	
 	constructor(o) {
 		if ('owner' in o) {
-			if ( !(o.owner instanceof Actor || o.owner instanceof Scene)) throw 'Collider owner must be either an Actor or Scene component';
+			if ( !(o.owner instanceof Actor || o.owner instanceof Scene || o.owner instanceof Root)) throw 'Collider owner must be either an Actor or Scene or Root component';
 			this.actor = o.owner;
-		} else { // we don't actually need an owner, we just need these properties for the collider
-			this.actor = {	
-				position : o.position,
-				pivot    : o.pivot,
-				scale    : o.scale,
-			}
+		} else { // we don't actually need an owner, we just need the following properties for the collider to work:
+			this.actor = Object.assign({}, new Transform());	
 		}
 		
 		this.scale        = 1;					// scale of ALL colliders
@@ -80,9 +77,11 @@ class Collider {
 		const scale     = this.scale * this.actor.scale;
 		
 		for (var i = 0; i < colliders.length; i++) {
-			var c  = colliders[i];			
-			var cp = actor.position.clone();
+			var c   = colliders[i];			
+			var cp  = actor.position.clone();
 			var pos = Vec2.Zero();
+
+			if ('offset' in actor) cp.add(actor.offset);
 			
 			ctx.resetTransform();
 			ctx.translate(cp.x, cp.y);			

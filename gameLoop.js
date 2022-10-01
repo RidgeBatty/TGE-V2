@@ -237,6 +237,7 @@ class GameLoop {
 				case 'consumable'   : { var a = new Actor(o); a._type = Enum_ActorTypes.consumable; break; }
 				case 'obstacle'     : { var a = new Actor(o); a._type = Enum_ActorTypes.obstacle; break; }
 				case 'npc'  		: { var a = new Actor(o); a._type = Enum_ActorTypes.npc; break; }
+				case 'actor'  		: { var a = new Actor(o); a._type = Enum_ActorTypes.npc; break; }
 				default 	  		: { var a = new aType(o); a._type = Enum_ActorTypes.default; }
 			}
 			a.objectType = aType;

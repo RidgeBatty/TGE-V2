@@ -16,7 +16,8 @@ const Enum_PlayerMovement = {
 	Arcade  		   : 1,		// Precise movement along x and y axis. No rotation. No frame rate correction. No easing. 	
 	FirstPersonShooter : 2,		// Movement along direction axis. Left/Right rotation (turning). Frame rate correction enabled. Easing.	
 	FPS				   : 2,
-	SpaceShip		   : 3,	
+	SpaceShip		   : 3,		// Freely rotate around z-axis, accelerate towards nose direction
+	Car				   : 4,		// Rotation is relative of movement speed. Accelerate towards nose direction
 	Custom			   : 99,	// Do not apply any controls automatically on the player actor.
 }
 
@@ -90,6 +91,14 @@ class Player extends Actor {
 		if (value == Enum_PlayerMovement.SpaceShip) {
 			this.movement.acceleration = 0.001;		
 			this.movement.turnRate     = 0.002;
+			this._movementType         = value;
+			return;
+		}		
+		if (value == Enum_PlayerMovement.Car) {
+			this.movement.acceleration = 0.0004;		
+			this.movement.turnRate     = 0.0004;
+			this.movement.friction     = 0.01;		    // how much the vehicle resists movement in lateral slip condition
+			this.movement.rollingFriction = 0.002;		// how much the vehicle resists movement when moving forward
 			this._movementType         = value;
 			return;
 		}		
@@ -167,6 +176,29 @@ class Player extends Actor {
 			if (ks.down)  	  p.addImpulse(Vector2.Down().rotate(p.rotation).mulScalar(acc));
 			
 			break; }	
+		case Enum_PlayerMovement.Car: {
+			if (this.velocity.length > 0) {
+				// calculate how much the current travel angle deviates from the vehicle's sides, i.e. going sideways to the travel angle would cause maximum friction.
+				const dev = Math.acos(this.velocity.clone().normalize().dot(Vector2.FromAngle(p.rotation))) / Math.PI;						
+				this.velocity.mulScalar(1 - (dev * this.movement.friction));
+
+				if (isNaN(this.velocity.length)) {				// make sure velocity does not underflow
+					this.velocity = new Vector2(0, 0);
+				}
+			}
+
+			const delta     = p.owner.frameDelta;
+			const acc       = p.movement.acceleration * delta;
+			const turnRate  = p.movement.turnRate * delta;						
+						
+			if (ks.up)    	  p.addImpulse(Vector2.Up().rotate(p.rotation).mulScalar(acc));
+			if (ks.down)  	  p.addImpulse(Vector2.Down().rotate(p.rotation).mulScalar(acc));			
+
+			this.velocity.mulScalar(1 - this.movement.rollingFriction);
+
+			if (ks.left)  	  p.rotation -= turnRate * this.velocity.length;	
+			if (ks.right) 	  p.rotation += turnRate * this.velocity.length;	
+			break; }
 		case Enum_PlayerMovement.Arcade:
 		case Enum_PlayerMovement.Default:
 			if (ks.up)  	  p.velocity.add(new Vector2(0, -p.movement.acceleration));

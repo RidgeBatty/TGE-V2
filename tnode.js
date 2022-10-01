@@ -24,7 +24,7 @@ class TNode {
         this.parent       = o.parent;
         this.children     = [];
                 
-        Object.seal(this.children);
+        Object.defineProperty(this, 'children', { configurable:false });
     }
     
     /**
