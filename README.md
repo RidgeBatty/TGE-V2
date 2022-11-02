@@ -1,4 +1,6 @@
 # TGE-V2
+HTML/Canvas/JavaScript based game engine designed for making retro style (80's and early 90's) games.
+
 Clone the repository and start making games. Examples folder contains code snippets/demos which are useful when learning the engine features. Overview of rendering architecture is in the docs folder. V2 is currently in the last stages of complete overhaul from using pure HTML to 2D Canvas rendering. Some of the modules are not updated yet, but core functionality is more than adequate for creating retro games.
 
 # Motivation
