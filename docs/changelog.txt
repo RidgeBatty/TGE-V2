@@ -1,3 +1,13 @@
+Version 2.3
+Huge changes made for better support of platformer/tilemap based games, including asset management and level editors
+- Added AssetManager
+- Added tools/collider-editor
+- Improved event system
+- Improved flipbook
+- Improved world (added concept of Camera)
+- New module: renderer (needs more integration work)
+- Improved/overhauled/new modules: ui-html, actor, actorMovement, collider, customLayer, engine, enum, gameController, gameLoop, physics, player, tileMap, type
+-----------------------------------------------------------------
 Version 2.2
 - Reworked HTML UI system and UI components
 - Reworked engine module event handling (added events.js) currently the event system is still a bit of a mess 

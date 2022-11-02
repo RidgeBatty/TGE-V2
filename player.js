@@ -11,7 +11,8 @@ import { Enum_HitTestMode } from './engine.js';
 const Vector2 = Types.Vector2;
 const { Overlap, Ignore } = Enum_HitTestMode;		
 
-const Enum_PlayerMovement = {		
+const Enum_PlayerMovement = {	
+	None         	   : 0,	
 	Default 		   : 1,
 	Arcade  		   : 1,		// Precise movement along x and y axis. No rotation. No frame rate correction. No easing. 	
 	FirstPersonShooter : 2,		// Movement along direction axis. Left/Right rotation (turning). Frame rate correction enabled. Easing.	
@@ -41,6 +42,7 @@ class Player extends Actor {
 		this._isMovementCancelled = false;
 		this.lives		    = ('lives' in o) ? o.lives : 1;
 		this.customMovement = null;
+		this.score          = 0;
 
 		if ('controls' in o) {
 			const c = o.controls;
@@ -58,7 +60,7 @@ class Player extends Actor {
 		this.movementType = value;
 	}
 	
-	/*
+	/**
 		Sets the default movement type of player
 		Movement object is inherited from Actor class
 	*/	
@@ -76,8 +78,7 @@ class Player extends Actor {
 		}
 		if (value == Enum_PlayerMovement.FirstPersonShooter) {
 			if ('keyboard' in this.controllers) {
-				this.controllers['keyboard'].addYawKeyDefaults();
-				// TO-DO: add yawing into other controllers!
+				this.controllers['keyboard'].addYawKeyDefaults();			// TO-DO: add yaw into other controllers!
 			}			
 			this.movement.strafe       = 0.001;		
 			this.movement.acceleration = 0.001;		
@@ -144,7 +145,7 @@ class Player extends Actor {
 		const p    = this;
 		const keys = p.controllers['keyboard'];	
 		
-		if (keys == null) return;
+		if (keys == null || p._movementType == Enum_PlayerMovement.None) return;
 		
 		const ks   = keys.keyState;
 		

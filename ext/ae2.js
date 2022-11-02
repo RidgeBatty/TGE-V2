@@ -5,7 +5,7 @@
 	2. may be used for educational / non-commercial purposes without permission from the author
 	3. is provided AS IS without any guarantees or liabilities. By running this code you accept full responsibility of the consequences.
 	Use for other purposes than stated above is strictly prohibited
-	Revision 6 - Version Date 4/September/2020 - Build 0031
+	Revision 6 - Version Date 11/October/2022 - Build 0032
 
 	Search with '@' to view different function categories
 */
@@ -234,7 +234,7 @@ AE.isArray    	= function (o) 	{ return Object.prototype.toString.call(o) === "[
 AE.isDefined  	= function (o)	{ return typeof o != 'undefined'; }
 AE.isFunction 	= function (o)	{ return typeof o == 'function'; }
 AE.isObject 	= function (o) 	{ return o === Object(o); }
-AE.isDOMNode  	= function (o)	{ var test = false; try { test = AE.isDefined(o) && o.parentNode && o.children && (AE.indexOf(o.parentNode.children, o) != -1); } catch (e) { return false } return test; }
+AE.isDOMNode  	= function (o)	{ var test = false; try { test = AE.isDefined(o) && o.parentNode && o.children && (AE.getElemIndex(o.parentNode.children, o) != -1); } catch (e) { return false } return test; }
 AE.isDescendant = function (parent, child) {
     var node = child.parentNode;
     while (node != null) { if (node == parent) return true; node = node.parentNode; }
@@ -308,46 +308,6 @@ AE.getValue = function(ns, str, notExistsValue = null) {		// ns:Object, str:Stri
 	Returns the count of "item" occurrences in an array. Item may be of any type.
 	If "property" is provided, the item is assumed to be an object and if its property value equals "item", it's included in the count.
 */
-AE.count = function(arr, item, property) {		// arr[], item, property:String
-	var count = 0;
-	if (property) {
-		for (var i = arr.length; i--;) if (arr[i][property] == item) count++;
-	} else for (var i = arr.length; i--;) if (arr[i] == item) count++;
-	return count;
-}
-
-AE.removeItems = function( arr, itemToRemove_or_matchFunc ) {
-	var c = 0;	
-	if (typeof itemToRemove_or_matchFunc == 'function') {
-		var matchFunc = itemToRemove_or_matchFunc;
-		for (var n = arr.length - 1; n >= 0; n--) {
-			if (matchFunc(arr[n])) { arr.splice(n, 1); c++; }
-		}
-		return c;
-	}
-	var itemToRemove = itemToRemove_or_matchFunc;
-	for (var n = arr.length - 1; n >= 0; n--) {
-		if (arr[n] == itemToRemove) { arr.splice(n, 1); c++; }
-	}
-	return c;
-}
-AE.indexOf = function(arr, item) {
-	for (var n = 0; n < arr.length; n++) {
-		if (arr[n] == item) return n;
-	}
-	return -1;
-}
-AE.indexOfLargest = function(arr, /* OPTIONAL */ fieldName) {	
-	var value = -Infinity;
-	var res   = -1;		
-	if (fieldName == undefined) { 
-		for (var i = 0; i < arr.length; i++) if (arr[i] > value) { res = i; value = arr[i]; }
-	} else {
-		for (var i = 0; i < arr.length; i++) if (arr[i][fieldName] > value) { res = i; value = arr[i][fieldName]; }
-	}
-	return res;
-}
-
 AE.intersect = function(a, b) {
 	var r = [];
 	for (var q = 0; q < a.length; q++) {
@@ -359,91 +319,6 @@ AE.intersect = function(a, b) {
 	}
 	return r;
 }
-
-AE.fieldsToStr = function(object, field, separator) {
-	var result = [];
-	if (separator == undefined) separator = ' ';
-	for (var item in object) {
-		result.push(object[item][field]);
-	}
-	return result.join(separator);
-}
-
-AE.forceIntElements = function(array, operation, value) {
-	for (var i = array.length - 1; i >= 0; i--) {		
-		if ( !AE.isInteger(parseInt(array[i], 10)) ) {
-			if ( operation == AE.remove ) array.splice(i, 1); else
-			if ( operation == AE.replace ) array[i] = value;
-		}
-	}	
-}
-
-AE.forceRange = function(n, min, max) {
-	if ( n < min ) n = min;
-	if ( typeof max != 'undefined' && n > max ) n = max;
-	return n;
-}
-
-AE.forceBounds = function(x, y, left, top, right, bottom) {	// allows "x, y, { left, top, right, bottom }" -format
-	if ( AE.isDefined(left.left) ) {
-		if ( x < left.left   ) x = left.left;
-		if ( x > left.right  ) x = left.right;
-		if ( y < left.top    ) y = left.top;
-		if ( y > left.bottom ) y = left.bottom;
-		return {x: x, y: y}	
-	}	
-	if ( x < left   ) x = left;
-	if ( x > right  ) x = right;
-	if ( y < top    ) y = top;
-	if ( y > bottom ) y = bottom;
-	return {x: x, y: y}	
-}
-
-AE.forceArray = function(param) {
-	var result = [];
-	if ( !AE.isArray(param) ) result.push(param);
-		else result = param.slice(0); // shallow clone
-	return result;
-}
-
-AE.isUniqueName = function(array, field, name) {
-	for (var i = 0; i < array.length; i++) if (array[i][field] == name) return false;
-	return true;
-}
-/*
-	Removes an item from array if the callback returns true.
-	Callback parameter is the current item.
-*/
-AE.deleteFromArray = function(array, callback) {
-	for (var i = array.length - 1; i > 0; i--) if (callback(array[i])) array.splice(i, 1);	
-}
-AE.getLastOf = function(array) {
-	return array[array.length - 1];
-}
-AE.getItem = function(array, item, offset) {
-	if (offset == undefined) offset = 0;
-	var i = array.indexOf(item);
-	if (i == -1) return null;
-	return array[i + offset];
-}
-
-// get index of object in array, if its property equals to "item"
-AE.match    = function(arr, field, value) { if (AE.isArray(arr)) for (var i = 0; i < arr.length; i++) { if (arr[i][field] == value) return i; } return -1; } 
-
-// same as above, but with more options:
-AE.contains = function(array, prop, item, /* optional */ compareFunc) {		
-	if (!AE.isArray(array)) { console.warn('AE.contains: array is not of correct type'); return { result:false } }	
-	if (compareFunc != undefined) {					// use custom compare function:
-		for (var i = 0; i < array.length; i++) {		
-			if (compareFunc(array[i][prop], item, i) == true) return { result:true, index:i, item:array[i] }; 
-		}	
-	} else
-	for (var i = 0; i < array.length; i++) {		
-		if (array[i][prop] == item) return { result:true, index:i, item:array[i] }; 
-	}
-	return { result:false };
-}
-AE.perform  = function(o, callBack) { if (AE.isArray(o)) for (var i = 0; i < o.length; i++) { if (callBack(o[i], i) === false) break; } }
 
 AE.equals = (a, b) => {
 	if (a.length != b.length) return false;
@@ -499,39 +374,6 @@ AE.getPos = function(elem, /* optional */includeScrolling) {
 AE.scrollToTop 		= function() { window.scrollTo(AE.windowScrollX(), 0); }
 AE.scrollToBottom 	= function() { window.scrollTo(AE.windowScrollX(), document.body.scrollHeight); }
 
-AE.midPoint = function(box) { return { x: box.right - box.left, y: box.bottom - box.top } }
-
-AE.centerAinB = function(a, b) {
-	var aw = a.offsetWidth;
-	var ah = a.offsetHeight;
-	var bw = b.offsetWidth;
-	var bh = b.offsetHeight;
-	var centerX = (bw >> 1) - (aw >> 1);
-	var centerY = (bh >> 1) - (ah >> 1);
-	a.style.left = centerX + 'px';
-	a.style.top  = centerY + 'px';	
-	a.style.right  = 'auto';
-	a.style.bottom = 'auto';
-}
-
-AE.screenCenter = function(elem) {
-	var p = AE.getPos(elem);
-	var w = parseInt(getComputedStyle(elem).width, 10) >> 1;
-	var h = parseInt(getComputedStyle(elem).height, 10) >> 1;
-	//var w = (p.right - p.left) >> 1;
-	//var h = (p.bottom - p.top) >> 1;
-	centerX = (AE.getWindowInnerWidth() >> 1) + AE.windowScrollX();
-	centerY = (AE.getWindowInnerHeight() >> 1) + AE.windowScrollY();
-	elem.style.left = (centerX - w) + 'px';
-	elem.style.top  = (centerY - h) + 'px';
-}
-
-AE.getUntransformedPos = function(el) {
-	var _x = 0; var _y = 0; while( el && !isNaN( el.offsetLeft ) && !isNaN( el.offsetTop ) ) {
-		_x += el.offsetLeft; _y += el.offsetTop; el = el.offsetParent;		
-	} return { top: _y, left: _x };
-}
-
 // ===========================================================
 // @Events
 // ===========================================================
@@ -540,44 +382,17 @@ AE.addEvent = function(elem, evnt, func, params = false) {
 	var elem = ID(elem);
 	
 	if (elem.addEventListener) {				
-		return elem.addEventListener(evnt,func,params);		
-	}
-		else if (elem.attachEvent) return elem.attachEvent("on"+evnt, func);
-			else alert('addEvent not supported.');	
+		elem.addEventListener(evnt, func, params);		
+		return func;
+	} else alert('addEvent not supported.');	
 }
 
-AE.removeEvent = function(elem, evnt, func) {	
+AE.removeEvent = function(elem, evnt, func, options = false) {	
+	var elem = ID(elem);
+	
 	if (elem.removeEventListener) {				
-		elem.removeEventListener(evnt,func,false); 
-		if (evnt == 'transitionend') {
-			elem.removeEventListener('webkitTransitionEnd',func,false);
-		}
-	}
-		else if (elem.detachEvent) elem.detachEvent("on"+evnt, func);
-			else alert('removeEvent not supported.');
-}
-
-AE.getEventTarget = function(e) {
-	var e = e || window.event;
-	return (e.target || e.srcElement);
-}
-
-AE.keyCode = function(e) {
-	return e.which || e.charCode || e.keyCode || 0;
-}
-
-AE.getChar = function(e) {
-  if (e.which == null) {
-    return String.fromCharCode(e.keyCode) // IE
-  } else if (e.which != 0 && e.charCode != 0) {
-    return String.fromCharCode(e.which)   // the rest
-  } else {
-    return null // special key
-  }
-}
-
-AE.clearEvent = function(event) {
-	event = function() {};
+		elem.removeEventListener(evnt, func, options); 		
+	} else alert('removeEvent not supported.');
 }
 
 AE.getTextWidth = function(text, className) {
@@ -628,39 +443,6 @@ AE.loadCSS = function(URL, index) {
 		}
 }
 
-AE.createCSS = function (name, rules) {
-    var style  = document.createElement('style');
-    style.type = 'text/css';
-    document.getElementsByTagName('head')[0].appendChild(style);
-    if(!(style.sheet||{}).insertRule) 
-        (style.styleSheet || style.sheet).addRule(name, rules);
-    else
-        style.sheet.insertRule(name+"{"+rules+"}",0);
-	return (style.styleSheet || style.sheet);
-}
-
-AE.getCSSRule = function(className) {    
-    for (var i = 0, sheetCount = document.styleSheets.length; i < sheetCount; i++) {
-        classes = document.styleSheets[i].rules || document.styleSheets[i].cssRules;
-        for (var x = 0, classCount = classes.length; x < classCount; x++)
-            if (classes[x].selectorText === className) return classes[x];
-				//(classes[x].cssText ? classes[x].cssText : classes[x].style.cssText);
-    }
-    return false;
-}
-
-AE.setCSSRule = function(className, ruleContent) {    
-    for (var i = 0, sheetCount = document.styleSheets.length; i < sheetCount; i++) {
-        classes = document.styleSheets[i].rules || document.styleSheets[i].cssRules;
-        for (var x = 0, classCount = classes.length; x < classCount; x++)
-            if (classes[x].selectorText === className) {
-				AE.style(classes[x], ruleContent);				
-				return true;
-			}
-    }
-    return false;
-}
-
 AE.getIds = function(elem) {
 	var obj = {};
 	AE.traverse(elem, function(node) { if (node.id) obj[node.id] = node; return true; });
@@ -678,8 +460,7 @@ AE.getInt = function(el) { var el = ID(el); if ('textContent' in document.body) 
 AE.getFloat = function(el) { var el = ID(el); if ('textContent' in document.body) return parseFloat(el.textContent); return parseFloat(el.innerText); }
 AE.removeClass = function(e, classToRemove) {	
 	var e = ID(e);
-	var classes = e.className.split(' ');
-	AE.removeItems(classes, classToRemove);
+	var classes = e.className.split(' ').filter(i => i != classToRemove);	
 	e.className = classes.join(' ');
 }
 AE.addClass = function(e, classToAdd) {	
@@ -689,7 +470,7 @@ AE.addClass = function(e, classToAdd) {
 	addList     = classToAdd.split(' ');
 	var i = 0, cl; 
 	while (cl = addList[i++]) {		
-		if (AE.indexOf(classes, cl) == -1) classes.push(cl);			 
+		if (classes.indexOf(cl) == -1) classes.push(cl);			 
 	}
 	e.className = classes.join(' ');
 }
@@ -709,15 +490,7 @@ AE.setStyles = function(nodeList, style) { for (var i = 0; i < nodeList.length; 
 AE.show = function(elem, mode) 	{ if ( AE.isArray(elem) ) for (var i = 0; i < elem.length; i++) { var e = ID(elem[i]); e.style.display = mode || ''; } else { var e = ID (elem); e.style.display = mode || ''; } }
 AE.hide = function(elem) { if ( AE.isArray(elem) ) for (var i = 0; i < elem.length; i++) { var e = ID(elem[i]); e.style.display = 'none'; } else { var e = ID (elem); e.style.display = 'none'; } }
 
-AE.modifyAttrs = function(elem, tagname, attr, value) {
-	var n = elem.getElementsByTagName(tagName);
-	for (var i = 0; i < n.length; i++) {
-		n[i].setAttribute(attr, value);
-	}
-	console.log(n);
-}
-
-AE.getIndex = function(element) {
+AE.getElemIndex = function(element) {
 	var ep = element.parentNode;
 	if (ep) {
 		for (var i = 0, len = ep.children.length; i < len; i++) {
@@ -842,17 +615,6 @@ AE.supportsLocalStorage = function() {
   } catch (e) {
     return false;
   }
-}
-
-AE.supportsTransitions = function() {
-	var s = document.createElement('p').style;
-	try {
-		if ( s.transition       == '' ) return true;
-		if ( s.webkitTransition == '' ) return true;
-	} catch (e) {
-		return false;
-	}
-	return false;
 }
 
 AE.supportsGetUserMedia = function() {

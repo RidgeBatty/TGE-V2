@@ -14,18 +14,32 @@ const Vec2 = Types.Vector2;
 
 class VideoStream {
     constructor(name) {
-		this.name = name;
+		this.name   = name;
+		this.frames = [];		
 	}
 
-	async load(url) {
-		this.elem = await Utils.preloadVideo({ url, muted:true });		
+	async load(url, preload = false) {
+		this.elem = await Utils.preloadVideo({ url, muted:true, promise:preload });		
 		return this.elem;
 	}
 
-	async unpackFrames(o) {							// o:{ frames:Number, ?onGetFrame:Function }
+	/**
+	 * Converts a video to a list of CanvasSurface objects
+	 * @param {object} o
+	 * @param {number?} o.frames give either the number of "frames" to extract, or "startFrame" and "endFrame"
+	 * @param {number?} o.startFrame
+	 * @param {number?} o.endFrame
+	 * @param {function?} o.onGetFrame
+	 * @returns 
+	 */
+	async unpackFrames(o) {							
 		// legacy solution to seek to frame:
 		return new Promise(async resolveUnpack => {
 			this.frames = [];
+
+			const startFrame = 'startFrame' in o ? o.startFrame : 0;
+			const endFrame   = 'endFrame' in o   ? o.endFrame + 1 : o.frames;
+			const frames     = endFrame - startFrame;
 
 			const v = this.elem;
 			let onFramePainted, i;
@@ -46,9 +60,9 @@ class VideoStream {
 
 			await v.play();
 			await v.pause();
-			const secsPerFrame = v.duration / o.frames;		
+			const secsPerFrame = v.duration / frames;		
 					
-			for (i = 0; i < o.frames; i++) {				
+			for (i = startFrame; i < endFrame; i++) {	
 				v.currentTime = i * secsPerFrame;			
 				await paintFrame();
 			}	

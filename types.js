@@ -17,6 +17,7 @@
 const lerp = (s, e, t) => { return s + (e - s) * t; }
 const wrapMax = (x, max) => { return (max + (x % max)) % max; }
 const wrapBounds = (x, min, max) => { return min + wrapMax(x - min, max - min); }
+const toDegrees = (rad, decimals = 2) => { return (rad / Math.PI * 180).toFixed(decimals) }
 
 let tempColorConvertCtx;
 /*
@@ -599,21 +600,28 @@ class VectorBase {
 		return arr.join(' ');
 	}
 	
-	/* 
-		Converts this vector to JSON object
-	*/
-    toString() {
+	toString() {
         let arr = [];
         let me  = this;
 		Object.keys(me).forEach((key) => { arr.push(key + ': ' + me[key]); });
 		return '{ ' + arr.join(', ') + ' }';		
     }
+
+	/* 
+		Converts this vector to JSON object
+	*/    
+	toJSON() {
+		let me  = this;
+		const o = {};
+		Object.entries(me).forEach(([key, value]) => { o[key] = value });		
+		return o;
+	}
 		
-	static IsEqual(a, b) {		
+	static IsEqual(a, b, epsilon = 1) {		
 		let va = Object.values(a);
 		let vb = Object.values(b);
 		if (va.length != vb.length) return false;
-		for (var i = va.length; i--;) if (va[i] != vb[i]) return false;
+		for (var i = va.length; i--;) if (Math.abs(va[i] - vb[i]) > epsilon) return false;
 		return true;
 	}    
 	
@@ -812,7 +820,7 @@ class Vector extends VectorBase {
 	 * @param {Vector} v1 
 	 * @param {Vector} v2 
 	 * @param {Number} f Factor
-	 * @returns {Vector} New Vecto
+	 * @returns {Vector} New Vector
 	 */
 	 static Lerp(v1, v2, f) {
 		return new Vector(lerp(v1.x,v2.x, f), lerp(v1.y,v2.y, f), lerp(v1.z,v2.z, f));		
@@ -834,12 +842,21 @@ class Vector2 extends VectorBase {
     clone() {        
         return new Vector2(this.x, this.y);
     }  
-	
-    add() {
-		for (const v of arguments) {
-        	this.x += v.x;
-        	this.y += v.y; 
+
+	/**
+	 * Add up to two vectors to this vector
+	 * @param {*} a Vector2
+	 * @param {*} b Vector2
+	 * @returns 
+	 */
+	add(a, b) {
+		if (b == null) {
+			this.x += a.x;
+			this.y += a.y;
+			return this;
 		}
+		this.x += a.x + b.x;
+        this.y += a.y + b.x; 		
         return this;       
     }
 	
@@ -1005,7 +1022,7 @@ class Vector2 extends VectorBase {
 	 * @param {Vector2} v1 
 	 * @param {Vector2} v2 
 	 * @param {number} f Factor
-	 * @returns {Vector2}
+	 * @returns {Vector2} new Vector2
 	 */
 	static Lerp(v1, v2, f) {
 		return new Vector2(lerp(v1.x,v2.x, f), lerp(v1.y,v2.y, f));
@@ -1312,6 +1329,10 @@ const V3 = (x, y, z) => { return new Vector(x, y, z); }
 const V4 = (x, y, z, w) => { return new Vector4(x, y, z, w); }
 
 export {
+	lerp,
+	wrapBounds,
+	wrapMax,
+	toDegrees,
     Rect,
 	Matrix4x4,
     VectorBase,

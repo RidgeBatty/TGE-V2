@@ -3,9 +3,10 @@ import { getJSON } from '../engine/utils.js';
 
 class TileMap {
 	constructor() {	
-		this.tiles    = [];
-		this.textures = [];
-		this.tileSize = 0;
+		this.tiles     = [];
+		this.textures  = [];
+		this.colliders = [];
+		this.tileSize  = 0;
 	}
 
 	get height() {
@@ -20,11 +21,9 @@ class TileMap {
 		return this.tiles[y][x];
 	}
 
-	loadFromFile(options) {
+	loadFromObject(data) {
 		return new Promise(async (resolve, reject) => {
 			this.clear();
-			const url  = options.tileMap;
-			const data = await getJSON(url);
 			try {
 				if ('tileSize' in data) this.tileSize = data.tileSize;
 				
@@ -43,12 +42,30 @@ class TileMap {
 					p.push(tex.load(data.texturePath + t + ext));
 					this.textures.push(tex);					
 				}
+
+				// load colliders
+				if (data.colliders) {
+					this.colliders = data.colliders;
+				}
+
 				await Promise.all(p);				
 			} catch (e) {
 				console.warn('Unable to parse tilemap!');				
 				reject(e);
 			}
 			resolve(this.tiles);
+		});
+	}
+
+	loadFromFile(options) {
+		return new Promise(async (resolve, reject) => {
+			this.clear();			
+			const data = await getJSON(options.url);
+			try {
+				resolve(this.loadFromObject(data));
+			} catch (e) {
+				reject(e);
+			}
 		});
 	}
 

@@ -3,25 +3,28 @@
  * CustomLayer is a template for rendering custom content on the Engine renderingSurface. It respects Engine.gameLoop.zLayers
  * 
  */
- import { Engine, Types, Root } from './engine.js';
+ import { Engine, Root } from './engine.js';
 
 class CustomLayer extends Root {
     /**
      * 
-     * @param {object} o   
+     * @param {object} o  
+	 * @param {GameLoop?} o.owner Optional reference to the owning gameLoop
+	 * @param {number?} o.zIndex
+	 * @param {boolean?} o.addLayer Should the layer be added in the gameLoop zLayers? (Default=false)
      */
-	constructor(o) {		
+	constructor(o = {}) {		
         super({});
-        this.owner  = o.owner || Engine;       
+        this.owner  = o.owner || Engine.gameLoop;       
         this.zIndex = ('zIndex' in o) ? o.zIndex : 1;
         
         if ('addLayer' in o && o.addLayer == true) {
-            this.owner.gameLoop.zLayers[this.zIndex].push(this);
+            this.owner.zLayers[this.zIndex].push(this);
         }
 	}
 
     destroy() {
-        this.owner.gameLoop.removeFromZLayers(this);        
+        this.owner.removeFromZLayers(this);        
     }
     
     updateViewport() {

@@ -4,7 +4,7 @@
 	Written by Ridge Batty (c) 2021
 	
 **/
-import { Actor, Scene, Engine } from '../engine.js';
+import { Actor, Engine } from '../engine.js';
 
 console.warn('TGE DEBUG TOOLS are enabled!');
 
@@ -26,7 +26,7 @@ const el = {
 
 const onTick      = Engine.gameLoop._tick;
 const onRender    = Engine.gameLoop._render;
-const overlapFunc = Actor.prototype.testOverlaps;
+const overlapFunc = Actor.prototype._testOverlaps;
 const fps = {
 	min:9999,
 	max:0,
@@ -71,7 +71,7 @@ const pad = (variable, digits = 2) => {
 	return ('' + variable).padStart(digits, '0');
 }
 
-Actor.prototype.testOverlaps = function(other) {
+Actor.prototype._testOverlaps = function(other) {
 	overlapFunc.call(this, other);
 	overlapCallCount++;
 }

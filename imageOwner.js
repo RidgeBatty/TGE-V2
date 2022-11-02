@@ -19,6 +19,7 @@ class ImageOwner {
 		}
 
         if ('imgUrl' in o) {
+            this._imgUrl = o.imgUrl;
             this.loadImage(o);
         }     
     }
@@ -37,19 +38,38 @@ class ImageOwner {
     get img() {
         return this._img;
     }
+
+    get imgUrl() {
+        return this._imgUrl;
+    }
     
 	/**
 	 * Loads a new image
 	 * @param {object} o Parameter object
 	 */
-	loadImage(o) {                
+	async loadImage(o) {                
 		if ('imgUrl' in o) {            
-			preloadImages({ urls:[o.imgUrl] }).then((images) => {                                
+			await preloadImages({ urls:[o.imgUrl] }).then((images) => {                                
                 this._img = images[0];				                                
                 this._determineImageSize();
 			})						
 		}
 	}	
+
+    /**
+     * Converts File object into an image (assumes that file contains an image)
+     * @param {File} file 
+     */
+    imageFromFile(file) {
+        const img = new Image();
+        img.onload = () => {
+            URL.revokeObjectURL(img.src);
+            this.size  = new Vec2(img.naturalWidth, img.naturalHeight);
+            img.onload = null;
+            this._img  = img;
+        }
+        img.src = URL.createObjectURL(file);
+    }
 }
 
 export { ImageOwner, Mixin }

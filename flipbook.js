@@ -9,16 +9,18 @@
 	Classes
 	=======
 	Flipbook		Container / Loader class for images and sequences. 
-					If you would like several actors to share the same flipbook, remeber that a flipbook contains information about current animation and current frame (which may differ between actor instances!)
-					To "share" the animations, create one Flipbook, clone it using flipbook.clone(). This clones the flipbook as well as the sequences. Assign the cloned flipbook to newly spawned actor(s) using flipbook.assignTo().
+					If you would like several actors to share the same flipbook, remember that a flipbook contains information about current animation and current frame (which may differ between actor instances!)
+					To "share" the animations, create one Flipbook, clone it using flipbook.clone(). This clones the flipbook as well as the sequences. 
+					Assign the cloned flipbook to newly spawned actor(s) using flipbook.assignTo().
 					
-	Sequence		Single animation sequence (i.e. walk, jump, shoot, run). 	
+	Sequence		Single animation sequence (i.e. walk, jump, shoot, run). NOTE! The flipbook "owns" the images data. Sequence is just an abstract "player" for the frame sequence.	
 
 **/
-import * as MultiCast from "./multicast.js";
+import { Events } from "./events.js";
 import { preloadImages } from './utils.js';
+import { VideoStream } from "./videoStream.js";
 
-const Events = ['End'];
+const ImplementsEvents = 'end';
 
 class Sequence {
 	constructor(flipbook, name, start, end, loop = true) {
@@ -36,6 +38,7 @@ class Sequence {
 		this._dir   	 = 1;
 		this._cycle		 = 'normal';
 		this._isPaused   = true;
+		this._isPausing  = false;
 	}
 	
 	clone(ownerFlipbook) {
@@ -64,6 +67,10 @@ class Sequence {
 	get loop() {
 		return this._iterationCount;
 	}
+
+	get isPaused() {
+		return this._isPaused;
+	}
 	
 	set FPS(value) {
 		this._fps = !isNaN(value) ? AE.clamp(value, 0, 60) : 60;
@@ -87,7 +94,7 @@ class Sequence {
 			
 			this._iterations = 0;		
 			this._cycle      = 'normal';
-			this.flipbook.sequence = this.name;		
+			this.flipbook.sequence = this;		
 			this._isPaused   = false;
 			
 			if (this.length > 0 && this._iterationCount > 0 && this._iterationCount != Infinity) {
@@ -96,7 +103,8 @@ class Sequence {
 		});
 	}
 	
-	stop() {							
+	stop(playThrough) {					
+		if (playThrough) return this._isPausing = true;
 		this._isPaused = true;			
 	}
 	
@@ -136,6 +144,8 @@ class Sequence {
 		const outOfBounds = (this._dir == 1 && n > this.end) || (this._dir == -1 && n < this.start);		
 		
 		if (outOfBounds) {
+			if (this._isPausing) { return this._isPaused = true; }
+
 			this.index  = (n > this.end) ? this.end : this.start;
 				
 			if (this._cycle == 'normal') {
@@ -159,7 +169,8 @@ class Sequence {
 			else {
 				this._cycle = 'ended';			
 				if (AE.isFunction(this.onComplete))     this.onComplete(this);
-				this.flipbook._fireEvent('end', { sequence:this });														
+				this._isPaused = true;
+				this.flipbook.events.fire('end', { sequence:this });														
 			} 
 	}		
 	
@@ -170,7 +181,7 @@ class Sequence {
 		var end    = this.end;
 		this.index = AE.clamp(Math.floor(start), start, end);		
 		
-		this.flipbook.sequence = this.name;
+		this.flipbook.sequence = this;
 	}
 }
 
@@ -197,21 +208,18 @@ class Flipbook {
 		this._atlasOrder  = 'left-to-right';			// frame ordering in atlas
 		this._lastFrame   = -1;
 		
-		const events = {};
-		for (const e of Events) events[e.toLowerCase()] = [];
-		AE.sealProp(this, '_events', events);
+		/**
+		 *  Create event handlers
+		 */
+		 this.events = new Events(this, ImplementsEvents);
+		 Object.entries(o).forEach(([k, v]) => { 			
+			 if (k.startsWith('on')) {
+				 const evtName = k.toLowerCase().substring(2);	
+				 if (this.events.names.includes(evtName)) this.events.add(evtName, v);		// install (optional) event handlers given in parameters object				
+			 }
+		 });
 
 		this.customRender = {};			// optional custom render data	
-	}
-
-	addEvent(name, func) {
-		if (typeof func != 'function') throw 'Second parameter must be a function';
-		if (name in this._events) this._events[name].push({ name, func });			
-	}
-	
-	_fireEvent(name, data) {
-		const e = this._events[name];													
-		if (e) for (var i = 0; i < e.length; i++) e[i].func(this, name, data);
 	}
 	
 	/**
@@ -225,9 +233,9 @@ class Flipbook {
 						
 		for (const [k, v] of Object.entries(this.sequences)) c.sequences[k] = v.clone(c);		// clone Sequences, and make the cloned Flipbook their owner
 		
-		c._isAtlas   = this._isAtlas;
-		c.sequence   = this.sequence;				
-		c._lastFrame = this._lastFrame;
+		c._isAtlas     = this._isAtlas;
+		c.sequence     = (this.sequence == null) ? null : Object.values(c.sequences).find(e => e.name == this.sequence.name);
+		c._lastFrame   = this._lastFrame;
 		
 		return c;
 	}
@@ -288,17 +296,62 @@ class Flipbook {
 
 	/**
 	 * 
-	 * @param {[string]} urls 
+	 * @param {[string]|string} urls 
 	 * @param {string} path 
 	 * @param {boolean} append 
 	 * @returns 
 	 */
 	async loadAsFrames(urls, path, append = false) {	// urls:[String], ?path:string, ?append:Boolean
 		this._isAtlas = false;
+
+		// animation file?
+		if (typeof urls == 'string') {
+			const video = new VideoStream();
+			await video.load(urls);
+			await video.unpackFrames({ frames:15 });
+
+			this.images.push(...video.frames.map(e => e.canvas));
+			
+			return this.images;
+		}
+
 		if (append) this.images.push(...await preloadImages({ urls, path })); 
 			else this.images = await preloadImages({ urls, path });		
 		return this.images;
-	}	
+	}
+
+	/**
+	 * 
+	 * @param {[object]} o array of sequences	 
+	 * @param {string} o.url url of video
+	 * @param {number} o.startFrame first frame of the video to include in the sequence
+	 * @param {number} o.endFrame last frame of the video to include in the sequence
+	 * @param {string} o.name name of the sequence
+	 * @param {boolean} o.loop is the sequence looping?
+	 * @returns 
+	 */
+	 async createSequencesFromVideo(o) {	
+		this._isAtlas = false;
+
+		const sequences = [];
+
+		for (const seq of o) {
+			let { startFrame, endFrame } = seq;
+
+			const video = new VideoStream();
+			await video.load(seq.url);
+			await video.unpackFrames({ startFrame, endFrame });
+
+			startFrame = this.images.length;
+			this.images.push(...video.frames.map(e => e.canvas));
+			endFrame   = this.images.length - 1;
+
+			const s = this.addSequence({ name:seq.name, startFrame, endFrame, loop:seq.loop });
+			sequences.push(s);
+		}
+		
+		return sequences;	
+	}
 	
 	/**
 	 * 
@@ -330,10 +383,12 @@ class Flipbook {
 		delete this.sequences[name];
 	}
 	
-	stop() {
-		const seq = this.sequences[this.sequence];
-		if (seq == null) return;
-		seq.stop();
+	stop(stopAll) {
+		if (stopAll) {			
+			for (const a of Object.values(this.sequences)) a.stop();
+			return;
+		}
+		if (this.sequence) this.sequence.stop();
 	}
 	
 	/**
@@ -347,15 +402,18 @@ class Flipbook {
 	 * Automatically called from Actor.tick()
 	 */
 	tick() {
-		if (this.sequence == null || this.actor == null) return;		
+		if (this.sequence == null || this.actor == null) return;	
 		
-		const seq   = this.sequences[this.sequence];
+		const seq   = this.sequence;
 		if (seq == null || seq._cycle == 'ended') return;
 						
 		const frame = seq.next();
 		const img   = this.isAtlas ? this.images[0] : this.images[frame];
-		
+
 		if (img == null) return;
+
+		const iwidth  = img instanceof HTMLCanvasElement ? img.width  : img.naturalWidth;
+		const iheight = img instanceof HTMLCanvasElement ? img.height : img.naturalHeight;
 					
 		if (this.isAtlas) {			
 			if (this._atlasOrder == 'left-to-right') {
@@ -365,11 +423,11 @@ class Flipbook {
 				var a = Math.floor(frame / this.dims.x);
 				var b = Math.floor(frame % this.dims.x);
 			}
-			var w = Math.floor(img.naturalWidth  / this.dims.x);
-			var h = Math.floor(img.naturalHeight / this.dims.y);						
+			var w = Math.floor(iwidth  / this.dims.x);
+			var h = Math.floor(iheight / this.dims.y);						
 		} else {
-			var w = img.naturalWidth;
-			var h = img.naturalHeight;
+			var w = iwidth;
+			var h = iheight;
 		}
 						
 		this.customRender = { img, a, b, w, h };

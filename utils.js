@@ -8,7 +8,6 @@
 import './ext/random.js';
 import './ext/hjson.min.js';
 import * as Types from './types.js';
-import { VideoStream } from './videoStream.js';
 const Vec2 = Types.Vector2;
 
 /**
@@ -44,7 +43,7 @@ const preloadVideo = async (o) => {
 	const video = document.createElement('video');		
 	video.style.display = 'none';
 	video.crossOrigin   = 'anonymous'; 
-	
+				
 	if (o.loop)  	video.loop  = true;
 	if (o.muted)    video.muted = true;
 	if (o.autoplay) video.autoplay = true;		
@@ -53,7 +52,7 @@ const preloadVideo = async (o) => {
 			const mediaSource = new MediaSource();
 			video.src = URL.createObjectURL(mediaSource);
 			mediaSource.addEventListener('sourceopen', sourceOpen, { once: true });
-			mediaSource.addEventListener('sourceended', (e) => { 											
+			mediaSource.addEventListener('sourceended', (e) => { 	
 				if (o.parent) o.parent.appendChild(video);														
 				resolve(video);
 			});
@@ -66,9 +65,9 @@ const preloadVideo = async (o) => {
 				  
 				fetch(o.url)
 					.then(r => r.arrayBuffer())
-					.then(arrayBuffer => {						
+					.then(arrayBuffer => {	
 						sourceBuffer.addEventListener('updateend', (e) => {							
-							// everything loaded;									
+							// everything loaded;																
 							mediaSource.endOfStream();
 					    });						
 					    sourceBuffer.appendBuffer(arrayBuffer);

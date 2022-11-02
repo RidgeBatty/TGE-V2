@@ -6,8 +6,16 @@
  * 
  */
 class ManagedArray {
-    constructor(o) {
-        this.array = new Array();
+    constructor(owner, itemClass) {
+        this.owner     = owner;
+        this.itemClass = itemClass;
+        this.array     = new Array();
+    }
+    
+    add(args) {
+        const item = new this.itemClass(this, args);        
+        this.array.push(item);
+        return item;
     }
 
     push(...items) {

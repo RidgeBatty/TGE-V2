@@ -11,10 +11,13 @@ import { Enemy } from './enemy.js';
 import { Projectile } from './projectile.js';
 import { Actor, Enum_ActorTypes } from './actor.js';
 import { Layer } from './layer.js';
+import { Events } from './events.js';
 
 import { Vector2 } from './types.js';
 import { Engine } from './engine.js';
 import { HitTestFlag, Enum_HitTestMode } from './root.js';
+
+const ImplementsEvents = 'addactor';
 
 class HitTestGroups { constructor() { Object.keys(HitTestFlag).forEach(e => this[e] = []); }; clear() { Object.keys(HitTestFlag).forEach(e => this[e].length = 0); } }
 
@@ -24,6 +27,7 @@ class GameLoop {
 		this.data           = {};	// user data
 		this._flags		    = { isRunning:false, showColliders:false, collisionsEnabled:false, showBoundingBoxes:false };
 		this.flags          = Object.seal(this._flags);  // flags
+		this.events         = new Events(this, ImplementsEvents);
 		
 		this.levels         = [];
 		this.players        = [];	
@@ -59,6 +63,23 @@ class GameLoop {
 		this.collisionCheckTime = 0;		// time spent checking for collisions/overlaps
 
 		this.container      = null;			// if defined, actors are created inside this container (overriding engine.rootElem)
+		
+		// handle browser throttling
+		let wasRunningBeforeVisibilityChange = false;
+		AE.addEvent(document, 'visibilitychange', e => {
+			if (document.visibilityState == 'hidden') {
+				if (this.flags.isRunning) {
+					wasRunningBeforeVisibilityChange = true;
+					return this.stop();
+				}
+			}
+			if (document.visibilityState == 'visible') {
+				if (wasRunningBeforeVisibilityChange) {
+					wasRunningBeforeVisibilityChange = false;
+					return this.start();			
+				}
+			}
+		});	
 	}
 
 	/**
@@ -160,7 +181,7 @@ class GameLoop {
 	removeActor(actor) {		
 		for (const olap of actor.overlaps) {										// signal "endoverlap" to all actors which this actor overlaps with
 			olap.overlaps = olap.overlaps.filter(e => e != actor);					// remove destroyed actor from (all the) other actors' overlaps list!
-			actor._fireEvent('endoverlap', { actor, otherActor:olap });	
+			actor.events.fire('endoverlap', { actor, otherActor:olap });	
 		}
 		
 		const c = this.removeFromZLayers(actor);									// remove from zLayers
@@ -202,8 +223,43 @@ class GameLoop {
 	}
 
 	/**
+	 * WARNING! For engine internal use. Adds an Actor into zLayers and actors collection and fires the gameLoop's addactor event.
+	 * @param {Actor} actor class instance
+	 */
+	_addActor(actor) {
+		actor.owner = this;
+		this.zLayers[actor.zIndex].push(actor);	
+		this.actors.push(actor);
+		this.events.fire('addactor', { actor });		
+	}
+
+	/**
+	 * Creates a new Actor (or descendant class) instance. The instance is not added into the gameLoop. The instance will have _type and objectType properties set accordingly.
+	 * @param {*} typeString Actor type to create as a string, e.g. 'player', 'enemy', etc.
+	 * @param {*} o Parameters to send to the Actor (or descendant) class constructor.
+	 * @returns
+	 */
+	createTypedActor(typeString, o) {
+		let a;
+		switch (typeString) {
+			case 'player'      	: { a = new Player(o); const hp = new Hitpoints(); hp.assignTo(a); this.players.push(a); a._type = Enum_ActorTypes.Player; break; }
+			case 'enemy' 	  	: { a = new Enemy(o);  const hp = new Hitpoints(); hp.assignTo(a); a._type = Enum_ActorTypes.Enemy; break; } 
+			case 'projectile'  	: { a = new Projectile(o); a._type = Enum_ActorTypes.Projectile; break; }			
+			case 'consumable'   : { a = new Actor(o); a._type = Enum_ActorTypes.Consumable; break; }
+			case 'obstacle'     : { a = new Actor(o); a._type = Enum_ActorTypes.Obstacle; break; }
+			case 'npc'  		: { a = new Actor(o); a._type = Enum_ActorTypes.Npc; break; }
+			case 'actor'  		: { a = new Actor(o); a._type = Enum_ActorTypes.Actor; break; }
+			default 	  		: { a = new aType(o); a._type = Enum_ActorTypes.Default; }
+		}
+		a.objectType = typeString;		
+		a.renderHints.showColliders   = this.flags.showColliders;
+		a.renderHints.showBoundingBox = this.flags.showBoundingBoxes;			// copy the Gameloop boundingbox state to the created actor		
+		return a;
+	}
+
+	/**
 	 * Creates a new game object instance and adds it in the GameLoop
-	 * @param {String} aType Object type to create, one of: level player projectile enemy layer consumable obstacle npc
+	 * @param {String|Actor} aType Object type (string) to create OR add already existing descendant of Actor class which will be added in the gameLoop 
 	 * @param {object} o Actor parameter object
 	 * @param {string} o.name User defined name
 	 * @param {image} o.img HTMLImageElement or Canvas
@@ -218,39 +274,47 @@ class GameLoop {
 	add(aType, o = {}) {		
 		o.owner = this;
 
+		if (aType instanceof Actor) {														// if the first parameter is an existing Actor instance...
+			aType.owner = this;			
+
+			if (!('_type' in aType)) {
+				const c = aType.constructor.name;			
+				if (Enum_ActorTypes[c]) aType._type = Enum_ActorTypes[c];
+					else aType._type = Enum_ActorTypes.Default;
+			}
+
+			this._addActor(aType);			
+			return aType;
+		}
+
 		var a;
-		if (aType == 'level')  { a = new Level(o); this.levels.push(a); return a; }			// levels are a different beast. add them in their own container and exit.
+		if (aType == 'level')  { 															// Levels are a different beast. Add them in their own container and exit.
+			a = new Level(o); 
+			this.levels.push(a); 
+			this.events.fire('addactor', { actor:a });
+			return a; 
+		}
+						
 		if (aType == 'custom') { 
 			if (!('zIndex' in o)) throw 'Custom GameLoop object must have zIndex property defined.';
 			if (!AE.isFunction(o.update)) throw 'Custom GameLoop object must have update() method defined.';
 			this.zLayers[o.zIndex].push(o); 
 			a = o;		
 		}
-		if (aType == 'layer') a = new Layer(o);
-			
-		// handle Actors and its descendants:
-		if (a == null) {
-			switch (aType) {
-				case 'player'      	: { var a = new Player(o); const hp = new Hitpoints(); hp.assignTo(a); this.players.push(a); a._type = Enum_ActorTypes.player; break; }
-				case 'enemy' 	  	: { var a = new Enemy(o);  const hp = new Hitpoints(); hp.assignTo(a); a._type = Enum_ActorTypes.enemy; break; } 
-				case 'projectile'  	: { var a = new Projectile(o); a._type = Enum_ActorTypes.projectile; break; }			
-				case 'consumable'   : { var a = new Actor(o); a._type = Enum_ActorTypes.consumable; break; }
-				case 'obstacle'     : { var a = new Actor(o); a._type = Enum_ActorTypes.obstacle; break; }
-				case 'npc'  		: { var a = new Actor(o); a._type = Enum_ActorTypes.npc; break; }
-				case 'actor'  		: { var a = new Actor(o); a._type = Enum_ActorTypes.npc; break; }
-				default 	  		: { var a = new aType(o); a._type = Enum_ActorTypes.default; }
-			}
+
+		if (aType == 'layer') {
+			a = new Layer(o);
 			a.objectType = aType;
 			this.zLayers[a.zIndex].push(a);	
-
-			// if the GameLoop has showColliders flag enabled, make the colliders visible for all subsequently created Actors
-			if ('_type' in a) {
-				this.actors.push(a);			
-				a.renderHints.showColliders   = this.flags.showColliders;
-				a.renderHints.showBoundingBox = this.flags.showBoundingBoxes;			// copy the Gameloop boundingbox state to the created actor
-			}
+			return a;			
 		}
-		
+					
+		if (a == null) {																// Actors and its descendants
+			a = this.createTypedActor(aType.toLowerCase(), o);							// create new actor type based on the given string, e.g. 'player', 'enemy', etc...			
+		}
+
+		this._addActor(a);
+				
 		return a;
 	}
 
@@ -369,13 +433,14 @@ class GameLoop {
 						for (const o of groups[g]) {
 							if (o != actor && !o.flags.isDestroyed) {				// do not test against self and destroyed actors
 								this.overlapTests++;
-								actor.testOverlaps(o);
+								actor._testOverlaps(o);
 								if (o.flags.isDestroyed) destroyed.push(o);
 							}
 						}				
 					}
 				}
 			}
+			
 			this.collisionCheckTime += performance.now() - collisionCheckTime;
 			
 			if (actor.flags.isDestroyed) destroyed.push(actor);						

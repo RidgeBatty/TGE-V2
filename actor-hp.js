@@ -6,10 +6,8 @@ class Hitpoints {
         this.lives  = lives;
     }
     
-    assignTo(actor) {
-        actor._events.damage = [];
-        actor._events.death  = [];        
-        Object.assign(actor, this);
+    assignTo(actor) {        
+        actor.events.create('damage death');        
     }
 
     set HP(value) {
@@ -27,14 +25,14 @@ class Hitpoints {
         return this._maxHP;
     }
     
-    takeDamage(amount, inflicter){
+    takeDamage(amount, inflictor){
         this.HP -= amount;
-        this._fireEvent('Damage', { amount, inflicter });
+        this.events.fire('damage', { amount, inflictor });
 
         if (this.HP < 0) {
             this.HP = 0;
             this.lives--;
-            this._fireEvent('Death', { inflicter });
+            this.events.fire('death', { inflictor });
         }
     }
 }

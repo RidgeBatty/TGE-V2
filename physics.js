@@ -95,13 +95,14 @@ class PhysicsShape {
 	project(p) {
 		var p = p.clone();
 		const o = this.owner;
-		if (this._angle != 0) 		  p.rotate(this._angle);		
+		
+		if (this._angle != 0) p.rotate(this._angle);				
 		p.add(this.position);
-		p.add(o.pivot);				
+		
 		if (o.rotation != 0) p.rotate(o.rotation);				
 		p.mulScalar(o.scale);
-		p.add(o.position);		
-		
+		p.add(o.position);								
+		p.add(o.pivot);				
 		return p;
 	}
 
@@ -215,6 +216,10 @@ class Circle extends PhysicsShape {
 	
 	collidePoly(poly) {
 		poly.collideCircle(this);
+	}
+
+	clone() {
+		return new Circle(this.position.clone(), this.radius);
 	}
 }
 
@@ -341,7 +346,7 @@ class Box extends AABB {
 	}
 	
 	overlapsCircle(c) {
-		const circleCenter = c.project(Zero);
+		const circleCenter = c.project(Zero);		
 		const boxCenter    = this.project(Zero);
 		var b        = this.projectedPoints;
 		var boxAngle = this.screenAngle;

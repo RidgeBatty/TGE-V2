@@ -23,17 +23,15 @@ class Parallax {
 	 * Creates a new parallax effect
 	 * @param {object} o 
 	 * @param {string=} o.path
-	 * @param {CanvasSurface=} o.container
 	 * @param {Types.Rect=} o.viewport
 	 * @param {Types.Vector2=} o.position initial scroll position of the effect
 	 * @param {number=} o.speed
 	 * @param {number=} o.scale
 	 * @param {string=} o.repeat string 'x'|'y'|'both'
+	 * @param {number=} o.zIndex
 	 */
 	constructor(o) {
-		this.container = ('container' in o) ? o.container : new CanvasSurface({ name:'Parallax', dims:Engine.dims });		
 		this.layers    = [];		
-
 		this.setDefaults(o);
 	}		
 
@@ -44,6 +42,7 @@ class Parallax {
 		this.speed       = ('speed' in o) ? Vec2.FromStruct(o.speed) : Vec2.Zero();
 		this.scale       = ('scale' in o) ? Vec2.FromStruct(o.scale) : new Vec2(1, 1);
 		this.repeat      = ('repeat' in o) ? o.repeat : 'x';				
+		this.zIndex      = ('zIndex' in o) ? o.zIndex : 0;
 	}
 		
 	async _addLayers(o) {	
@@ -57,7 +56,9 @@ class Parallax {
 			if (!('scale' in layerData)) layerData.scale = this.scale.clone();
 
 			const o     = Object.assign({ owner:this, img:images[i++], repeat:this.repeat, viewport:this.viewport }, layerData);
+			o.zIndex   += this.zIndex;																												// offset all created layers by given zIndex!
 			const layer = new Layer(o);
+
 			this.layers.push(layer);			
 		}
 	}
@@ -69,10 +70,6 @@ class Parallax {
 	tick() {
 		this.position.add(this.speed);				
 	}	
-
-	update() {
-
-	}
 			
 	async buildFromData(data) {				
 		return new Promise(async (resolve, reject) => {

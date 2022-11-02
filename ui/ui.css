@@ -1,0 +1,180 @@
+:root {
+    --titlebar-color: maroon;
+    --hover-hilite-color: rgba(128,0,0,0.5);
+    --small-header-color: #333;    
+}
+
+body {
+    scrollbar-width: thin;
+}
+
+ui-panel {
+	display: flex;
+	position: relative;
+	width:100%;
+	height: 100%;;
+}
+.ui-panel.center {
+	align-items: center;
+}
+
+/*
+    BUTTON
+*/
+ui-button {
+	cursor: pointer;
+}
+ui-button:not(.close-window) {
+	background-color: rgba(255,0,0,0.5);
+	box-shadow:0px 0px 2px 2px black, 0px 0px 0px 5px red;
+	padding:0.5em 1.5em;
+	margin:1px;
+	width:4em;
+	text-align: center;
+	border-radius: 1.5em;
+	transition: 150ms box-shadow;
+}
+ui-button:hover:not(.close-window) {
+	box-shadow:0px 0px 2px 2px black, 0px 0px 0px 5px white;
+}
+
+/*
+    WINDOW
+*/
+ui-window {
+	position: absolute;
+	left:10px;
+	top:10px;	
+	box-shadow:5px 5px 20px 1px rgba(0,0,0,0.5);
+	border:1px solid black;	
+	pointer-events: auto;
+	display: flex;	
+}
+ui-window > .frame {
+	display: flex;
+	flex-direction: column;
+	background-color: rgba(0,0,0,0.85);
+}
+ui-window.modal {
+	inset:0px;
+	background-color: rgba(0,0,0,0.3);
+}
+ui-window.modal > .frame {
+	inset:0px;
+	margin: auto;
+	background-color: rgba(0,0,0,0.75);
+}
+ui-window.modal > .frame > .body {
+	padding:2em;
+}
+ui-window > .frame > .head {
+	display: flex;
+	position: relative;
+	font:14px arial;
+	padding:4px 6px;
+    padding-right:2em;
+	background-color: var(--titlebar-color);
+	color:white;		
+	align-items: center;
+    border-bottom:1px solid black;
+}
+ui-window > .frame > .head > ui-button.close-window {
+	position: absolute;
+	display: flex;
+	right: 0px;
+	width: 1.5em;
+	height: 100%;
+	color:white;
+	background-color: red;
+	justify-content: center;
+	align-items: center;
+}
+ui-window > .frame > .body {
+	display: flex;
+	flex: 1;
+    padding:0px;
+	position: relative;	
+	overflow-y: auto;			
+	flex-direction: column;	
+}
+ui-window.modal.dialog .body ui-button {	
+	margin:1em;
+}
+
+/*
+    CUSTOMLIST
+*/
+ui-customlist > .body {
+	display:grid;		
+	gap:4px;
+	grid:64px 64px 64px auto / 64px 64px 64px auto;	
+}
+ui-customlist > .body > div {    
+	transition: border 300ms;    	
+    border:1px solid transparent;
+    border-radius:5px;    
+    opacity:0.7;
+}
+ui-customlist > .body > div:hover {    
+	border:1px solid red;		    
+}
+ui-customlist > .body > .selected {    	
+    opacity:1;
+    border:1px solid white;
+}
+ui-customlist > .body img {    
+	width:64px;
+}
+
+/*
+    FILELIST
+*/
+ui-filelist {
+    font-size:12px;    
+}
+ui-filelist > .head {
+    display: flex;
+    padding:2px 5px;
+    background-color:var(--small-header-color);
+}
+ui-filelist > .head :nth-child(1) {
+    width:10em;    
+}
+ui-filelist > .head :nth-child(2) {
+    width:6em;    
+    text-align: right;
+}
+ui-filelist > .head :nth-child(3) {
+    padding-left:1em;
+}
+ui-filelist > .body {
+    max-height: 12em;
+    overflow-y: auto;
+}
+ui-filelist > .body > div {
+    display: flex;
+    padding:0px 5px;
+    height:1.2em;
+}
+ui-filelist > .body > div:nth-child(even) {
+    background-color: rgb(20,20,20,0.5);
+}
+ui-filelist > .body > div:hover {
+    background-color: var(--hover-hilite-color);
+}
+ui-filelist > .body > div :nth-child(1) {
+    width:10em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+ui-filelist > .body > div :nth-child(2) {
+    width:6em;
+    text-align: right;    
+}
+ui-filelist > .body img {
+    padding-left:1em;
+    max-height: 1em;
+    width:auto;
+    filter:invert(1);
+}

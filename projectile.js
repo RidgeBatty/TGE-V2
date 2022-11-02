@@ -39,7 +39,7 @@ class Projectile extends Actor {
 
 		this._initialFlight = 0;
 		this._speed         = 0;
-		this._homingTarget  = null;
+		this._homingTarget  = null;		
 
 		this._isHoming      = false;
 	}

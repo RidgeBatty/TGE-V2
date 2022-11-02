@@ -97,8 +97,7 @@ class KeyController {
 	processKeyDown(e) {
 		e.preventDefault();  			
 		if (this.isActive == false) return;		
-		var keyBind  = this.keyBind;
-		var keyState = this.keyState;
+		const { keyBind, keyState } = this;		
 		for (var i in keyBind) for (var j = 0; j < keyBind[i].length; j++) if (e.code == keyBind[i][j]) {
 			if (keyState[i] == false) this._fireCustomEvent('keypressed', { event:e, key:i }); 
 			keyState[i] = true; 			
@@ -108,8 +107,7 @@ class KeyController {
 	processKeyUp(e) { 	
 		e.preventDefault(); 
 		if (this.isActive == false) return;
-		var keyBind  = this.keyBind;
-		var keyState = this.keyState;
+		const { keyBind, keyState } = this;
 		for (var i in keyBind) for (var j = 0; j < keyBind[i].length; j++) if (e.code == keyBind[i][j]) {
 			if (keyState[i] == true) this._fireCustomEvent('keyreleased', { event:e, key:i }); 
 			keyState[i] = false; 			

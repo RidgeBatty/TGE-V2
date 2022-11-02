@@ -5,20 +5,27 @@
 * @desc Tiny Game Engine main module.
 * Importing this module into your project automatically initializes the engine and creates the Engine instance. 
 * All common TGE classes, enumerations and libraries (and the Engine instance) are exported by default:
-*
-* World, Scene, Actor, Collider, Root, Enum_HitTestMode, Enum_ActorTypes, Types, Utils, Events
+* - Engine
+* - World
+* - Actor
+* - Collider
+* - Root
+* - Enum_HitTestMode
+* - Enum_ActorTypes
+* - Types
+* - Utils
 *
 * Note that creation and use of World object is optional. All components should work with or without a World.
 * For example a space invaders, tetris, pong, asteroids, etc. might have no use of container for static World but a platformer game definitely has.
 *
 */
-const VersionNumber = '2.2';
+const VersionNumber = '2.3';
 
 import * as Types from "./types.js";
 import { Root, Enum_HitTestMode } from "./root.js";
 import { GameLoop } from "./gameLoop.js";
 import { Actor, Enum_ActorTypes } from "./actor.js";
-import { World, Scene } from "./world.js";
+import { World } from "./world.js";
 import { Collider } from "./collider.js";
 import { CanvasRenderer as Renderer } from './canvasRenderer.js';
 import * as Utils from "./utils.js";
@@ -29,7 +36,7 @@ import { UI } from "./ui/ui-html.js";
 const Rect         = Types.Rect;
 const Vector2	   = Types.Vector2;
 
-const ImplementedEvents = 'resize contextmenu mousemove mouseup mousedown mousewheel keyup keydown keypress';
+const ImplementsEvents = 'resize contextmenu mousemove mouseup mousedown wheel keyup keydown keypress';
 
 const DefaultFlags = {
 	'hasWorld' : false,
@@ -41,6 +48,7 @@ const DefaultFlags = {
 	'hasRenderingSurface' : false,	
 	'preventKeyDefaults' : true,
 	'hasUI' : false,
+	'connection' : false,
 }
 
 const die = (msg) => {
@@ -61,13 +69,15 @@ class TinyGameEngine {
 	/**
 	@param {Object=} o - Not used in current version.
 	*/
+	#setupStatus = 2;																							// number of async functions to execute before the setup is complete
+
 	constructor (o) {		
 		AE.sealProp(this, 'flags', new Flags(DefaultFlags, (a, b) => this.onFlagChange(a, b))); 				// create default flags and make 'this.flags' immutable
 		AE.sealProp(this, 'url', import.meta ? new URL('./', import.meta.url).pathname : null);
-		
+				
 		this.renderingSurface = null;
-		this.gameLoop   = new GameLoop({ engine:this });		
-		this._zoom	    = 1;
+		this.gameLoop    = new GameLoop({ engine:this });		
+		this._zoom	     = 1;
 
 		/** 
 		 * @type {Types.Rect}
@@ -80,12 +90,6 @@ class TinyGameEngine {
 		 * @desc Rectangle representing the area where actors are allowed to move 
 		 */		
 		this.edges      = new Rect(0, 0, 1920, 1080);			
-
-		/**
-		 * @type {Types.Vector2}  
-		 * @desc Global constant for gravity force
-		 */
-		this.gravity    = new Vector2(0, 1);
 		
 		/** 		 
 		 * @type {Sounds}		 
@@ -107,41 +111,49 @@ class TinyGameEngine {
 			status    : {},			
 		}
 				
-		this.events        = new Events(ImplementedEvents);		
+		this.events        = new Events(this, ImplementsEvents);		
 		this.preventedKeys = {};
 		
 		this.#installEventHandlers();				
 	}
 
-	#installEventHandlers() {				
+	#installEventHandlers() {
+		this._setupProgress = () => {		// this function is called every time the setup progresses to next asynchronous function			
+			this.#setupStatus--;
+			if (this.#setupStatus == 0) if (AE.isFunction(this._mainFunction)) this._mainFunction();
+		}
+		
 		AE.addEvent(window, 'dragstart', (e) => { e.preventDefault(); });
 		//window.addEventListener('touchmove', (e) => { e.preventDefault(); onMouseMove(e); }, { passive:false });
-		AE.addEvent(window, 'touchmove', (e) => { onmousemove(e); }, { passive:false });
-		AE.addEvent(window, 'touchstart', (e) => { onmousedown(e); });
-		AE.addEvent(window, 'touchend', (e) => { onmouseup(e); });
+		AE.addEvent(window, 'touchmove', (e) => { mousemove(e); }, { passive:false });
+		AE.addEvent(window, 'touchstart', (e) => { mousedown(e); });
+		AE.addEvent(window, 'touchend', (e) => { mouseup(e); });
 
 		// added in 2.0.5 to make sure we get the window dimensions right even when the developer tools is open
 		AE.addEvent(window, 'load', (e) => {
-			this.recalculateScreen();
-			if (AE.isFunction(this._mainFunction)) this._mainFunction();
+			this.recalculateScreen();			
+			this._setupProgress();
 		});			
 
 		// all internal event handlers:
-		const onresize = (e) => {
+		const resize = (e) => {		
 			if (this.flags.getFlag('screenAutoAdjustEnabled')) this.recalculateScreen();
+
+			this.events.fire('resize', {});
 		}
 		
-		const oncontextmenu = (e) => {
+		const contextmenu = (e) => {
 			if (!this.flags.getFlag('hasContextMenu')) e.preventDefault();
 		}
 		
-		const onmousemove = (e) => { 
+		const mousemove = (e) => { 
 			if (!this.flags.getFlag('mouseEnabled')) return;
 			const p = e.changedTouches ? e.changedTouches[0] : e;
 			this._mouse.position.x = p.clientX / this.zoom - this.screen.left;
 			this._mouse.position.y = p.clientY / this.zoom - this.screen.top;
 
 			this.events.fire('mousemove', { 
+				event: e,
 				downPos : this._mouse.dragStart.clone(),
 				position: this._mouse.position.clone(), 
 				dragging: this._mouse.dragging, 
@@ -150,7 +162,7 @@ class TinyGameEngine {
 			});
 		}
 	
-		const onmousedown = (e) => {
+		const mousedown = (e) => {
 			if (!this.flags.getFlag('mouseEnabled')) return;
 			const p = e.changedTouches ? e.changedTouches[0] : e;
 			const m = this._mouse;
@@ -159,12 +171,12 @@ class TinyGameEngine {
 			m.dragStart  = this._mouse.position.clone();
 			m.left       = e.button == 0;
 			m.right      = e.button == 2;
-			m.dragging   = true;
+			m.dragging   = true;			
 			
-			this.events.fire('mousedown', { target:e.target, event:e, downPos: m.position.clone(), position: m.position.clone(), button:e.button, target: e.target });
+			this.events.fire('mousedown', { event:e, downPos: m.dragStart.clone(), position: m.position.clone(), button:e.button, target: e.target });
 		}
 	
-		const onmouseup = (e) => { 
+		const mouseup = (e) => { 
 			if (!this.flags.getFlag('mouseEnabled')) return;
 			const p = e.changedTouches ? e.changedTouches[0] : e;
 			const m = this._mouse;
@@ -174,7 +186,7 @@ class TinyGameEngine {
 			m.right      = e.button != 2;
 			m.dragging   = false;
 			
-			this.events.fire('mouseup', { position : m.position.clone(), delta: Vector2.Sub(m.position, m.dragStart), button:e.button, target: e.target });
+			this.events.fire('mouseup', { event:e, downPos: m.dragStart.clone(), position: m.position.clone(), delta: Vector2.Sub(m.position, m.dragStart), button:e.button, target: e.target });
 	
 			// to-do: optimize with a container that has only actors which have 'click' event installed
 			for (const actor of this.gameLoop.actors) if (actor.flags.mouseEnabled) {
@@ -184,7 +196,7 @@ class TinyGameEngine {
 			}			
 		}		
 
-		const onkeydown = (e) => {						
+		const keydown = (e) => {						
 			if (this.flags.getFlag('preventKeyDefaults') || this.preventedKeys[e.code]) e.preventDefault();
 			let result;
 			this.events.fire('keydown', { code:e.code, key:e.key, event:e });			
@@ -193,15 +205,19 @@ class TinyGameEngine {
 			return result;
 		}
 
-		const onkeyup = (e) => {			
+		const keyup = (e) => {			
 			if (this.flags.getFlag('preventKeyDefaults') || this.preventedKeys[e.code]) e.preventDefault();			
 			this._keys.status[e.code] = false;
 			this.events.fire('keyup', { code:e.code, key:e.key, event:e });						
 		}	
+
+		const wheel = (e) => {			
+			this.events.fire('wheel', { delta:Math.sign(e.wheelDelta), event:e });
+		}
 		
-		const evt = { onkeydown, onkeyup, onresize, oncontextmenu, onmousedown, onmouseup, onmousemove }
-		for (const evtName of ImplementedEvents.split(' ')) {	
-			AE.addEvent(window, evtName, e => evt['on' + evtName](e));
+		const evt = { keydown, keyup, resize, contextmenu, mousedown, mouseup, mousemove, wheel }
+		for (const evtName of this.events.names) {	
+			AE.addEvent(window, evtName, e => evt[evtName](e));
 		}				
 	}
 
@@ -283,6 +299,7 @@ class TinyGameEngine {
 	*/
 	get hasWorld() { return this.flags.getFlag('hasWorld') }
 	set hasWorld(value) {											// hasWorld cannot be set to false!	
+		console.log('hello');
 		if (value === true && !this.flags.getFlag('hasWorld')) {			
 			this.world = new World({ owner:this });			
 			this.flags.setFlag('hasWorld');
@@ -303,8 +320,10 @@ class TinyGameEngine {
 	 * Call this function with your game's main function as parameter. This function makes sure the page is loaded and the Engine is completely set up before running your code.
 	 * @param {function} mainFunction 
 	 */
-	init(mainFunction) {
+	init(mainFunction, setupOptions) {
 		this._mainFunction = mainFunction;
+		if (setupOptions) this.setup(setupOptions).then(e => this._setupProgress());
+			else this._setupProgress();
 	}
 	
 	/**
@@ -405,33 +424,11 @@ class TinyGameEngine {
 	}
 
 	/**
-	 * Creates and initialized new Scene instance and returns it.
-	 * @param {Object=} o 
-	 * @param {callback} o.onSceneReady Called when the Scene initialization is complete.
-	 * @param {Object} o.tiles Tilemap information, see <a href="">World</a>
-	 * @returns {Scene}
-	 */	
-	addScene(o) {		
-		if (this.world == null) die('World must be enabled for this method to work! Try setting Engine.hasWorld = true.');
-		
-		o.onMapLoaded = onMapLoaded;
-		var scene     = this.world.createScene(o);		
-		function onMapLoaded() {			
-			if ('tiles' in o) {
-				var tileMap = scene.createTileMap();								
-				for (var i = 0; i < o.tiles.length; i++) tileMap.add(o.tiles[i].id, o.tiles[i]);				
-				if ('onSceneReady' in o && typeof o.onSceneReady == 'function') tileMap.load({ onLoaded:o.onSceneReady });
-			}			
-		}
-		return scene;
-	}	
-
-	/**
 	 * Creates a new World instance and saves the reference to Engine.world property.
 	 * @param {*} o 	
 	 */	
 	createWorld(o) {		
-		if (this.flags.getFlag('hasWorld') == false) {
+		if (this.world == null) {
 			this.world = new World(o);
 			this.flags.setFlag('hasWorld');
 		}
@@ -456,23 +453,30 @@ class TinyGameEngine {
 	onFlagChange(name, value) {
 		if (value && name == 'hasRenderingSurface' && this.renderingSurface == null) this.createRenderingSurface();
 		if (value && name == 'hasUI' && this.ui == null) this.createUI('hud');
+		if (value && name == 'hasWorld' && this.world == null) this.createWorld(this);
 	}
 
-	setup(o) {
+	async setup(o) {	
+		if (typeof o == 'string') {													// load params from file						
+			o = await Utils.getJSON(o);						
+		}
+		
 		if ('rootElem' in o) this.setRootElement(o.rootElem);
 		if ('clearColor' in o) this.gameLoop.clearColor = o.clearColor;
-		if ('flags' in o) this.flags.some(o.flags);				
+		if ('flags' in o) this.flags.some(o.flags);
 		if ('zoom' in o) {			
 			if (+o.zoom != o.zoom) die('Zoom parameter must be a number');
 			this.zoom = o.zoom;		
 		}
 		if ('gameLoop' in o) {
-			if ('flags' in o) {
-				for (const [k, v] of Object.entries(o.gameLoop.flags)) {
-					o.gameLoop.flags[k] = v;
+			const gls = o.gameLoop;
+			if ('zLayers' in gls && gls.zLayers < 17 && gls.zLayers > 1) this.gameLoop.zLayers.length = gls.zLayers;
+			if ('flags' in gls) {
+				for (const [k, v] of Object.entries(gls.flags)) {
+					this.gameLoop.flags[k] = v;
 				}
 			}			
-		}
+		}			
 	}
 }
 
@@ -480,4 +484,4 @@ console.log('Initializing TGE version ' + VersionNumber);
 
 const Engine = new TinyGameEngine();
 
-export { TinyGameEngine, Engine, World, Scene, Actor, Collider, Root, Enum_HitTestMode, Enum_ActorTypes, Types, Utils, Events };
+export { TinyGameEngine, Engine, World, Actor, Collider, Root, Enum_HitTestMode, Enum_ActorTypes, Types, Utils, Events };

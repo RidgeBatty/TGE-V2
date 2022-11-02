@@ -5,9 +5,27 @@ class Events {
      * @param {*} o 
      */
     #list = {};
-    constructor(o = {}) {
+    constructor(owner, o = {}) {
         if (typeof o == 'string') var o = o.split(' ');
         for (const e of o) this.#list[e] = [];
+
+        this.owner = owner;
+    }
+
+    get names() {
+        return Object.keys(this.#list);
+    }
+
+    /**
+     * Creates a new event type
+     * @param {string} e Name (or several names, space separated) of the event type
+     */
+    create(e) {
+        const list = e.split(' ');
+        for (const evt of list) {
+            if (this.#list[evt]) throw 'Event handler "' + evt + '" already exists';
+            this.#list[e] = [];
+        }        
     }
 
     /**
@@ -36,8 +54,11 @@ class Events {
     }
 
     fire(name, args) {
-        const e = this.#list[name];
-        if (e) for (const evt of e) evt(args);
+        const e = this.#list[name];        
+        if (!e) return;
+
+        const o = Object.assign({ instigator:this.owner }, args);
+        for (const evt of e) evt(o);        
     }
 }
 

@@ -38,6 +38,17 @@ class CanvasSurface {
 	toString() {
 		return '[CanvasSurface]';
 	}
+
+	/**
+	 * Converts Canvas to HTMLImageElement
+	 * @param {string} type Mime type ('image/png', 'image/bmp', 'image/gif', 'image/jpeg', 'image/tiff')
+	 * @returns {HTMLImageElement}
+	 */
+	toImage(type = 'image/png') {
+		const i = new Image();
+		i.src = this.canvas.toDataURL(type);
+		return i;
+	}
 	
 	destroy() {
 		this.canvas.remove();

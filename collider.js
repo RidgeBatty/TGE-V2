@@ -9,7 +9,7 @@
 
 */
 import { Transform } from './root.js';
-import { Root, Actor, Scene, Engine } from './engine.js';
+import { Root, Actor, Engine } from './engine.js';
 import { Types, PhysicsShape, Circle, AABB, Box, Enum_PhysicsShape } from './physics.js';
 
 const Vec2 = Types.Vector2;
@@ -26,7 +26,7 @@ class Collider {
 	 */	
 	constructor(o) {
 		if ('owner' in o) {
-			if ( !(o.owner instanceof Actor || o.owner instanceof Scene || o.owner instanceof Root)) throw 'Collider owner must be either an Actor or Scene or Root component';
+			if ( !(o.owner instanceof Actor || o.owner instanceof Root)) throw 'Collider owner must be either an Actor or Root component';
 			this.actor = o.owner;
 		} else { // we don't actually need an owner, we just need the following properties for the collider to work:
 			this.actor = Object.assign({}, new Transform());	
@@ -70,18 +70,24 @@ class Collider {
 	/**
 	 * Updates the collider visualizations. If required HTML and SVG elements do not exist, they will be created.		
 	*/
-	update() {		
+	update() {				
 		const colliders = this.objects;
 		const actor     = this.actor;
+		const gameLoop  = actor.owner;
 		const ctx 		= Engine.renderingSurface.ctx;
 		const scale     = this.scale * this.actor.scale;
 		
+		// if this actor is not the World camera target, add offset to shift the colliders in right position
+ 		let ofs         = (gameLoop.engine.world != null && gameLoop.engine.world.actor != actor) ? gameLoop.engine.world.camPos : Vec2.Zero();
+
 		for (var i = 0; i < colliders.length; i++) {
 			var c   = colliders[i];			
 			var cp  = actor.position.clone();
 			var pos = Vec2.Zero();
 
 			if ('offset' in actor) cp.add(actor.offset);
+			if ('pivot'  in actor) cp.add(actor.pivot);
+		 	cp.sub(ofs);
 			
 			ctx.resetTransform();
 			ctx.translate(cp.x, cp.y);			
@@ -111,29 +117,27 @@ class Collider {
 	 * @param {Actor} otherActor
 	 * Checks whether this Actor's colliders overlap with otherActor's colliders
 	 */
-	resolveOverlap(otherActor) {		
-		const otherColliders = otherActor.colliders.objects;
+	resolveOverlap(otherActor) {	
+
+		// can we get any optimization?
+		const otherColliders = ('optimizedColliders' in otherActor) ? otherActor.optimizedColliders : otherActor.colliders.objects;
 		const colliders      = this.objects;		
 		const actor          = this.actor;
-		
-		// start calculating the final velocity of the actor!		
-		var result = false;		
 
-		const aResp = actor.getCollisionResponse(otherActor);
-		const bResp = otherActor.getCollisionResponse(actor);
-		
-		// Hit testing -->
-		// BLOCK: If and only if both actors have "block" flag set against each other.		
-		if (aResp == 2 && bResp == 2) {				
-			for (const a of colliders) for (const b of otherColliders) PhysicsShape.Collide(a, b);				
-		} else {
-			// OVERLAP:
-			if (aResp > 0 && bResp > 0) {					
-				for (const c of colliders)      c.isOverlapped = false;
-				for (const c of otherColliders) c.isOverlapped = false;				
+		const aResp          = actor.getCollisionResponse(otherActor);
+		const bResp          = otherActor.getCollisionResponse(actor);		
+
+		let   result         = false;																	// final result of the actor vs. otherActor collision, assume they won't be colliding
 				
+		if (aResp == 2 && bResp == 2) {																	// BLOCK: If and only if both actors have "block" flag set against each other.		
+			for (const a of colliders) for (const b of otherColliders) PhysicsShape.Collide(a, b);				
+		} else {								
+			if (aResp > 0 && bResp > 0) {																// OVERLAP
+				for (const c of colliders)      c.isOverlapped = false;
+				for (const c of otherColliders) c.isOverlapped = false;
+								
 				for (const a of colliders) if (a.isEnabled) for (const b of otherColliders) if (b.isEnabled && PhysicsShape.Overlaps(a, b)) {
-					result = true;
+					result = true;					
 					
 					a.isOverlapped = true;
 					b.isOverlapped = true;

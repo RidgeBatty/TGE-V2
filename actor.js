@@ -4,12 +4,15 @@
  @desc   Actor is the base class for an Object that can be placed or spawned in a level. 
 */
 
-import { Types, Root, Engine } from "./engine.js";
+import { Types, Root, Events, Engine } from "./engine.js";
 import { ChildActor } from "./childActor.js";
 import { ImageOwner, Mixin } from "./imageOwner.js";
+import { ManagedArray } from "./managedArray.js";
+import { Weapon } from "./weapon.js";
+import { ActorMovement } from "./actorMovement.js";
 
 const { Vector2:Vec2, Rect } = Types;
-const Events  = ['click', 'tick', 'beginoverlap', 'endoverlap', 'collide', 'destroy'];
+const ImplementsEvents = 'click tick beginoverlap endoverlap collide destroy';
 
 let actorUID  = 0;
 /**
@@ -17,60 +20,16 @@ let actorUID  = 0;
  * @enum {number}
  */
 const Enum_ActorTypes = {	
-	default    : 1,
-	player     : 2,
-	enemy      : 4,
-	projectile : 8,	
-	vehicle	   : 16,
-	consumable : 32,
-	obstacle   : 64,
-	npc		   : 128,
-	actor	   : 256,
-}
-
-class ActorMovement {
-	constructor(actor) {
-		this._actor = actor;		
-		this.from({
-			acceleration    : 1,		// this is the increment/multiplier applied to velocity on each tick
-			maxVelocity     : 1,		// this is the maximum speed physics simulation allows Actor.velocity to reach.
-			friction        : 0.2, 		// constant scalar multiplier to resist movement: 1.0 instant stop (100% speed reduction), 0.25: reduce speed by 25% per frame
-			_angularSpeed   : 0,	
-			
-			// These are optional properties which will be used by the Engine if Actor.target is set:
-
-			targetProximity : 20,		// when following a target, switch from acceleration to deceleration when distance is less than "targetProximity" pixels
-			orbitRadius     : 100,		// orbital radius upon reaching target (in pixels)
-			orbitOffset     : 0,			// position to aim on the target's orbit (in radians)
-			orbitDuration   : 0.07,		// how long it takes for this actor to orbit the target? (in revolutions per second)
-		});
-	}
-
-	from(o) {
-		Object.assign(this, o);
-	}
-
-	set angularSpeed(value) {
-		let v = 0;
-		if (typeof value == 'string') {
-			const tmp = parseFloat(value);
-			if (value.endsWith('/s')) {
-				if (!isNaN(tmp)) v = Math.PI / (1000 / this._actor.owner._tickRate) * tmp;				
-			} else
-			if (value.endsWith('s')) {
-				if (!isNaN(tmp)) v = Math.PI / (1000 / this._actor.owner._tickRate) * (1 / tmp);
-			} 
-		} else
-		if (typeof value == 'number') {
-			v = value;
-		}
-
-		this._angularSpeed = v;
-	}
-
-	get angularSpeed() {
-		return this._angularSpeed;
-	}
+	Default    : 1,
+	Player     : 2,
+	Enemy      : 4,
+	Projectile : 8,	
+	Vehicle	   : 16,
+	Consumable : 32,
+	Obstacle   : 64,
+	Npc		   : 128,
+	Actor	   : 256,
+	Custom     : 32768
 }
 
 /**
@@ -119,46 +78,54 @@ class Actor extends Root {
 		 * @member {Object} 
 		 * 
 		*/
-		this.flags = Object.assign(this.flags,{ isDestroyed:false, isFlipbookEnabled:false, isGravityEnabled:false, isPhysicsEnabled:false, hasEdges:true, mouseEnabled:false, boundingBoxEnabled:false });
+		this.flags = Object.assign(this.flags,{ isDestroyed:false, isFlipbookEnabled:false, hasEdges:true, mouseEnabled:false, boundingBoxEnabled:false });
 
 		/**
 		 * @member {number}
 		 */
-		this.opacity = 1;
-				
+		this.opacity = ('opacity' in o) ? o.opacity : 1;
+
+		/**
+		 *  Create event handlers
+		 */
+		this.events = new Events(this, ImplementsEvents);
+		Object.entries(o).forEach(([k, v]) => { 			
+			if (k.startsWith('on')) {
+				const evtName = k.toLowerCase().substring(2);	
+				if (this.events.names.includes(evtName)) this.events.add(evtName, v);		// install (optional) event handlers given in parameters object				
+			}
+		});
+			
 		/**
 		 *  @memberof Actor
 		 *  @type {Actor#movement}
 		 */
 		AE.sealProp(this, 'movement', new ActorMovement(this));
 						
-		// create arrays for eventhandlers
-		const events = {};
-		for (const e of Events) events[e] = [];
-		AE.sealProp(this, '_events', events);
-
-		// container custom user data
+		/**
+		 * Container custom user data
+		 */		 
 		AE.sealProp(this, 'data', ('data' in o) ? o.data : {});		
-		
-		// install (optional) event handlers given in parameters object
-		for (const name of Events) if (AE.hasProp(o, 'on' + name)) this.addEvent(name.toLowerCase(), o['on' + name]);		
-		
-		this.flipbook    = null;
-		this._target     = null;											// follow/tracking target (actor or some object with a position)
-		this._follower   = null;
-		this.weapons     = [];		
-		this._zIndex     = ('zIndex' in o) ? o.zIndex : 1;					// render order
-		this.origin      = new Vec2(-0.5, -0.5);							// relative to img dims, normalized coordinates - i.e. { -0.5, -0.5 } = center of the image
+
+		this.surface         = Engine.renderingSurface;
+		this.flipbook        = null;
+		this._target         = null;											// follow/tracking target (actor or some object with a position)
+		this._follower       = null;
+		this.weapons         = new ManagedArray(this, Weapon);		
+		this._zIndex         = ('zIndex' in o) ? o.zIndex : 1;					// render order
+		this.origin          = new Vec2(-0.5, -0.5);							// relative to img dims, normalized coordinates - i.e. { -0.5, -0.5 } = center of the image
 		this._renderPosition = Vec2.Zero();		
 
 		/**
 		 * @type {boolean} Is the actor currently drawn on the screen or not?
 		 */
 		this.isVisible       = ('hidden' in o) ? !o.hidden : true;
+		this.isVisible       = ('isVisible' in o) ? o.isVisible : this.isVisible;
 		
 		if ('hasColliders' in o) this.hasColliders = o.hasColliders;		// get colliders flag state from create parameters
-
-		Mixin(this, ImageOwner, o);			
+		if ('offset' in o)       this.offset       = o.offset;
+		
+		Mixin(this, ImageOwner, o);											// if actor's createparams contain "img" or "imgUrl", the image will be assigned/loaded
 	}
 
 	get uid() {
@@ -190,10 +157,7 @@ class Actor extends Root {
 		this._renderPosition.y = this.position.y - this.size.y * this.origin.y;
 		return this._renderPosition;
 	}
-		
-	get isGravityEnabled() { return this.flags.isGravityEnabled; }	
-	set isGravityEnabled(value) { if (typeof value === 'boolean') this.flags.isGravityEnabled = value; }		
-
+	
 	set target(actor) {
 		if (actor == null) {
 			if (this._target && this._target._follower && this._target._follower == this) {
@@ -229,27 +193,13 @@ class Actor extends Root {
 	addCollider(o) {
 		this.hasColliders = true;
 		this.colliders.add(o);
-	}
-	
-	forWeapons(cb) {
-		for (let weapon of this.weapons) cb(weapon);
-	}
-	
-	addEvent(name, func) {
-		if (typeof func != 'function') throw 'Second parameter must be a function';
-		if (name in this._events) this._events[name].push({ name, func });		
-	}
-	
-	_fireEvent(name, data) {
-		const e = this._events[name];													
-		if (e) for (var i = 0; i < e.length; i++) e[i].func(Object.assign({ eventName:name, instigator:this }, data));
-	}
+	}	
 
 	_clickEventHandler(e) {		// called by Engine when mouseup is fired
 		if (this.hasColliders) {						
 			if (this.colliders.isPointInside(e.position)) {
 				const hitPosition = e.position;				
-				this._fireEvent('click', { hitPosition });
+				this.events.fire('click', { hitPosition });
 			}
 		}		
 	}
@@ -259,7 +209,7 @@ class Actor extends Root {
 	 */
 	destroy() { 		
 		if (!this.flags.isDestroyed) {
-			this._fireEvent('destroy');			
+			this.events.fire('destroy');			
 			this.release();
 			this.flags.isDestroyed = true;			
 		}
@@ -271,24 +221,41 @@ class Actor extends Root {
 	 *
 	 * TO-DO: needs to be overhauled	
 	 */	
-	clone(actor) {
-		if (!(actor instanceof Actor)) return;		
-		this.createParams = Object.assign({}, actor.createParams);
+	clone(addToGameLoop) {
+		const createParams = {
+			owner    : this.owner,
+			position : this.position.clone(),
+			pivot    : this.pivot.clone(),
+			rotation : this.rotation,
+			scale    : this.scale,
+			data     : Object.assign({}, this.data),
+			name     : this.name + '_clone',
+			opacity  : this.opacity,			
+			zIndex   : this.zIndex,
+		}
+		if (this.imgUrl)          createParams.imgUrl = this.imgUrl;  		    // a new copy of the image will be loaded and created				
+		if (this.img)             createParams.img    = this.img;				// an existing image will be shared		
+ 		const actor = new Actor(createParams);		
 		
-		this.owner       = actor.owner;						// by reference
-		this.position    = actor.position.clone();		
-		this.velocity    = actor.velocity.clone();		
-		this.pivot       = actor.pivot.clone();
-		this.scale       = actor.scale;		
-		this.rotation    = actor.rotation;		
-		this.renderHints = AE.clone(actor.renderHints);
-		this.flags		 = AE.clone(actor.flags);
-		this.movement    = actor.movement;					// by reference
-		
-		this.imageURL    = actor.imageURL;
-		this.img		 = actor.img;						// by reference
-		this.data        = actor.data;						// by reference
-		this.isVisible   = actor.isVisible;				
+		// add optional properties to the actor after creation
+		if ('offset' in this)     actor.offset     = this.offset.clone();
+		if ('objectType' in this) actor.objectType = this.objectType;
+		if ('_type' in this)      actor._type      = this._type;		
+		actor.flags       = Object.assign({}, this.flags);
+		actor.renderHints = Object.assign({}, this.renderHints);
+		actor.isVisible   = this.isVisible;
+				
+		if (this.colliders) {									// clone colliders
+			actor.flags.hasColliders = false;
+			for (const c of this.colliders.objects) {
+				actor.addCollider(c.clone());			
+			}
+		}
+
+		if (this.flipbook) this.flipbook.clone(actor);			// clone flipbooks				
+		if (addToGameLoop) this.owner.add(actor);				// add to gameLoop?
+
+		return actor;
 	}
 	
 	release() {
@@ -337,9 +304,13 @@ class Actor extends Root {
 	update() {		
 		if (!this.isVisible) return;
 
-		const c   = Engine.renderingSurface.ctx;
+		const c   = this.surface.ctx;
 		const pos = this.position.clone().add(this.pivot);		
 		if ('offset' in this) pos.add(this.offset);
+
+		if (this.owner.engine.flags.getFlag('hasWorld')) {			
+			if (this.owner.engine.world.actor != this) pos.sub(this.owner.engine.world.camPos);
+		}
 		
 		let img = this.img;		
 		
@@ -355,14 +326,14 @@ class Actor extends Root {
 				c.scale(this.renderHints.mirrorX ? -1 : 1, this.renderHints.mirrorY ? -1 : 1);
 				c.rotate(this.rotation);					
 				c.drawImage(n.img, n.a * n.w, n.b * n.h, n.w, n.h, -n.w / 2, -n.h / 2, n.w, n.h);
-				img = null;	
+				img = null;					
 			} 
 
-			if (!this.flipbook.isAtlas && n.img) {		// let the rendering go through to code below
+			if (!this.flipbook.isAtlas && n.img) {		// NOT Atlas - let the rendering go through to code below
 				this.size.x = n.w;
 				this.size.y = n.h;
-				img = n.img;
-			}
+				img = n.img;				
+			}						
 		}
 				
 		if (img) {										// if the Actor has an image attached, directly or via flipbook, display it
@@ -384,25 +355,13 @@ class Actor extends Root {
 	*/
 	tick() {
 		if (this.flags.isDestroyed) return;
-		
-		this._fireEvent('tick');
 
+		this.events.fire('tick');
+		
 		if (this.flags.boundingBoxEnabled) this._updateBoundingBox();
 
 		if (this.flipbook) this.flipbook.tick();										// select a frame from a flipbook if the actor has one specified			
 		
-		// update location by adding velocity:
-		if (this.flags.isGravityEnabled) {
-			// add gravity:									
-			if (this.owner.world != null) this.velocity.add(this.owner.world.gravity);	// world gravity
-				else this.velocity.add(Engine.gravity);									// engine gravity (no world object)				
-		}		
-		
-		// calculate physics effects:
-		if (this.flags.isPhysicsEnabled) {
-			this.velocity.mulScalar(1.0 - this.movement.friction);			
-		}
-
 		// if we're targeting another actor:
 		if (this._target) {
 			const radius = ('orbitRadius' in this.movement) ? this.movement.orbitRadius : 0;
@@ -425,12 +384,16 @@ class Actor extends Root {
 			if (this.movement.speed > this.movement.maxVelocity) this.movement.speed = this.movement.maxVelocity;
 		}
 
+		// apply movement parameters, velocity and velocity cap
 		this.rotation += this.movement._angularSpeed;
+		var len = this.velocity.length;
+		if (len > this.movement.maxVelocity) this.velocity.normalize().mulScalar(this.movement.maxVelocity);	
+		this.moveBy(this.velocity);				
 		
 		// restrict movement by checking against engine edges rectangle:
 		function edgeCollision(axis, edge) {
 			const o = { preventDefault:false, edge }; 
-			this._fireEvent('collide', o); 
+			this.events.fire('collide', o); 
 			if (!o.preventDefault) {
 				this.velocity.mulScalar(0); 
 				this.position[axis] = Engine.edges[edge];
@@ -444,10 +407,6 @@ class Actor extends Root {
 			if (this.position.x + this.velocity.x > edge.right)  edgeCollision.call(this, 'x', 'right');
 			if (this.position.y + this.velocity.y > edge.bottom) edgeCollision.call(this, 'y', 'bottom');
 		}
-		
-		// finally move by velocity
-		if (this.movement.speed > this.movement.maxVelocity) this.movement.speed = this.movement.maxVelocity;
-		this.moveBy(this.velocity);		
 	}
 
 	_updateBoundingBox() {
@@ -466,41 +425,41 @@ class Actor extends Root {
 	/** 
 	 *	Perform physics hit testing of two Actors using the Colliders object.
      *	Responds by firing beginoverlap, endoverlap and collide events, depending on Enum_HitTestMode flags.
-	 *	If this Actor HitTestMode with the other Actor is set to "block", run physics collision.
+	 *	If this Actor HitTestMode with the other Actor is set to "block", run physics collision. 
 	 *  @param {Actor} other 
 	 */	
-	testOverlaps(other) {
+	_testOverlaps(other) {
 		if (!this.owner.flags.collisionsEnabled || !this.flags.hasColliders) return;
-		try {
-			if (this.colliders.resolveOverlap(other)) {		// 'this' and 'other' actor are currently overlapped
-				if (this.overlaps.indexOf(other) == -1) {
+		try {					
+			if (this.colliders.resolveOverlap(other)) {		// 'this' and 'other' actor are currently overlapped									 					
+				if (this.overlaps.indexOf(other) == -1) {							
 					this.overlaps.push(other);					
-					if (this.owner) this.owner.overlaps.push(this);
-					this._fireEvent('beginoverlap', { actor:this, otherActor:other });					
-					other.overlaps.push(this);
-					if (other.owner) other.owner.overlaps.push(other);
-					other._fireEvent('beginoverlap', { actor:other, otherActor:this });					
-				}						
+					if (this.owner) this.owner.overlaps.push(this);					
+					this.events.fire('beginoverlap', { otherActor:other });		
+
+					other.overlaps.push(this);					
+					if (other.owner) other.owner.overlaps.push(other);																	
+					other.events.fire('beginoverlap', { otherActor:this });			
+				}										
 			} else {										// not currently overlapped
-				if (this.overlaps.indexOf(other) > -1) {	// check if they WERE overlapping?
-					this._fireEvent('endoverlap', { actor:this, otherActor:other });
+				if (this.overlaps.indexOf(other) > -1) {	// check if they WERE overlapping?										
+					this.events.fire('endoverlap', { otherActor:other });
 					this.overlaps = this.overlaps.filter(e => e == this);
-					other._fireEvent('endoverlap', { actor:other, otherActor:this });
-					other.overlaps = other.overlaps.filter(e => e == other);
-				}
+
+					other.events.fire('endoverlap', { otherActor:this });
+					other.overlaps = other.overlaps.filter(e => e == other);					
+				}				
 			}
 		} catch (e) {
 			// colliders object not present?
 		}
 	}
-	
+
 	/**
-	 * Returns true if two actors overlap
+	 * Runs the same overlap test as before, but does NOT fire events and does NOT modify the actor.overlaps array	 
 	 * @param {Actor} other 
 	 */
-
 	overlapsWith(other) {
-
 		if (!this.owner.flags.collisionsEnabled || !this.colliders || !other.colliders) return;		
 		return this.colliders.resolveOverlap(other);
 	}
@@ -512,7 +471,7 @@ class Actor extends Root {
 	 */
 	transformPoints(points) {
 		const p = this.position;
-		const c = Engine.renderingSurface.ctx;
+		const c = this.surface.ctx;
 		c.setTransform(this.scale, 0, 0, this.scale, p.x, p.y);
 		c.scale(this.renderHints.mirrorX ? -1 : 1, this.renderHints.mirrorY ? -1 : 1);
 		c.rotate(this.rotation);
@@ -532,6 +491,10 @@ class Actor extends Root {
 		p.sub(this.pivot);		
 		
 		return p;
+	}
+
+	static CreateFromAsset(data) {
+		const actor = new Actor();
 	}
 }
 
