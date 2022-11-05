@@ -1,0 +1,15 @@
+{
+    version : '1.0'
+    desc : 'TGE Game Publishing Settings'
+    
+    source : '../..'
+    target : {
+        isRemote : false
+        path : 'C:/xampp/htdocs/vscode/PPG-Website/public/games/moneyman-halloween'
+    }
+
+    options : {    
+        logFile : 'results.txt'    
+        compressJS : false
+    }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "publish",
+  "version": "1.0.0",
+  "description": "",
+  "main": "publish.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Ridge Batty",
+  "license": "ISC",
+  "dependencies": {
+    "hjson": "^3.2.2"
+  }
+}

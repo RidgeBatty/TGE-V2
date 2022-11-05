@@ -1,0 +1,6 @@
+./.vscode
+./coverage
+./engine/publish
+./engine/tools
+./engine/img
+./engine/css/devtools.css

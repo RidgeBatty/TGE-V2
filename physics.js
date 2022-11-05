@@ -403,6 +403,10 @@ class Box extends AABB {
 						
 		return false;
 	}
+
+	clone() {
+		return new Box(this.position.clone(), this.size.clone(), this.angle);
+	}
 }
 
 /*

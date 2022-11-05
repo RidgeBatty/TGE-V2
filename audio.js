@@ -248,6 +248,13 @@ class AudioLib {
 		this._isMuted = !this._isMuted;
 		this.forSFX(e => e.mute());
 	}
+
+	/**
+	 * Stops all instances
+	 */
+	stop() {
+		Object.values(this.tracks).forEach(track => track.instances.forEach(sfx => sfx.stop()));
+	}
 	
 	/**
 	 * Deletes all tracks and sound instances. Does NOT reset any parameters or settings.
