@@ -328,7 +328,7 @@ class GameLoop {
 			return;		
 		}
 		
-		Engine.renderingSurface.resetTransform();								// reset transform (before ticks)
+		if (Engine.renderingSurface) Engine.renderingSurface.resetTransform();								// reset transform (before ticks)
 		
 		// --- tick ---
 		const nextTick = this._lastTickLen + this._tickRate;
@@ -463,16 +463,15 @@ class GameLoop {
 				if ('onTick' in evt) evt.onTick(evt); 
 
 				evt.ticksLeft--;			
-				if (evt.ticksLeft == 0) { 						
+				if (evt.ticksLeft == -1) { 						
 					if ('onRepeat' in evt) evt.onRepeat(evt); 					
 					
-					evt.repeatsLeft--;		
-					evt.ticksLeft = evt.duration;
-					
-					if (evt.repeatsLeft == 0 && evt.ticksLeft) {
+					evt.ticksLeft = evt.duration;					
+					evt.repeatsLeft--;							
+					if (evt.repeatsLeft == -1) {
 						this.timers.splice(i, 1); 
 						if ('onComplete' in evt) evt.onComplete(evt); 
-					}
+					}					
 				}
 			}
 		}

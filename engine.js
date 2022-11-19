@@ -19,7 +19,7 @@
 * For example a space invaders, tetris, pong, asteroids, etc. might have no use of container for static World but a platformer game definitely has.
 *
 */
-const VersionNumber = '2.3';
+const VersionNumber = '2.3.1';
 
 import * as Types from "./types.js";
 import { Root, Enum_HitTestMode } from "./root.js";
@@ -138,12 +138,12 @@ class TinyGameEngine {
 		// all internal event handlers:
 		const resize = (e) => {		
 			if (this.flags.getFlag('screenAutoAdjustEnabled')) this.recalculateScreen();
-
-			this.events.fire('resize', {});
+			this.events.fire('resize', { event:e });
 		}
 		
 		const contextmenu = (e) => {
 			if (!this.flags.getFlag('hasContextMenu')) e.preventDefault();
+			this.events.fire('contextmenu', { event:e });
 		}
 		
 		const mousemove = (e) => { 
@@ -219,6 +219,21 @@ class TinyGameEngine {
 		for (const evtName of this.events.names) {	
 			AE.addEvent(window, evtName, e => evt[evtName](e));
 		}				
+	}
+
+	get startTime() {
+		return this._startTime;
+	}
+
+	get timeSinceStart() {
+		let   delta = ((new Date() - this.startTime) / 1000);
+		const days  = ~~(delta / 86400);
+		delta -= days * 86400;
+		const hours = ~~(delta / 3600) % 24;
+		delta -= hours * 3600;
+		const mins  = ~~(delta / 60) % 60;
+		delta -= mins * 60;
+		return { days, hours, mins, secs:~~(delta % 60) }
 	}
 
 	get viewport() {		
@@ -373,6 +388,7 @@ class TinyGameEngine {
 	 * @param {function} beforeTickCallback A callback to be executed before every engine tick
 	 */
 	start(beforeTickCallback) {
+		this._startTime = new Date();
 		this.gameLoop.onBeforeTick = beforeTickCallback;
 		this.gameLoop.start();		
 	}

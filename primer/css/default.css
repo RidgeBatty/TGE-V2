@@ -10,10 +10,7 @@ html, body {					/* Makes sure the parent frame is fully utilized and the game w
 	display:flex;
 	position:absolute;
 	margin:0;
-	top:0;
-	left:0;
-	right:0;
-	bottom:0;	
+	inset:0px;
 	background:black;
 	justify-content:center;
 	align-items:center;
