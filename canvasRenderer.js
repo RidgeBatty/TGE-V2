@@ -5,12 +5,12 @@
 	CanvasSurface wrapped inside class with helper methods
 
 */
-import * as MultiCast from "./multicast.js";
-import * as Engine from "./engine.js";
+import { Engine, Events, Types } from "./engine.js";
 import { CanvasSurface } from "./canvasSurface.js";
 
-const { Rect, Vector2, Color } = Engine.Types;
+const { Rect, Vector2, Color } = Types;
 
+const ImplementsEvents = 'mousemove mouseup mousedown';
 class CanvasRenderer extends CanvasSurface {
 	constructor(HTMLContainer, flags = { pixelSmooth:true, clickMaskTest : false, alpha : false }) {
 		super({ flags:flags.alpha });
@@ -23,22 +23,30 @@ class CanvasRenderer extends CanvasSurface {
 		this.canvas.width  = HTMLContainer.clientWidth;
 		this.canvas.height = HTMLContainer.clientHeight;		
 		
-		this.clickMaskTest = flags.clickMaskTest;					// set this to true if you want to test mouse clicks against the alpha channel
+		this.clickMaskTest = flags.clickMaskTest;										// set this to true if you want to test mouse clicks against the alpha channel
 		if (flags.clickMaskTest) canvas.style.opacity = 0;		
+
+		this.#installEventHandlers();	
 	}
-	
-	addEvent(evtType, handler) {	
-		if (MultiCast.MouseEvts.indexOf(evtType) == -1) throw `CanvasRenderer: ${evtType} is not a mouse event`;
-		
-		MultiCast.addEvent(evtType, (e) => {
+
+	#installEventHandlers() {		
+		this.events = new Events(this, ImplementsEvents);			
+
+		const mouseEvent = (name, e) => {
 			const p   = AE.getPos(this.canvas);
 			const pos = new Vector2(Math.round(e.clientX - p.left), Math.round(e.clientY - p.top));
 			if (e.target == this.canvas) {
 				let maskHitResult = false;
 				if (this.clickMaskTest) maskHitResult = this.getPixel(pos);				
-				handler(e, { pos, renderer:this, maskHitResult });
-			}
-		});
+				this.events.fire(name, { event:e, pos, renderer:this, maskHitResult });				
+			}			
+		}
+
+		const mouseup   = (e) => mouseEvent('mouseup', e);
+		const mousedown = (e) => mouseEvent('mousedown', e);
+		const mousemove = (e) => mouseEvent('mousemove', e);
+			
+		Engine.events.register(this, { mousemove, mouseup, mousedown }, false);			// set event handlers inactive by default		
 	}
 }
 

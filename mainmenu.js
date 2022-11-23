@@ -6,12 +6,14 @@
 	
 	Default behavior:
 		Mouse click - open menu or back to previous menu
-		Mouse hover - no default
+		Mouse hover - play sound & visual effect
 		Mouse wheel - change value of setting
 	
 */
-import * as MultiCast from "./multicast.js";
+import { Engine, Events } from './engine.js';
+import { getJSON } from './utils.js';
 
+const ImplementsEvents = 'select change';
 class MenuItem {
 	constructor(fields, data) {
 		Object.assign(this, fields);
@@ -75,7 +77,7 @@ class MenuItem {
 		mainmenu.level = 0;		
 		mainmenu.items = new MenuItem({ parent:null, container:mainmenu.container, mainmenu });
 		
-		function unpack(parent, data) {
+		const unpack = (parent, data) => {
 			if ('items' in data) for (const item of data.items) {
 				const newNode = parent.addChild(item);
 				unpack(newNode, item);
@@ -87,82 +89,141 @@ class MenuItem {
 }
 
 class MainMenu {
-	constructor(container, className, events) {		// container:HTMLElement, className:String(CSS class), events:{ onClick:Function, onHover:Function }
-		this.container = AE.newElem(container, 'tge-menu-level');
+	/**
+	 * 
+	 * @param {HTMLElement} container Where the main menu component will be placed?
+	 * @param {object} events handlers for onClick and onHover events
+	 */
+	constructor(container) {		
+		this.container         = AE.newElem(container, 'tge-menu-level');		
+		this.currentLevel      = null;				
+		this.animationDuration = {
+			over  : 1,
+			click : 0.3,
+		}
+		this.sounds            = [];
+		this.events            = new Events(this, ImplementsEvents);
 		
-		if (events) {
-			this.onClick   = events.onClick;
-			this.onHover   = events.onHover;
+		this.installEventHandlers();
+	}
+
+	playSound(name) {
+		if (!Engine.audio) return;
+		const sfx = this.sounds.find(e => e.name == name);
+		if (sfx) Engine.audio.spawn(sfx.name, true);								
+	}
+
+	installEventHandlers() {
+		const mouseover = (e) => {
+			if (e.target.tagName != 'TGE-MENU-ITEM') return;
+			const caption = e.target.children[0];				
+			this.playSound('over');
+			AE.removeClass(caption, 'click');
+			AE.addClass(caption, 'over');			
+			setTimeout(_ => { AE.removeClass(caption, 'over') }, Math.floor(this.animationDuration.over * 1000));			
 		}
-		this.sounds    = {
-			hover  : null,
-			click  : null,
+		const mouseup = (e) => {
+			if (e.target.tagName != 'TGE-MENU-ITEM') return;
+			const caption = e.target.children[0];				
+			this.playSound('click');
+			AE.removeClass(caption, 'over');
+			AE.addClass(caption,'click');
+			this.click(e);
+			setTimeout(_ => { AE.removeClass(caption, 'click') }, Math.floor(this.animationDuration.click * 1000));			
+
+			this.events.fire('select', { item:this.items.getById(caption.dataset.id) });
 		}
-		this.currentLevel = null;
-		if (className) AE.addClass(container, className);
+		const wheel = (e) => { this.wheel(e) }
+		Engine.events.register(this, { mouseup, mouseover, wheel });				
 	}
 	
-	createFromObject(o) {		
+	async createFromObject(o) {		
+		this.data = o;
+
+		// parse menu
 		MenuItem.BuildFrom(this, o);		
-		
 		this.openMenu(this.items);
-		 
-		this.__onclick = (e) => this._onCustomEvent(e, 'Click');
-		this.__onhover = (e) => this._onCustomEvent(e, 'Hover');
-		this.__onwheel = (e) => this._onCustomEvent(e, 'Wheel');
-		MultiCast.addEvent('click',     this.__onclick);
-		MultiCast.addEvent('mouseover', this.__onhover);		
-		MultiCast.addEvent('wheel',     this.__onwheel);
 		
+		// assign programmable property values to CSS of menu captions
+		const items = [...document.getElementsByTagName('TGE-MENU-CAPTION')];
+		for (const el of items) {
+			el.style.setProperty('--tge-duration-over', this.animationDuration.over + 's');
+			el.style.setProperty('--tge-duration-click', this.animationDuration.click + 's');
+		}			
+
+		// parse sounds & visual effects 
+		if ('effects' in o) {		
+			for (const [k, v] of Object.entries(o.effects)) {
+				if (v.sfx) this.sounds.push({ name:k, url:v.sfx });
+			}			
+			if (Engine.audio) await Engine.audio.addBunch(this.sounds);
+				else if (this.sounds.length > 0) console.warn('Engine AudioLib is not initialized but the MainMenu contains sound effects.');
+		}
+
 		return o;
 	}
-	
-	/*
-		Detaches event handlers from the menu
-	*/
+		
+	/**
+	 * Detaches event handlers from the menu
+	 */
 	close() {
-		MultiCast.uninstall('click',     this.__onclick);
-		MultiCast.uninstall('mouseover', this.__onhover);		
-		MultiCast.uninstall('wheel',     this.__onwheel);
+		this.container.remove();
+		Engine.events.unregister(this)
 	}
 	
-	/*
-		WARNING! Do NOT call this function. 
-		Set 'this.onClick' or 'this.onHover' to point to you own handler function to process mainmenu click events
-	*/
-	_onCustomEvent(evt, name) {		
-		const id = evt.target.dataset.id;		
+	/**
+	 * WARNING! Do NOT call this function directly. 		
+	 * @param {*} e 
+	 * @returns 
+	 */
+	click(e) {		
+		const id = e.target.children[0].dataset.id;		
+		if (!id) return;
+
 		const o  = { node:this.items.getById(id), preventDefault:false };
-		const e  = this['on' + name];
 						
-		if (name == 'Click' && id) {							// does this click event correspond to any menu item at all?
-			if (AE.isFunction(e)) e(evt, o);			
-			if (o.preventDefault == false) {				
-				this.openMenu(o.node);				
-				const sound = this.sounds[name.toLowerCase()];
-				if (sound) sound.play();
-			}
-		}
+		if (o.preventDefault == false) {				
+			this.openMenu(o.node);				
+		//	const sound = this.sounds[name.toLowerCase()];
+		//	if (sound) sound.play();
+		}		
+	}	
+
+	/**
+	 * WARNING! Do NOT call this function directly. 		
+	 * @param {*} e 
+	 * @returns 
+	 */
+	wheel(e) {	
+		const id = e.target.children[0].dataset.id;				
+		if (!id) return;
 		
-		if (name == 'Wheel' && id) {
-			const dir = Math.sign(evt.wheelDelta);			
-			if (AE.isFunction(e)) e(evt, o);			
-			if (o.preventDefault == false) {								
-				const d = o.node.data;				
-				if ('value' in d) {
-					d.value += d.step * dir;
-					if (d.value < d.range[0]) d.value = d.range[0];
-					if (d.value > d.range[1]) d.value = d.range[1];
-					this.updateValue(o.node);
-				}						
-				if ('options' in d) {
-					d.index += dir;
-					if (d.index < 0) d.index = 0;
-					if (d.index > d.options.length - 1) d.index = d.options.length - 1;
-					this.updateValue(o.node);
-				}						
-			}
-		}
+		const o  = { node:this.items.getById(id), preventDefault:false };
+						
+		const dir = Math.sign(e.event.wheelDelta);			
+		if (o.preventDefault == false) {								
+			const d = o.node.data;				
+			if ('value' in d) {
+				d.value += d.step * dir;
+				if (d.value < d.range[0]) d.value = d.range[0];
+					else if (d.value > d.range[1]) d.value = d.range[1];
+						else {
+							this.playSound('slide');
+							this.events.fire('change', { item:o.node });
+						}
+				this.updateValue(o.node);
+			}						
+			if ('options' in d) {
+				d.index += dir;
+				if (d.index < 0) d.index = 0;
+					else if (d.index > d.options.length - 1) d.index = d.options.length - 1;
+						else {
+							this.playSound('switch');
+							this.events.fire('change', { item:o.node });
+						}
+				this.updateValue(o.node);
+			}				
+		}		
 	}	
 	
 	updateValue(item) {
@@ -191,18 +252,17 @@ class MainMenu {
 			for (const v of Object.values(target.children)) this.updateValue(v);	// replace the placeholders with actual values of respective menu settings:
 		}
 	}
-	
-	/*
-		Loads menu from JSON file and constructs it (unless 'doNotCreate' flags is true)
-	*/	
-	async loadFromFile(url, doNotCreate) {
-		return await fetch(url)
-			.then(r => { 
-				if (r.ok) return r.json(); 
-					else throw 'Error loading file';
-				})
-			.then(o => { if (doNotCreate) return o; else return this.createFromObject(o); })
-			.catch(e => console.warn(e));
+		
+	/**
+	 * Loads menu from JSON file and constructs it (unless 'doNotCreate' flags is true)
+	 * @param {string} url 
+	 * @param {boolean} doNotCreate 
+	 * @returns 
+	 */
+	async loadFromFile(url, doNotCreate) {		
+		const data = await getJSON(url);
+		if (doNotCreate) return data; 
+			else return await this.createFromObject(data);
 	}
 }
 	

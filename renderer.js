@@ -1,6 +1,6 @@
 /*
 
-	Game map
+	Renders and maintains a 2D tile based game map
 
 */
 import { Collider, Engine, Events, Types } from '../engine/engine.js';	
@@ -52,20 +52,20 @@ class Renderer extends CustomLayer {
 	addMouseControls() {
 		const ui = this.engine.ui;			
 
-		const onMouseMove = (e) => {                                  // move mouse on map		
+		const mousemove = (e) => {                                  // move mouse on map		
 			if (this._drag && (ui == null || ui.active == null)) {        
 				this.position.set(this._oldPos.clone().sub(e.delta));		
 			}			
 		}
 		
-		const onMouseUp = (e) => {    			
+		const mouseup = (e) => {    			
 			if (this._drag && (ui == null || ui.active == null)) {
 				this.position.set(this._oldPos.clone().sub(e.delta));
 			}
 			this._drag = false;
 		}
 
-		const onMouseDown = (e) => {			
+		const mousedown = (e) => {			
 			if (ui != null && ui.active != null) return;
 
 			const position = Vec2.Add(this.position, e.downPos);				// calculate the absolute clicked map position taking scrolling into account
@@ -80,7 +80,7 @@ class Renderer extends CustomLayer {
 			this._oldPos = this.position.clone();
 		}
 		
-		this.engine.events.add({ mousemove:onMouseMove, mouseup:onMouseUp, mousedown:onMouseDown });
+		this.engine.events.register(this, { mousemove, mouseup, mousedown });
 	}
 
 	async loadMap(options){		

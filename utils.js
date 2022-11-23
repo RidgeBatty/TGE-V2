@@ -187,6 +187,8 @@ const randomInRange = (arr) => {
 const loadedJsonMap = new WeakMap();
 
 const getJSON = (url, getText) => {
+	if (!url.includes('.')) url += '.hjson';		// assume hjson file ending if none is supplied (v2.4)
+
 	return new Promise(async (resolve, reject) => {		
 		try {
 			let text;

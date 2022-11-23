@@ -3,7 +3,7 @@
     Experimental: server side code parser
 
 */
-import { Engine, Types } from "../engine/engine.js";
+import { Engine, Types } from "../../engine.js";
 
 const main = async () => {        
     const ss = new SSCode();

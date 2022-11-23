@@ -1,0 +1,59 @@
+{
+	meta : {
+		desc : "TGE Main Menu component demo"
+	}
+	effects : { 
+		over   : { sfx : "/assets/audio/over.wav" }			# play when mouse is moved over a menu item
+		click  : { sfx : "/assets/audio/click.wav" }		# play when mouse is clicked on menu item
+		slide  : { sfx : "/assets/audio/over.wav" }			# play when slider value is changed 
+		switch : { sfx : "/assets/audio/over.wav" }			# play when switch option is changed
+	}
+	items : [
+		{
+			caption : "Start Game"			
+		}
+		{
+			caption : "Audio Settings"
+			items : [
+				{
+					caption : "Mute audio: ${value}"
+					options : ["Off", "On"]
+					index   : 1
+				}
+				{
+					caption : "Music volume: ${value}%"
+					range   : [0, 100]
+					value   : 20
+					step    : 20
+				}
+				{
+					caption : "SFX volume: ${value}%"
+					range   : [0, 100]
+					value   : 20
+					step	: 20
+				}
+				{
+					caption : "Back"
+					target  : "parent"
+				}
+			]
+		},
+		{
+			caption : "Video Settings"
+			items : [
+				{
+					caption : "Colorblind mode: ${value}"
+					options : ["Off", "On"]
+					index   : 1
+				}
+				{
+					caption : "Back"
+					target  : "parent"
+				}
+			]
+		}
+		{
+			caption : "Quit Game",			
+		}
+	]
+}

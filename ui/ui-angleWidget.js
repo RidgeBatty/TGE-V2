@@ -18,7 +18,7 @@ class AngleWidget {
         layer.update   = () => this.update();        
         this.layer     = layer;
 
-        Engine.events.add({ mousedown:e => this.mousedown(e), mousemove:e => this.mousemove(e) });
+        this.registerEvents();
     }
 
     get active() {
@@ -37,23 +37,27 @@ class AngleWidget {
         s.drawCircle(p, this.radius, { stroke:'lime' });
         s.textOut(p.clone().add(V2(-40, 92)), 'Angle: ' + toDegrees(this.angle, 1).padStart(5, ' '), { color:this.textColor, font:this.font });
     }
-    
-    mousedown(e) {
-        this._isActive = Vec2.Distance(e.position, this.position) < this.radius;
-    }
 
-    mousemove(e) {
-        this._isHover = Vec2.Distance(e.position, this.position) < this.radius;
-        if (e.dragging && this._isActive) {
-            let a = Vec2.Sub(e.position, this.position).normalize().toAngle();     
-            if (e.event.shiftKey) {            
-                a = Math.round(a / (Math.PI * 2) * 8) * Math.PI * 0.25;
-            }
-            a = wrapBounds(a, 0, Math.PI * 2);
-            this.actor.rotation = a;
-            this.angle = a;
+    registerEvents() {
+        const mousedown = (e) => {
+            this._isActive = Vec2.Distance(e.position, this.position) < this.radius;
         }
-    }
+    
+        const mousemove = (e) => {  
+            this._isHover = Vec2.Distance(e.position, this.position) < this.radius;
+            if (e.dragging && this._isActive) {
+                let a = Vec2.Sub(e.position, this.position).normalize().toAngle();     
+                if (e.event.shiftKey) {            
+                    a = Math.round(a / (Math.PI * 2) * 8) * Math.PI * 0.25;
+                }
+                a = wrapBounds(a, 0, Math.PI * 2);
+                this.actor.rotation = a;
+                this.angle = a;
+            }
+        }
+
+        Engine.events.register(this, { mousedown, mousemove });
+    }   
 }
 
 export { AngleWidget }

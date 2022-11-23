@@ -303,7 +303,7 @@ class AudioLib {
 	
 	/**
 	 * Adds a bunch of new tracks in to the track library
-	 * @param {[object]} list 
+	 * @param {[object]} list Array of { name, url } pairs
 	 * @returns {Track|String}
 	 */
 	async addBunch(list) {

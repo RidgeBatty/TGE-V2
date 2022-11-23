@@ -101,13 +101,22 @@ const makeColliderWindow = () => {
     editor.window = winColliders;
 }
 
-const makeImagesWindow = () => {
+const makeImagesWindow = async () => {
     const winFiles      = new UWindow({ owner:Engine.ui, caption:'Images', position:V2(900, 10) });            // window: images
-    const files         = new UFileList({ owner:winFiles });
+    const files         = new UFileList({ owner:winFiles });    
+
+    await files.init({
+        getWorkingDirectory : async() => Engine.net.req('/cwd'),
+        getDirectoryListing : async() => Engine.net.req('/dir'),
+        getFileInfo         : async(name) => Engine.net.req('/info/' + name),
+        download            : async(name) => Engine.net.req('/dl/' + name)
+    });
+
     files.addHeader('Name', 'Size', 'Type');
     files.addEvent('selectitem', async e => {
         if (e.data && e.data.kind == 'file') {
-            const file = await e.data.getFile();                        
+            console.log('Downloading:', e.data.name);
+            const file = await files.fileSystem.download(e.data.name);
             editor.actor.imageFromFile(file);
         }
     });
@@ -181,9 +190,9 @@ const createUI = () => {
     makeImagesWindow();
     makeColliderListWindow();
     
+    editor.actor       = Engine.gameLoop.add('actor', { position:Engine.dims.mulScalar(0.5), imgUrl:'/assets/img/fort1.png', name:'Fort1' });    
     editor.angleWidget = new AngleWidget({ position:V2(100, Engine.dims.y - 100), radius:80, actor:editor.actor });
-    editor.actor       = Engine.gameLoop.add('actor', { position:Engine.dims.mulScalar(0.5), imgUrl:'../../../img/naval/fort1.png', name:'Fort1' });    
-
+    
     const layer   = new CustomLayer({ addLayer:true, zIndex:2 });                                               // draw the colliders on a custom layer:
     layer.update = () => {
         const s = Engine.renderingSurface;                
@@ -205,9 +214,7 @@ const createUI = () => {
     }
     
     Engine.events.add({ keydown, mousemove, mousedown, mouseup });
-    // get initial user interaction:
-    // const oneTime = AE.addEvent('game', 'click', () => { AE.removeEvent('game', 'click', oneTime); files.init(); });
-
+    
     return editor;
 }
 

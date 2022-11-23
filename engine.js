@@ -19,7 +19,7 @@
 * For example a space invaders, tetris, pong, asteroids, etc. might have no use of container for static World but a platformer game definitely has.
 *
 */
-const VersionNumber = '2.3.1';
+const VersionNumber = '2.4';
 
 import * as Types from "./types.js";
 import { Root, Enum_HitTestMode } from "./root.js";
@@ -36,7 +36,7 @@ import { UI } from "./ui/ui-html.js";
 const Rect         = Types.Rect;
 const Vector2	   = Types.Vector2;
 
-const ImplementsEvents = 'resize contextmenu mousemove mouseup mousedown wheel keyup keydown keypress';
+const ImplementsEvents = 'resize contextmenu mousemove mouseup mousedown mouseover mouseout wheel keyup keydown';
 
 const DefaultFlags = {
 	'hasWorld' : false,
@@ -47,6 +47,7 @@ const DefaultFlags = {
 	'mouseEnabled' : true,						// enable/disable Engine mouse events. Disabling might increase performance but the effect is tiny. Used by DevTools to bypass Engine mouse events
 	'hasRenderingSurface' : false,	
 	'preventKeyDefaults' : true,
+	'autoZoomEnabled' : true,
 	'hasUI' : false,
 	'connection' : false,
 }
@@ -68,9 +69,7 @@ const die = (msg) => {
 class TinyGameEngine {	
 	/**
 	@param {Object=} o - Not used in current version.
-	*/
-	#setupStatus = 2;																							// number of async functions to execute before the setup is complete
-
+	*/	
 	constructor (o) {		
 		AE.sealProp(this, 'flags', new Flags(DefaultFlags, (a, b) => this.onFlagChange(a, b))); 				// create default flags and make 'this.flags' immutable
 		AE.sealProp(this, 'url', import.meta ? new URL('./', import.meta.url).pathname : null);
@@ -78,6 +77,7 @@ class TinyGameEngine {
 		this.renderingSurface = null;
 		this.gameLoop    = new GameLoop({ engine:this });		
 		this._zoom	     = 1;
+		this.resolution  = new Vector2(1152, 648);
 
 		/** 
 		 * @type {Types.Rect}
@@ -113,31 +113,31 @@ class TinyGameEngine {
 				
 		this.events        = new Events(this, ImplementsEvents);		
 		this.preventedKeys = {};
-		
+				
 		this.#installEventHandlers();				
 	}
 
+	normalizeMouseCoords(x, y) {
+		return Types.V2(x / this.zoom - this.screen.left, y / this.zoom - this.screen.top);		
+	}
+
 	#installEventHandlers() {
-		this._setupProgress = () => {		// this function is called every time the setup progresses to next asynchronous function			
-			this.#setupStatus--;
-			if (this.#setupStatus == 0) if (AE.isFunction(this._mainFunction)) this._mainFunction();
+		this._setupComplete = () => {						// this function is called when engine has completed init() and setup()
+			this.recalculateScreen();			
+			this.autoZoom();			
+			if (AE.isFunction(this._mainFunction)) this._mainFunction();			
 		}
 		
 		AE.addEvent(window, 'dragstart', (e) => { e.preventDefault(); });
 		//window.addEventListener('touchmove', (e) => { e.preventDefault(); onMouseMove(e); }, { passive:false });
 		AE.addEvent(window, 'touchmove', (e) => { mousemove(e); }, { passive:false });
 		AE.addEvent(window, 'touchstart', (e) => { mousedown(e); });
-		AE.addEvent(window, 'touchend', (e) => { mouseup(e); });
-
-		// added in 2.0.5 to make sure we get the window dimensions right even when the developer tools is open
-		AE.addEvent(window, 'load', (e) => {
-			this.recalculateScreen();			
-			this._setupProgress();
-		});			
-
+		AE.addEvent(window, 'touchend', (e) => { mouseup(e); });				
+		
 		// all internal event handlers:
 		const resize = (e) => {		
 			if (this.flags.getFlag('screenAutoAdjustEnabled')) this.recalculateScreen();
+			if (this.flags.getFlag('autoZoomEnabled')) this.autoZoom();			
 			this.events.fire('resize', { event:e });
 		}
 		
@@ -149,44 +149,45 @@ class TinyGameEngine {
 		const mousemove = (e) => { 
 			if (!this.flags.getFlag('mouseEnabled')) return;
 			const p = e.changedTouches ? e.changedTouches[0] : e;
-			this._mouse.position.x = p.clientX / this.zoom - this.screen.left;
-			this._mouse.position.y = p.clientY / this.zoom - this.screen.top;
-
-			this.events.fire('mousemove', { 
+			const m = this._mouse;
+			m.position.set(this.normalizeMouseCoords(p.clientX, p.clientY))
+			
+			const eventInfo = { 
 				event: e,
-				downPos : this._mouse.dragStart.clone(),
-				position: this._mouse.position.clone(), 
-				dragging: this._mouse.dragging, 
-				delta: Vector2.Sub(this._mouse.position, this._mouse.dragStart),
+				downPos : m.dragStart.clone(),
+				position: m.position.clone(), 
+				dragging: m.dragging, 
+				delta: Vector2.Sub(m.position, m.dragStart),
 				target: e.target
-			});
+			};
+			this.events.fire('mousemove', eventInfo);
 		}
 	
 		const mousedown = (e) => {
 			if (!this.flags.getFlag('mouseEnabled')) return;
 			const p = e.changedTouches ? e.changedTouches[0] : e;
 			const m = this._mouse;
-			m.position.x = p.clientX / this.zoom - this.screen.left;
-			m.position.y = p.clientY / this.zoom  - this.screen.top;			
-			m.dragStart  = this._mouse.position.clone();
+			m.position.set(this.normalizeMouseCoords(p.clientX, p.clientY))
+			m.dragStart  = m.position.clone();
 			m.left       = e.button == 0;
 			m.right      = e.button == 2;
 			m.dragging   = true;			
 			
-			this.events.fire('mousedown', { event:e, downPos: m.dragStart.clone(), position: m.position.clone(), button:e.button, target: e.target });
+			const eventInfo = { event:e, downPos: m.dragStart.clone(), position: m.position.clone(), button:e.button, target: e.target };
+			this.events.fire('mousedown', eventInfo);
 		}
 	
 		const mouseup = (e) => { 
 			if (!this.flags.getFlag('mouseEnabled')) return;
 			const p = e.changedTouches ? e.changedTouches[0] : e;
 			const m = this._mouse;
-			m.position.x = p.clientX / this.zoom - this.screen.left;
-			m.position.y = p.clientY / this.zoom - this.screen.top;
+			m.position.set(this.normalizeMouseCoords(p.clientX, p.clientY))
 			m.left       = e.button != 0;
 			m.right      = e.button != 2;
 			m.dragging   = false;
-			
-			this.events.fire('mouseup', { event:e, downPos: m.dragStart.clone(), position: m.position.clone(), delta: Vector2.Sub(m.position, m.dragStart), button:e.button, target: e.target });
+
+			const eventInfo = { event:e, downPos: m.dragStart.clone(), position: m.position.clone(), delta: Vector2.Sub(m.position, m.dragStart), button:e.button, target: e.target }
+			this.events.fire('mouseup', eventInfo);
 	
 			// to-do: optimize with a container that has only actors which have 'click' event installed
 			for (const actor of this.gameLoop.actors) if (actor.flags.mouseEnabled) {
@@ -195,6 +196,24 @@ class TinyGameEngine {
 				}
 			}			
 		}		
+
+		const mouseover = (e) => {
+			if (!this.flags.getFlag('mouseEnabled')) return;
+			const p = e.changedTouches ? e.changedTouches[0] : e;
+			const m = this._mouse;
+			m.position.set(this.normalizeMouseCoords(p.clientX, p.clientY))			
+			const eventInfo = { event:e, position: m.position.clone(), target: e.target };
+			this.events.fire('mouseover', eventInfo);
+		}
+
+		const mouseout = (e) => {
+			if (!this.flags.getFlag('mouseEnabled')) return;
+			const p = e.changedTouches ? e.changedTouches[0] : e;
+			const m = this._mouse;
+			m.position.set(this.normalizeMouseCoords(p.clientX, p.clientY))			
+			const eventInfo = { event:e, position: m.position.clone(), target: e.target };
+			this.events.fire('mouseout', eventInfo);
+		}
 
 		const keydown = (e) => {						
 			if (this.flags.getFlag('preventKeyDefaults') || this.preventedKeys[e.code]) e.preventDefault();
@@ -212,13 +231,14 @@ class TinyGameEngine {
 		}	
 
 		const wheel = (e) => {			
-			this.events.fire('wheel', { delta:Math.sign(e.wheelDelta), event:e });
+			this.events.fire('wheel', { delta:Math.sign(e.wheelDelta), event:e, target:e.target });
 		}
 		
-		const evt = { keydown, keyup, resize, contextmenu, mousedown, mouseup, mousemove, wheel }
-		for (const evtName of this.events.names) {	
+		// Install hardware initiated event handlers which the engine will control:
+		const evt = { keydown, keyup, resize, contextmenu, mousedown, mouseup, mousemove, mouseover, mouseout, wheel }
+		for (const evtName of this.events.names) {				
 			AE.addEvent(window, evtName, e => evt[evtName](e));
-		}				
+		}
 	}
 
 	get startTime() {
@@ -256,8 +276,8 @@ class TinyGameEngine {
 	*	it will break all engine coordinate calculations.
 	*	@type {Number}
 	*/	
-	set zoom(value) {
-		if (!isNaN(value)) {
+	set zoom(value) {		
+		if (!isNaN(value)) {			
 			this._zoom = value;
 			this._rootElem.style.zoom = value;
 		}
@@ -337,8 +357,8 @@ class TinyGameEngine {
 	 */
 	init(mainFunction, setupOptions) {
 		this._mainFunction = mainFunction;
-		if (setupOptions) this.setup(setupOptions).then(e => this._setupProgress());
-			else this._setupProgress();
+		if (setupOptions) this.setup(setupOptions).then(e => this._setupComplete());
+			else this._setupComplete();
 	}
 	
 	/**
@@ -368,18 +388,34 @@ class TinyGameEngine {
 		}
 	}
 
-	recalculateScreen() {		
+	recalculateScreen() {	
 		const pos = AE.getPos(this._rootElem);
 		this.screen = new Rect(pos.left, pos.top, pos.left + pos.width, pos.top + pos.height);
 		this.edges  = new Rect(0, 0, pos.width, pos.height);
-		if (this.flags.getFlag('hasRenderingSurface')) this.renderingSurface.setCanvasSize(pos.width, pos.height);
+
+		if (this.flags.getFlag('hasRenderingSurface')) this.renderingSurface.setCanvasSize(pos.width + 1, pos.height + 1);			
+	}
+
+	autoZoom() {
+		if (this.flags.getFlag('autoZoomEnabled')) {			
+			const aspectRatio = (window.innerWidth / window.innerHeight);
+			const resRatio    = (this.resolution.x / this.resolution.y);
+			let zoom = 1;
+			if (aspectRatio > resRatio) zoom = window.innerHeight / this.resolution.y;	// more landscape
+				else zoom = window.innerWidth / this.resolution.x;                   	// more portrait						
+			this.zoom = zoom; 									 					 	// simple scaling
+		}
 	}
 
 	setRootElement(el) {		
 		if (typeof el == 'string' && ID(el) != null) var el = ID(el);
-		if (el instanceof HTMLElement) this._rootElem = el;
+		if (el instanceof HTMLElement) {
+			if (this._rootElem != el && this._rootElem instanceof HTMLElement) this._rootElem.style.zoom = '';
+			this._rootElem = el;
+		}
 			else die('Parameter must be an instance of HTMLElement or a valid element id.');
 		this.recalculateScreen();
+		this.autoZoom();
 	}
 				
 	/**
@@ -388,6 +424,9 @@ class TinyGameEngine {
 	 * @param {function} beforeTickCallback A callback to be executed before every engine tick
 	 */
 	start(beforeTickCallback) {
+		//this.recalculateScreen();			
+		//this.autoZoom();			
+
 		this._startTime = new Date();
 		this.gameLoop.onBeforeTick = beforeTickCallback;
 		this.gameLoop.start();		
@@ -472,12 +511,12 @@ class TinyGameEngine {
 		if (value && name == 'hasWorld' && this.world == null) this.createWorld(this);
 	}
 
-	async setup(o) {	
+	async setup(o) {			
 		if (typeof o == 'string') {													// load params from file						
 			o = await Utils.getJSON(o);						
 		}
 		
-		if ('rootElem' in o) this.setRootElement(o.rootElem);
+		if ('rootElem' in o) this.setRootElement(o.rootElem);		
 		if ('clearColor' in o) this.gameLoop.clearColor = o.clearColor;
 		if ('flags' in o) this.flags.some(o.flags);
 		if ('zoom' in o) {			
@@ -492,7 +531,7 @@ class TinyGameEngine {
 					this.gameLoop.flags[k] = v;
 				}
 			}			
-		}			
+		}				
 	}
 }
 

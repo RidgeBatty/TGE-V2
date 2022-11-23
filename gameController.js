@@ -1,20 +1,19 @@
 /**
 @module GameController
 @desc KeyController encapsulates keyboard support.
-- Supports multicasting of key down and up events.
 - Keys maintain their held down state and are effectively simulating axis positions.
 - Gamepad must be continuously polled and it is done automatically in the game loop.
 
 <b>NOTE!</b> <span style="color:red">Typically you do NOT need to create gameControllers manually. Player class creates necessary instances automatically.</span>
 */
-import { Engine, Types } from './engine.js';
-import * as MultiCast from "./multicast.js";
-const Vector2 = Types.Vector2;
+import { Engine, Events, Types } from './engine.js';
+const { Vector2:Vec2 } = Types;
 
 const AllGamepads = [];				// list of gamepads detected in the system
 const AllGamepadControllers = [];	// list of created controller objects
-const Events = ['keydown','keyup','keyreleased','keypressed'];
-const PointerEvents = ['start', 'move', 'end'];
+
+const ImplementsEvents = 'keyreleased keypressed';
+const PointerEvents    = 'start move end';
 
 const Axes = ['down', 'left', 'up', 'right'];
 
@@ -37,15 +36,35 @@ class KeyController {
 		this.keyState  = { left:false, right:false, up:false, down:false, shoot1:false, shoot2:false, pause:false, quit:false };		
 		
 		if ('yaw' in params) this.addYawKeyDefaults();
-		
-		AE.sealProp(this, '_events', { keypressed : [], keyreleased : [] });				
-			
-		MultiCast.addEvent('keydown', (e) => _this.processKeyDown.call(_this, e), null);
-		MultiCast.addEvent('keyup',   (e) => _this.processKeyUp.call(_this, e), null);
+	
+		this.events    = new Events(this, ImplementsEvents);
+		this.installEventHandlers();
 		
 		Controllers.all.push(this);
 	}
 
+	installEventHandlers() {
+		const keydown = (e) => {
+			e.event.preventDefault();  			
+			if (this.isActive == false) return;		
+			const { keyBind, keyState } = this;		
+			for (var i in keyBind) for (var j = 0; j < keyBind[i].length; j++) if (e.event.code == keyBind[i][j]) {
+				if (keyState[i] == false) this.events.fire('keypressed', { key:i }); 
+				keyState[i] = true; 			
+			}		
+		}					
+		const keyup = (e) => { 	
+			e.event.preventDefault(); 
+			if (this.isActive == false) return;
+			const { keyBind, keyState } = this;
+			for (var i in keyBind) for (var j = 0; j < keyBind[i].length; j++) if (e.event.code == keyBind[i][j]) {
+				if (keyState[i] == true) this.events.fire('keyreleased', { key:i }); 
+				keyState[i] = false; 			
+			}
+		}
+		Engine.events.register(this, { keydown, keyup });
+	}
+	
 	/**
 	 * Adds yaw key defaults into this key controller.
 	 * The default yaw (turn) keys are Z (anti-clockwise) and C (clockwise).
@@ -55,24 +74,6 @@ class KeyController {
 			Object.assign(this.keyBind,  { turnLeft:['KeyZ'], turnRight:['KeyC'] });
 			Object.assign(this.keyState, { turnLeft:false, turnRight:false });		
 		}
-	}
-
-	/**
-	 * Adds an event handler.
-	 * @param {String} name Unique name for the handler
-	 * @param {Function} func User function
-	 */	
-	addEvent(name, func) {
-		if (typeof func != 'function') throw 'Second parameter must be a function.';
-		if ( !Events.includes(name) )  throw 'First parameter must be a keyboard event name.';
-		
-		if (name == 'keyreleased' || name == 'keypressed') this._events[name].push({ name, func });
-			else MultiCast.addEvent(name, func, null);
-	}
-	
-	_fireCustomEvent(name, data) {			
-		const e = this._events[name];									
-		if (e) for (var i = 0; i < e.length; i++) e[i].func({ instigator:this, name, data });		
 	}
 		
 	/**
@@ -93,27 +94,6 @@ class KeyController {
 		delete this.keyBind[name];
 		delete this.keyState[name];
 	}
-
-	processKeyDown(e) {
-		e.preventDefault();  			
-		if (this.isActive == false) return;		
-		const { keyBind, keyState } = this;		
-		for (var i in keyBind) for (var j = 0; j < keyBind[i].length; j++) if (e.code == keyBind[i][j]) {
-			if (keyState[i] == false) this._fireCustomEvent('keypressed', { event:e, key:i }); 
-			keyState[i] = true; 			
-		}		
-	}			
-	
-	processKeyUp(e) { 	
-		e.preventDefault(); 
-		if (this.isActive == false) return;
-		const { keyBind, keyState } = this;
-		for (var i in keyBind) for (var j = 0; j < keyBind[i].length; j++) if (e.code == keyBind[i][j]) {
-			if (keyState[i] == true) this._fireCustomEvent('keyreleased', { event:e, key:i }); 
-			keyState[i] = false; 			
-		}
-	}
-
 } // class
 
 /**
@@ -128,8 +108,25 @@ class GamepadController {
 		AE.sealProp(this, '_isConnected', false);	
 		
 		AllGamepadControllers.push(this);
+
+		this.installEventHandlers();
 		
 		Controllers.all.push(this);
+	}
+
+	installEventHandlers() {
+		window.addEventListener("gamepaddisconnected", function(e) {
+			const index  = e.gamepad.index;		
+			for (var i = 0; i < AllGamepadControllers.length; i++) if (AllGamepadControllers[i].index == index) AllGamepadControllers[i].disconnected(e.gamepad);
+		});
+		
+		window.addEventListener("gamepadconnected", function(e) {
+			const gp    = e.gamepad;
+			const index = gp.index;
+			console.log("Gamepad connected at index %d: %s. %d buttons, %d axes.", gp.index, gp.id, gp.buttons.length, gp.axes.length);
+			AllGamepads[index] = gp;
+			for (var i = 0; i < AllGamepadControllers.length; i++) if (AllGamepadControllers[i].index == index) AllGamepadControllers[i].connected(gp);
+		});		
 	}
 	
 	get isConnected() { return this._isConnected }
@@ -140,6 +137,7 @@ class GamepadController {
 		
 		this.pad       = gp;
 		this.axes      = gp.axes;
+		this.vectors   = { left:Vec2.Zero(), right:Vec2.Zero() };
 		this.buttons   = Array(this.pad.buttons.length).fill(false); 
 	}
 	
@@ -148,23 +146,28 @@ class GamepadController {
 		this._isConnected = false;		
 	}
 	
-	poll() { // gamepad must be polled; this is called in the game loop!		
+	/**
+	 * Gamepad must be polled; this is called in the game loop!	
+	 * @returns 
+	 */
+	poll() { 
 		if (!this.isActive) return;
 		try {						
 			const index = this.index;
 			var gp = navigator.getGamepads()[index];			
 			if (gp == null) return;
-			
-			// axis:
-			this.axes = gp.axes;
-			
-			// buttons: (defaults --> button 9 = quit, button 2 = pause)
-			for (var i = 0; i < gp.buttons.length; i++) {				
+						
+			this.axes = gp.axes;										// axes
+			this.vectors.left.set({ x:gp.axes[0], y:gp.axes[1] });
+			this.vectors.right.set({ x:gp.axes[2], y:gp.axes[5] });
+						
+			for (var i = 0; i < gp.buttons.length; i++) {				// buttons: (defaults --> button 9 = quit, button 2 = pause)
 				if (gp.buttons[i].pressed && this.buttons[i] == false) this.onButtonDown({ event:null, button:i, isGamepad:true }); 					
 				if (!gp.buttons[i].pressed && this.buttons[i] == true) this.onButtonUp({ event:null, button:i, isGamepad:true }); 									
-			}
-			
-		} catch (e) { /* Chuck Norris */ }
+			}			
+		} catch (e) { 
+			/* Chuck Norris */ 
+		}
 	}	
 	
 	onButtonDown(e) {
@@ -175,19 +178,6 @@ class GamepadController {
 		this.buttons[e.button] = false;	
 	}
 }
-
-window.addEventListener("gamepaddisconnected", function(e) {
-	const index  = e.gamepad.index;		
-	for (var i = 0; i < AllGamepadControllers.length; i++) if (AllGamepadControllers[i].index == index) AllGamepadControllers[i].disconnected(e.gamepad);
-});
-
-window.addEventListener("gamepadconnected", function(e) {
-	const gp    = e.gamepad;
-	const index = gp.index;
-	console.log("Gamepad connected at index %d: %s. %d buttons, %d axes.", gp.index, gp.id, gp.buttons.length, gp.axes.length);
-	AllGamepads[index] = gp;
-	for (var i = 0; i < AllGamepadControllers.length; i++) if (AllGamepadControllers[i].index == index) AllGamepadControllers[i].connected(gp);
-});
 
 /**
 *	A controller which emulates pointing devices. It responds to both, mouse and touch events

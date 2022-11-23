@@ -50,7 +50,7 @@ class UI {
             for (const c of f) if (c.enabled && ('events' in c) && c._events.mousemove) c._events.mousemove(e);
         }
 
-        engine.events.add({ mousedown, mousemove });
+        engine.events.register(this, { mousedown, mousemove });
     }
 
     moveWindow(win, delta) {
@@ -269,7 +269,7 @@ class UCustomList extends UIBaseElement {
         AE.sealProp(this, 'items');
         AE.sealProp(this, 'events');
 
-        this._events.mousedown = e => {
+        this._events.mousedown = e => {            
             const r = this.items.find(i => i.listElem.contains(e.target));
             if (r) {
                 let found;
@@ -389,33 +389,26 @@ class UFileList extends UCustomFileList {
 
     update(parentDir) {
         this.clear();
-        UFileList.GetDirContents(this.currentDirHandle).then(async list => {
-            this.add({ name:'..', size:'', icon:'./engine/img/icons/open-folder-outline-icon.png', data:parentDir });
+        this.fileSystem.getDirectoryListing().then(async list => {
+            const path = Engine.url + 'assets/icons/';
+            this.add({ name:'..', size:'', icon:path + 'open-folder-outline-icon.png', data:parentDir });
             
             for (const item of list) {        
-                if (item.kind == 'directory') this.add({ name:item.name, size:'', icon:'./engine/img/icons/open-folder-outline-icon.png', data:item });
+                if (item.kind == 'directory') this.add({ name:item.name, size:'', icon:path + 'open-folder-outline-icon.png', data:item });
                 if (item.kind == 'file') {
-                    const file = await item.getFile(); 
+                    const file = await this.fileSystem.getFileInfo(item.name); 
                     const size = file.size > 1024 ? (file.size / 1024).toFixed(1) + 'KB' : file.size;
-                    this.add({ name:item.name, size, icon:'./engine/img/icons/photo-editor-icon.png', data:item });
+                    this.add({ name:item.name, size, icon:path + 'photo-editor-icon.png', data:item });
                 }
             }        
         });
     }
     
-    async init() {
-        this.rootDirHandle    = await window.showDirectoryPicker();
-        this.currentDirHandle = this.rootDirHandle;        
-        this.update(this.currentDirHandle);
-    }
-    
-    static GetDirContents = async (handle) => {
-        const list = [];
-        for await (const [key, value] of handle.entries()) {
-            list.push(value);
-        }
-        return list;
-    }
+    async init(fileSystemAccess) {
+        this.fileSystem  = fileSystemAccess;
+        this.currentDir  = await this.fileSystem.getWorkingDirectory();
+        this.update(this.currentDir);
+    }    
 }
 
 class UDialog extends UWindow {

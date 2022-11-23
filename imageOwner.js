@@ -68,7 +68,8 @@ class ImageOwner {
             img.onload = null;
             this._img  = img;
         }
-        img.src = URL.createObjectURL(file);
+        const u = URL.createObjectURL(file);
+        img.src = u;
     }
 }
 

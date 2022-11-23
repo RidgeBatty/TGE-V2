@@ -1,0 +1,12 @@
+{
+  "name": "tge-agent",
+  "version": "1.0.0",
+  "description": "TGE Helper App",
+  "main": "agent.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Ridge Batty",
+  "license": "ISC"
+}

@@ -1,7 +1,21 @@
+Version 2.4
+- Removed MultiCast module from the project. All events (hardware and custom) work now via Engine.events and Events class
+- Controllers example was rewritten to better illustrate the possibilities of Gamepad and Virtual Joysticks (requires touch screen)
+- Improved Engine start up / init / setup sequence
+- Improved Tools/Collider-Editor (not complete yet!)
+- Improved several components to work with new event system, such as UI components, CanvasRenderer, Renderer, GameController
+- Added Networking module: helper functions for server/API access
+- TGE-Agent: The file system access works now via NodeJS server (TGE-Agent). 
+This is a workaround to get better file access rights for TGE Editors. TGE-Agent is not complete yet, missing save file etc.
+- Utils.getJSON() now assumes .hjson file extensions if none is supplied in the url parameter
+- Complete overhaul of MainMenu module
+
+-----------------------------------------------------------------
 Version 2.3.1
 - Fixed gameLoop timer issues and calling Engine.renderingSurface.resetTransform() without checking if renderingSurface exists
 - Fixed event handling in Engine
 - Added running time functions in the Engine
+
 -----------------------------------------------------------------
 Version 2.3
 Huge changes made for better support of platformer/tilemap based games, including asset management and level editors
@@ -12,11 +26,13 @@ Huge changes made for better support of platformer/tilemap based games, includin
 - Improved world (added concept of Camera)
 - New module: renderer (needs more integration work)
 - Improved/overhauled/new modules: ui-html, actor, actorMovement, collider, customLayer, engine, enum, gameController, gameLoop, physics, player, tileMap, type
+
 -----------------------------------------------------------------
 Version 2.2
 - Reworked HTML UI system and UI components
 - Reworked engine module event handling (added events.js) currently the event system is still a bit of a mess 
 - Added tileMap and customLayer, which will be a replacement for World and Scene modules. World cannot be destoroyed yet because it has the code for the isometric renderer
+
 -----------------------------------------------------------------
 Version 2.1
 - Major upgrades and fixes in GameLoop, Actor and Collider classes to improve collisions, collision detection algorithms and timing issues
