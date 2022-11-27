@@ -40,13 +40,21 @@ class CanvasSurface {
 	}
 
 	/**
-	 * Converts Canvas to HTMLImageElement
+	 * Converts internal Canvas to HTMLImageElement and optionally downloads it (saves as an image)
 	 * @param {string} type Mime type ('image/png', 'image/bmp', 'image/gif', 'image/jpeg', 'image/tiff')
+	 * @param {number} [quality=1] Optional compression: 1 = no compression (default)
+	 * @param {string} [filename=''] Optional filename, if not given (default) file download will not initiate
 	 * @returns {HTMLImageElement}
 	 */
-	toImage(type = 'image/png') {
+	toImage(type = 'image/png', quality = 1, filename = '') {
 		const i = new Image();
-		i.src = this.canvas.toDataURL(type);
+		i.src = this.canvas.toDataURL(type, quality);
+		if (filename != '') {
+			const e    = window.document.createElement('a');
+			e.href     = i.src;
+			e.download = filename;
+			e.click();  
+		}
 		return i;
 	}
 	

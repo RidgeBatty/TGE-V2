@@ -6,15 +6,27 @@ class Networking {
         this.autoDetectContentType = true;
     }
     
-    async req(value = '') {        
+    async req(value = '', payload) {        
         return new Promise((resolve, reject) => {
-            let isJson = false;
-            fetch(this.host + value, this.options)
+            let isJson  = false;
+            let options = this.options;
+
+            if (payload) {                                                                          // post request
+                options = {
+                    method : 'POST',                    
+                    body: JSON.stringify(payload),                    
+                    headers: {
+                        'Content-Type' : 'application/json'
+                    }
+                }             
+            }
+
+            fetch(this.host + value, options)
                 .then(r => { if (r.ok) return r; else { console.log(r); throw 'Networking error'; } })
                 .then(r => { 
                     if (this.autoDetectContentType) {
                         const h    = [...r.headers]; 
-                        const type = h.find(e => e[0] == 'content-type');
+                        const type = h.find(e => e[0].toLowerCase() == 'content-type');
                         if (type == null) throw 'Content header not found';                        
                         if (type[1].includes('json')) { isJson = true; return r.json(); }
                         if (type[1].includes('text')) return r.text(); 
@@ -24,13 +36,16 @@ class Networking {
                         return r.json(); 
                     }
                 })
-                .then(j => { 
-                    if (isJson && ('error' in j || !('result' in j))) return reject(j.error); 
+                .then(j => {                 
+                    if (isJson && ('error' in j || !('result' in j))) { 
+                        console.warn('JSON response must contain "result" field'); 
+                        return reject({ error:j.error }); 
+                    }
                     if (isJson) return resolve(j.result);                                           // response is in JSON format
                     return resolve(j);                                                              // when response is anything else than JSON
                 })
-                .catch(e => { console.log(e); reject({ error:'Networking error'}) });
-        }).catch(e => this.errorHandler(e)); 
+                .catch(e => { reject({ error:'Networking error', e }) });
+        }).catch(e => { reject({ error:'Networking error', e }) }); 
     }
 }
 

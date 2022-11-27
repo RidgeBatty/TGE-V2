@@ -19,7 +19,7 @@
 * For example a space invaders, tetris, pong, asteroids, etc. might have no use of container for static World but a platformer game definitely has.
 *
 */
-const VersionNumber = '2.4';
+const VersionNumber = '2.4.1';
 
 import * as Types from "./types.js";
 import { Root, Enum_HitTestMode } from "./root.js";
@@ -79,6 +79,11 @@ class TinyGameEngine {
 		this._zoom	     = 1;
 		this.resolution  = new Vector2(1152, 648);
 
+		/**
+		 * Optional network module
+		 */
+		AE.sealProp(this, 'net');
+
 		/** 
 		 * @type {Types.Rect}
 		 * @desc Rectangle representing the game engine viewport area in the browser window 
@@ -113,6 +118,7 @@ class TinyGameEngine {
 				
 		this.events        = new Events(this, ImplementsEvents);		
 		this.preventedKeys = {};
+		this.initCompleted = false;
 				
 		this.#installEventHandlers();				
 	}
@@ -121,23 +127,17 @@ class TinyGameEngine {
 		return Types.V2(x / this.zoom - this.screen.left, y / this.zoom - this.screen.top);		
 	}
 
-	#installEventHandlers() {
-		this._setupComplete = () => {						// this function is called when engine has completed init() and setup()
-			this.recalculateScreen();			
-			this.autoZoom();			
-			if (AE.isFunction(this._mainFunction)) this._mainFunction();			
-		}
-		
+	#installEventHandlers() {		
 		AE.addEvent(window, 'dragstart', (e) => { e.preventDefault(); });
 		//window.addEventListener('touchmove', (e) => { e.preventDefault(); onMouseMove(e); }, { passive:false });
 		AE.addEvent(window, 'touchmove', (e) => { mousemove(e); }, { passive:false });
 		AE.addEvent(window, 'touchstart', (e) => { mousedown(e); });
 		AE.addEvent(window, 'touchend', (e) => { mouseup(e); });				
-		
+
 		// all internal event handlers:
 		const resize = (e) => {		
 			if (this.flags.getFlag('screenAutoAdjustEnabled')) this.recalculateScreen();
-			if (this.flags.getFlag('autoZoomEnabled')) this.autoZoom();			
+			if (this.flags.getFlag('autoZoomEnabled')) this.autoZoom();	
 			this.events.fire('resize', { event:e });
 		}
 		
@@ -173,7 +173,7 @@ class TinyGameEngine {
 			m.right      = e.button == 2;
 			m.dragging   = true;			
 			
-			const eventInfo = { event:e, downPos: m.dragStart.clone(), position: m.position.clone(), button:e.button, target: e.target };
+			const eventInfo = { event:e, downPos: m.dragStart.clone(), position: m.position.clone(), button:e.button, target: e.target };			
 			this.events.fire('mousedown', eventInfo);
 		}
 	
@@ -216,18 +216,25 @@ class TinyGameEngine {
 		}
 
 		const keydown = (e) => {						
+			const evt = { event:e, code:e.code, key:e.key, target:e.target };
+			
+			this.events.fire('keydown', evt);			
+			
+			if (!this._keys.status[e.code]) this.events.fire('keypress', evt);
+			this._keys.status[e.code] = true;	
+
+			if (this.flags.getFlag('hasUI') && this.ui.isInputElement(e.target)) return;
 			if (this.flags.getFlag('preventKeyDefaults') || this.preventedKeys[e.code]) e.preventDefault();
-			let result;
-			this.events.fire('keydown', { code:e.code, key:e.key, event:e });			
-			if (!this._keys.status[e.code]) this.events.fire('keypress', { code:e.code, key:e.key, event:e });
-			this._keys.status[e.code] = true;						
-			return result;
 		}
 
 		const keyup = (e) => {			
-			if (this.flags.getFlag('preventKeyDefaults') || this.preventedKeys[e.code]) e.preventDefault();			
+			const evt = { event:e, code:e.code, key:e.key, target:e.target }
+						
 			this._keys.status[e.code] = false;
-			this.events.fire('keyup', { code:e.code, key:e.key, event:e });						
+			this.events.fire('keyup', evt);
+
+			if (this.flags.getFlag('hasUI') && this.ui.isInputElement(e.target)) return;
+			if (this.flags.getFlag('preventKeyDefaults') || this.preventedKeys[e.code]) e.preventDefault();
 		}	
 
 		const wheel = (e) => {			
@@ -236,7 +243,7 @@ class TinyGameEngine {
 		
 		// Install hardware initiated event handlers which the engine will control:
 		const evt = { keydown, keyup, resize, contextmenu, mousedown, mouseup, mousemove, mouseover, mouseout, wheel }
-		for (const evtName of this.events.names) {				
+		for (const evtName of this.events.names) {	
 			AE.addEvent(window, evtName, e => evt[evtName](e));
 		}
 	}
@@ -280,6 +287,7 @@ class TinyGameEngine {
 		if (!isNaN(value)) {			
 			this._zoom = value;
 			this._rootElem.style.zoom = value;
+			this.recalculateScreen();	
 		}
 	}
 	
@@ -350,22 +358,12 @@ class TinyGameEngine {
 	get aspectRatio() {
 		return this.screen.width / this.screen.height;
 	}
-
-	/**
-	 * Call this function with your game's main function as parameter. This function makes sure the page is loaded and the Engine is completely set up before running your code.
-	 * @param {function} mainFunction 
-	 */
-	init(mainFunction, setupOptions) {
-		this._mainFunction = mainFunction;
-		if (setupOptions) this.setup(setupOptions).then(e => this._setupComplete());
-			else this._setupComplete();
-	}
-	
+		
 	/**
 	 * Current engine frames per second. Average over time period (default: past 0.5 seconds).
 	 * @returns {Number}
 	 */
-	getFPS() {
+	 getFPS() {
 		const len = this.gameLoop.frameTimes.length;
 		let   n   = 0;		
 		for (var i = 0; i < len; i++) n += this.gameLoop.frameTimes[i];
@@ -387,6 +385,17 @@ class TinyGameEngine {
 			}
 		}
 	}
+	
+	setRootElement(el) {		
+		if (typeof el == 'string' && ID(el) != null) var el = ID(el);
+		if (el instanceof HTMLElement) {
+			if (this._rootElem != el && this._rootElem instanceof HTMLElement) this._rootElem.style.zoom = '';
+			this._rootElem = el;
+			this.recalculateScreen();			
+			this.autoZoom();			
+		}
+			else die('Parameter must be an instance of HTMLElement or a valid element id.');		
+	}
 
 	recalculateScreen() {	
 		const pos = AE.getPos(this._rootElem);
@@ -405,17 +414,6 @@ class TinyGameEngine {
 				else zoom = window.innerWidth / this.resolution.x;                   	// more portrait						
 			this.zoom = zoom; 									 					 	// simple scaling
 		}
-	}
-
-	setRootElement(el) {		
-		if (typeof el == 'string' && ID(el) != null) var el = ID(el);
-		if (el instanceof HTMLElement) {
-			if (this._rootElem != el && this._rootElem instanceof HTMLElement) this._rootElem.style.zoom = '';
-			this._rootElem = el;
-		}
-			else die('Parameter must be an instance of HTMLElement or a valid element id.');
-		this.recalculateScreen();
-		this.autoZoom();
 	}
 				
 	/**
@@ -510,19 +508,40 @@ class TinyGameEngine {
 		if (value && name == 'hasUI' && this.ui == null) this.createUI('hud');
 		if (value && name == 'hasWorld' && this.world == null) this.createWorld(this);
 	}
+	
+	_setupComplete() {						// this function is called when engine has completed init() and setup()
+		this.recalculateScreen();
+		this.autoZoom();
+		if (AE.isFunction(this._mainFunction)) {
+			this._mainFunction();			
+		}
+	}
+	/**
+	 * Call this function with your game's main function as parameter. This function makes sure the page is loaded and the Engine is completely set up before running your code.
+	 * @param {function} mainFunction 
+	 */
+	init(mainFunction, setupOptions) {
+		console.log('Initializing TGE version ' + VersionNumber);
+		this._mainFunction = mainFunction;
+		if (setupOptions) this.setup(setupOptions);
+			else {
+				this.initCompleted = true;
+				mainFunction();
+			}
+	}
 
-	async setup(o) {			
+	async setup(o) {
 		if (typeof o == 'string') {													// load params from file						
 			o = await Utils.getJSON(o);						
 		}
-		
-		if ('rootElem' in o) this.setRootElement(o.rootElem);		
-		if ('clearColor' in o) this.gameLoop.clearColor = o.clearColor;
-		if ('flags' in o) this.flags.some(o.flags);
+				
+		if ('rootElem' in o) this.setRootElement(o.rootElem);				
 		if ('zoom' in o) {			
 			if (+o.zoom != o.zoom) die('Zoom parameter must be a number');
 			this.zoom = o.zoom;		
 		}
+		if ('clearColor' in o) this.gameLoop.clearColor = o.clearColor;
+		if ('flags' in o) this.flags.some(o.flags);		
 		if ('gameLoop' in o) {
 			const gls = o.gameLoop;
 			if ('zLayers' in gls && gls.zLayers < 17 && gls.zLayers > 1) this.gameLoop.zLayers.length = gls.zLayers;
@@ -531,11 +550,10 @@ class TinyGameEngine {
 					this.gameLoop.flags[k] = v;
 				}
 			}			
-		}				
+		}			
+		if (!this.initCompleted) this._setupComplete();
 	}
 }
-
-console.log('Initializing TGE version ' + VersionNumber);
 
 const Engine = new TinyGameEngine();
 

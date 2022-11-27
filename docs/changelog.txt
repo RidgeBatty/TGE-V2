@@ -1,3 +1,19 @@
+Version 2.4.1
+- Engine: init/setup code in a way that 'late setup' is possible
+    * You can either run Engine.init(mainFunction, setup) or run the setup (late) in the main function
+    * Event handling improved
+- Events: Improvements and bug fixes
+- TGE-Agent: More complete server side file system access module
+- Added Tools/FileSystem-Agent module to unify file system access interface
+- UI-HTML
+    * Improved Confirmation dialog and UFileList components
+    * Upgraded event handling system to use Events module
+- CanvasSurface: improved .toImage() export function
+- Utils: added remove() function to filter out elements directly from given array (as opposed to returning a filtered array)
+- Networking: improved error handling, .req can now handle post requests
+- Tools/Collider-Editor almost completed
+
+-----------------------------------------------------------------
 Version 2.4
 - Removed MultiCast module from the project. All events (hardware and custom) work now via Engine.events and Events class
 - Controllers example was rewritten to better illustrate the possibilities of Gamepad and Virtual Joysticks (requires touch screen)

@@ -5,7 +5,7 @@
         hasEdges:false, 
         hasRenderingSurface:true, 
         hasUI:true, 
-        preventKeyDefaults:false 
+        preventKeyDefaults:true 
     }
     gameLoop: {
         flags: { 
@@ -14,6 +14,6 @@
         }
     }
     meta: {
-        iconPath:'__engine__/img/icons/'
+        iconPath:'/img/icons/'
     }
 }

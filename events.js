@@ -1,4 +1,3 @@
-
 class Events {
     /**
      * Provide a list of event handler names upon construction. It can be either a space separated string OR an object
@@ -24,7 +23,7 @@ class Events {
         const list = e.split(' ');
         for (const evt of list) {
             if (this.#list[evt]) throw 'Event handler "' + evt + '" already exists';
-            this.#list[e] = [];
+            this.#list[evt] = [];
         }        
     }
 
@@ -85,9 +84,12 @@ class Events {
     fire(name, args) {
         const e = this.#list[name];        
         if (!e) return;
-
         const o = Object.assign({ instigator:this.owner, name }, args);
-        for (const evt of e) if (evt.isActive) evt.handler(o);        
+        for (const evt of e) {
+            if (evt.isActive) {            
+                evt.handler(o);        
+            }
+        }
     }
 
     findByHandler(handler) {

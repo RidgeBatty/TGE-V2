@@ -1,0 +1,50 @@
+{
+  version: "1.0"
+  type: TGE-Actor-Collider-Data
+  actor: Fort1
+  data:
+  [
+    {
+      type: circle
+      points:
+      [
+        {
+          x: -107.127
+          y: -126.792
+        }
+        {
+          x: -41.919
+          y: -81.251
+        }
+      ]
+    }
+    {
+      type: circle
+      points:
+      [
+        {
+          x: 175.439
+          y: -30.534
+        }
+        {
+          x: 186.825
+          y: -15.008
+        }
+      ]
+    }
+    {
+      type: circle
+      points:
+      [
+        {
+          x: -8.798
+          y: 58.48
+        }
+        {
+          x: 58.48
+          y: 74.005
+        }
+      ]
+    }
+  ]
+}

@@ -11,7 +11,7 @@ const main = async() => {
     Engine.net = new Networking('http://localhost:8080');
 
     await waitClick('game');                         // get initial user interaction    
-    createUI();    
+    await createUI();    
         
     Engine.start();
 }

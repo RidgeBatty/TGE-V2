@@ -1,0 +1,87 @@
+
+desc : 'TGE User Interface Component file'
+version : '1.0'
+active : [
+    {
+        class : 'UWindow'
+        caption : 'Welcome to Collider Editor!'
+        modal : true
+        components : [
+            {
+                class : 'UPanel'
+                align : 'center center'
+                className : 'column'
+                components : [
+                    {
+                        class : 'UCaption'
+                        caption : 'Using this tool you can create and edit the colliders of TGE Actors.'
+                        align : 'center center'
+                        height : 80
+                        width : 200
+                        margin : '10 40 0 40'
+                    }
+                    {
+                        class : 'UButton'
+                        caption : 'OK!'
+                        behavior : 'close-window'
+                    }
+                ]                   
+            }                        
+        ]
+    }
+]
+passive : [
+    {
+        class : 'UWindow'
+        name : 'image-window'
+        caption : 'Images'        
+        position : { x:900, y: 10 }
+        components : [
+            {
+                class : 'UFileList'
+                filter : 'png|jpg'                               
+                name : 'files'
+                headers : ['Name', 'Size', 'Type']
+            }                        
+        ]
+    }
+    {
+        class : 'UWindow'
+        name : 'save-window'
+        caption : 'Save colliders...'        
+        position : 'auto'
+        align: 'even center'
+        modal: true
+        components : [
+            { 
+                class : 'UEdit'
+                caption : 'Filename'
+                align: 'center center'
+                name: 'save-filename' 
+            }
+            {
+                class : 'UFileList'
+                filter : 'hjson'   
+                name : 'save-files'
+                headers : ['Name', 'Size', 'Type']
+            }                        
+            { 
+                class: 'UPanel'
+                height: 80
+                align: 'center bottom'
+                components : [
+                    {
+                        class: 'UButton'
+                        caption: 'Cancel'
+                        behavior: 'close-window'
+                    }
+                    {
+                        class: 'UButton'
+                        caption: 'Save'
+                        name : 'bt-save'
+                    }
+                ]
+            }
+        ]
+    }
+]

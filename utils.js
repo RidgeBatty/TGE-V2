@@ -142,6 +142,13 @@ const waitClick = async (elem) => {
 }
 
 /**
+ * Removes all occurrences from array based on predicated function
+ */
+const remove = (arr, test) => {
+	for (let i = arr.length; i--;) if (test(arr[i], i)) arr.splice(i, 1);
+}
+
+/**
  *  * Removes duplicate objects from an array, based on the value of property 'prop'
  *	i.e. when the value of the 'prop' is the same, the objects are considered to be duplicates
  * @param {[*]} arr 
@@ -318,6 +325,7 @@ export {
 
 	removeDuplicates, 
 	arraysEqual,
+	remove,
 	
 	addElem,
 	waitClick, 
