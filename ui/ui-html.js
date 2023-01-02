@@ -4,18 +4,8 @@
  * 
  */
 import { Vector2 as Vec2, V2 } from "../types.js";
-import { getJSON } from "../utils.js";
+import { getJSON, addElem } from "../utils.js";
 import * as UIComponents from "./ui-html-components.js";
-
-const addElem = (o) => {
-    const el = document.createElement('type' in o ? o.type : 'div');
-    if ('text' in o)  el.textContent = o.text;
-    if ('class' in o) el.className = o.class;
-    if ('id' in o)    el.id = o.id;
-    const parent = ('parent' in o) ? ((typeof o.parent == 'string') ? document.getElementById(o.parent) : o.parent) : document.body;
-    parent.appendChild(el);
-    return el;
-}
 
 class UI {
     constructor(engine, UIRootElement) {

@@ -4,6 +4,7 @@ class Events {
      * @param {*} o 
      */
     #list = {};
+    #id = 0;
     constructor(owner, o = {}) {
         if (typeof o == 'string') var o = o.split(' ');
         for (const e of o) this.#list[e] = [];
@@ -33,12 +34,12 @@ class Events {
      * @param {function|isActive} handlerOrIsActive Handler function OR if the "o" parameter was an object or function, this becomes the isActive flag.
      * @returns 
      */
-    add(o, handlerOrIsActive) {        
+    add(o, handlerOrIsActive) {    
         if (typeof o == 'object') {                                                                                 // o = object  
             if (handlerOrIsActive == null) handlerOrIsActive = true;
             for (const [k, v] of Object.entries(o)) {
                 if (!this.#list[k]) throw 'Handler named "' + k + '" not found';
-                const eObj = { isActive:handlerOrIsActive, handler:v };
+                const eObj = { isActive:handlerOrIsActive, handler:v, id:this.#id++ };
                 this.#list[k].push(eObj);
             }
             return;
@@ -46,11 +47,16 @@ class Events {
 
         if (AE.isFunction(o) && handler == null) {                                                                  // o = function
             if (handlerOrIsActive == null) handlerOrIsActive = true;
-            return this.#list[o.name].push({ isActive:handlerOrIsActive, handler:o }); 
+            return this.#list[o.name].push({ isActive:handlerOrIsActive, handler:o, id:this.#id++ }); 
         }
         
-        const e = this.#list[o];                                                                                    // o = string
-        if (e) e.push({ isActive:true, handler:handlerOrIsActive });
+        const e = this.#list[o];                                                                                    // o = string                
+        if (e) { 
+            const id = this.#id++; 
+            e.push({ isActive:true, handler:handlerOrIsActive, id }); 
+            return id; 
+        }
+            else throw 'Handler named "' + o + '" not found';
     }
 
     register(dispatcher, o, isActive = true) {        
@@ -78,7 +84,17 @@ class Events {
 
     remove(name, handler) {        
         const e = this.#list[name];
-        if (e) for (let i = e.length; i--;) if (e[i] == handler) e.splice(i, 1);        
+        if (e) for (let i = e.length; i--;) if (e[i].handler == handler) e.splice(i, 1);        
+    }
+
+    removeById(id) {
+        if (!Array.isArray(id)) var id = [id];
+
+        for (const _id of id) {                                                             // check for all requested id's
+            for (const e of Object.values(this.#list)) {                                    // check for all event types (mouseup, keydown, etc...)
+                for (let i = e.length; i--;) if (e[i].id == _id) e.splice(i, 1);            // check for all installed handlers
+            }
+        }
     }
 
     fire(name, args) {
@@ -86,9 +102,7 @@ class Events {
         if (!e) return;
         const o = Object.assign({ instigator:this.owner, name }, args);
         for (const evt of e) {
-            if (evt.isActive) {            
-                evt.handler(o);        
-            }
+            if (evt.isActive) evt.handler(o);
         }
     }
 

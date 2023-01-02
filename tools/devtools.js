@@ -8,7 +8,7 @@
  */
 import { Engine, Actor, Types } from '../engine.js';
 import { Controllers } from '../gameController.js';
-import { UI } from '../html-ui.js';
+import { UI } from '../ui/ui-html.js';
 import { arraysEqual } from '../utils.js';
 import Debug from '../tools/debug.js';
 

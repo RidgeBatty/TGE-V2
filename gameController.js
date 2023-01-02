@@ -7,7 +7,7 @@
 <b>NOTE!</b> <span style="color:red">Typically you do NOT need to create gameControllers manually. Player class creates necessary instances automatically.</span>
 */
 import { Engine, Events, Types } from './engine.js';
-const { Vector2:Vec2 } = Types;
+const { Vector2:Vec2, V2 } = Types;
 
 const AllGamepads = [];				// list of gamepads detected in the system
 const AllGamepadControllers = [];	// list of created controller objects
@@ -32,8 +32,8 @@ class KeyController {
 		
 		this.player    = o.owner;
 		this.isActive  = true;		
-		this.keyBind   = { left:['KeyA', 'ArrowLeft'], right:['KeyD', 'ArrowRight'], up:['KeyW', 'ArrowUp'], down:['KeyS', 'ArrowDown'], shoot1:['ControlLeft'], shoot2:['Space'], pause:['KeyP'], quit:['Escape'] };		
-		this.keyState  = { left:false, right:false, up:false, down:false, shoot1:false, shoot2:false, pause:false, quit:false };		
+		this.keyBind   = { left:['KeyA', 'ArrowLeft'], right:['KeyD', 'ArrowRight'], up:['KeyW', 'ArrowUp'], down:['KeyS', 'ArrowDown'], shoot1:['Tab'], shoot2:['Space'], pause:['KeyP'], quit:['Escape'] };		
+		this.keyState  = { up:false, right:false, down:false, left:false, shoot1:false, shoot2:false, pause:false, quit:false };		
 		
 		if ('yaw' in params) this.addYawKeyDefaults();
 	
@@ -43,9 +43,40 @@ class KeyController {
 		Controllers.all.push(this);
 	}
 
+	/**
+	 * Get current movement keys as compass direction (string). Returns an empty string if no movement keys are currently depressed.
+	 */
+	get direction() {
+		const movement = this.asBits & 15;
+		return { 0: '-', 1: 'n', 2: 'e', 3: 'ne', 4: 's', 6: 'se', 8: 'w', 9: 'nw', 12: 'sw' }[movement];
+	}
+
+	get directionVector() {
+		const { left, up, right, down } = this.keyState;
+		if (up && left)    return V2(-1, -1);
+		if (up && right)   return V2( 1, -1);
+		if (down && left)  return V2(-1,  1);		
+		if (down && right) return V2( 1,  1);
+		if (up)    return V2(0, -1);
+		if (right) return V2(1,  0);
+		if (down)  return V2(0,  1);		
+		if (left)  return V2(-1, 0);
+		return Vec2.Zero();
+	}
+
+
+	/**
+	 * Get all key states as a single bit register. This helps avoiding complex if/switch statements when handling multiple inputs at once.
+	 */
+	get asBits() {
+		let bits = 0, shift = 1;
+		Object.values(this.keyState).forEach(e => { bits += +e * shift; shift *= 2; });
+		return bits;
+	}
+
 	installEventHandlers() {
 		const keydown = (e) => {
-			e.event.preventDefault();  			
+			//e.event.preventDefault();  			
 			if (this.isActive == false) return;		
 			const { keyBind, keyState } = this;		
 			for (var i in keyBind) for (var j = 0; j < keyBind[i].length; j++) if (e.event.code == keyBind[i][j]) {
@@ -54,7 +85,7 @@ class KeyController {
 			}		
 		}					
 		const keyup = (e) => { 	
-			e.event.preventDefault(); 
+			//e.event.preventDefault(); 
 			if (this.isActive == false) return;
 			const { keyBind, keyState } = this;
 			for (var i in keyBind) for (var j = 0; j < keyBind[i].length; j++) if (e.event.code == keyBind[i][j]) {
@@ -188,10 +219,10 @@ class PointerController {
 		this.isActive  = true;			
 		
 		this._mouse	    = {
-			position  : new Vector2(0, 0),
-			dragStart : new Vector2(0, 0),
-			rawPosition  : new Vector2(0, 0),
-			rawDragStart : new Vector2(0, 0),
+			position  : V2(0, 0),
+			dragStart : V2(0, 0),
+			rawPosition  : V2(0, 0),
+			rawDragStart : V2(0, 0),
 			direction : 0,
 			dragging  : false,
 			left      : false,
@@ -230,8 +261,8 @@ class PointerController {
 	
 	getNormalizedPosition(p) {
 		const screen = Engine.screen;
-		return new Vector2((p.x / Engine.zoom - screen.left) / screen.width,
-						   (p.y / Engine.zoom - screen.top) / screen.height);
+		return V2((p.x / Engine.zoom - screen.left) / screen.width,
+				  (p.y / Engine.zoom - screen.top) / screen.height);
 	}
 
 	/**
@@ -268,7 +299,7 @@ class PointerController {
 		const getJoystickAtPosition = (pos) => {			
 			for (const j of this.joysticks) {
 				const p = pos.clone().mul(Engine.dims);
-				if (Vector2.Distance(p, j.position) < j.radius && Vector2.Distance(p, j.position) > j.innerRadius) return j;
+				if (Vec2.Distance(p, j.position) < j.radius) return j;
 			}
 			return null;
 		}
@@ -297,7 +328,7 @@ class PointerController {
 
 				// check if pointer is moved inside the 'neutral' area:
 				const p = pos.clone().mul(Engine.dims);
-				if (Vector2.Distance(p, j.position) < j.innerRadius) {
+				if (Vec2.Distance(p, j.position) < j.innerRadius) {
 					j.isActive = false;
 					return;
 				}
@@ -333,7 +364,7 @@ class PointerController {
 				const n = this.getNormalizedPosition(m.rawPosition);
 				m.position.set(n);
 				if (this.joysticks.length > 0) setJoystickPosition(n, id, 'move');
-				this._fireCustomEvent('move', { position:n, id });
+				this.events.fire('move', { position:n, id });
 			}
 		}
 		
@@ -347,11 +378,12 @@ class PointerController {
 
 				m.rawDragStart.set({ x:p.clientX, y:p.clientY });
 				const n = this.getNormalizedPosition(m.rawDragStart);
+				
 				m.position.set(n);
 				m.dragStart.set(n);
 				m.dragging = true;				
-				if (this.joysticks.length > 0) setJoystickPosition(n, id, 'start');
-				this._fireCustomEvent('start', { position:n, id });
+				if (this.joysticks.length > 0) setJoystickPosition(n, id, 'start');			
+				this.events.fire('start', { position:n, id });
 			}
 		}
 		
@@ -368,8 +400,8 @@ class PointerController {
 				m.position.set(n);			
 				m.direction = Math.atan2(m.rawPosition.x - m.rawDragStart.x, m.rawPosition.y - m.rawDragStart.y);
 				m.dragging  = false;
-				if (this.joysticks.length > 0) setJoystickPosition(Vector2.Zero(), id, 'end');
-				this._fireCustomEvent('end', { position:n, id });
+				if (this.joysticks.length > 0) setJoystickPosition(Vec2.Zero(), id, 'end');
+				this.events.fire('end', { position:n, id });
 			}
 		}
 		
@@ -381,18 +413,8 @@ class PointerController {
 		AE.addEvent(window, 'touchmove', (e) => { e.preventDefault(); onMouseMove(e); }, { passive:false });	
 		AE.addEvent(window, 'touchstart', (e) => { onMouseDown(e); });
 		AE.addEvent(window, 'touchend', (e) => { onMouseUp(e); });
-	}
 
-	addEvent(name, func) {
-		if (typeof func != 'function') throw 'Second parameter must be a function.';
-		if ( !PointerEvents.includes(name) )  throw 'First parameter must be a pointer event name.';
-		
-		this._events[name].push({ name, func });		
-	}
-
-	_fireCustomEvent(name, data) {			
-		const e = this._events[name];									
-		if (e) for (var i = 0; i < e.length; i++) e[i].func({ instigator:this, name, data });		
+		this.events = new Events(this, PointerEvents);
 	}
 }
 

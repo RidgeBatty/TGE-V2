@@ -18,8 +18,16 @@ class CanvasSurface {
 	 * @param {object=} o.flags
 	 * @param {string=} o.name
 	 */
-	constructor(o = {}) {	
-		const canvas  = document.createElement('canvas');		
+	constructor(o = {}) {			
+		if (o.preferOffscreenCanvas) {
+			try {
+				var canvas = new OffscreenCanvas(o.dims.x, o.dims.y);
+			} catch (e) {
+				console.warn('Offscreen canvas not supported by this platform')
+			}
+		} 
+
+		if (canvas == null) var canvas = document.createElement('canvas');
 		
 		if ('dims' in o) {
 			canvas.width  = o.dims.x;
@@ -102,11 +110,13 @@ class CanvasSurface {
 		if (canvas.width != w)  canvas.width = w;
 		if (canvas.height != h) canvas.height = h;
 		
-		if (this._pixelSmooth) {
-			canvas.style.imageRendering = 'auto';						
-		} else {
-			canvas.style.imageRendering = 'pixelated crisp-edges';				
-		}		
+		if (canvas instanceof HTMLCanvasElement) {
+			if (this._pixelSmooth) {
+				canvas.style.imageRendering = 'auto';						
+			} else {
+				canvas.style.imageRendering = 'pixelated crisp-edges';				
+			}		
+		}
 	}
 	
 	/**
@@ -140,6 +150,21 @@ class CanvasSurface {
 		this.ctx.beginPath();
 		this.ctx.moveTo(~~p0.x + 0.5, ~~p0.y + 0.5);
 		this.ctx.lineTo(~~p1.x + 0.5, ~~p1.y + 0.5);
+		this.ctx.stroke();		
+	}
+
+	/**
+	 * Draws a crosshair of two vertical lines which extend from the edges of the canvas and cross at the given center point "c"
+	 * @param {Vector2} c center point
+	 * @param {*} style 
+	 */
+	drawCrosshair(c, style) {		
+		if (style) this.ctx.strokeStyle = style.stroke ? style.stroke : style;		
+		this.ctx.beginPath();
+		this.ctx.moveTo(0, ~~c.y + 0.5);
+		this.ctx.lineTo(this.canvas.width, ~~c.y + 0.5);
+		this.ctx.moveTo(~~c.x + 0.5, 0);
+		this.ctx.lineTo(~~c.x + 0.5, this.canvas.height);
 		this.ctx.stroke();		
 	}
 	
@@ -471,11 +496,17 @@ class CanvasSurface {
 					this.ctx.drawImage(o.img, o.targetRect.left + px + x * width, o.targetRect.top + py + y * height);
 	}	
 	
-	/*
-		Draws image on canvas. Supports scaling and clipping. 
-		Note! All coordinates "pos", "size", "clip" are in source image space!
-		Optional "clip" rectangle defines how many pixels to clip from each direction: top, left, right, bottom
-	*/
+	/**	 
+	 *	Draws image on canvas. Supports scaling and clipping. 
+	 *	Note! All coordinates "pos", "size", "clip" are in source image space!
+	 *	Optional "clip" rectangle defines how many pixels to clip from each direction: top, left, right, bottom
+	 * @param {object} o Parameters object
+	 * @param {Vector2} o.pos 
+	 * @param {Image=} o.img HTMLImageElement or equivalent
+	 * @param {number=} o.scale Scale of the image, defaults to img.naturalWidth/Height
+	 * @param {Vector2=} o.size Optional
+	 * @param {Rect} o.clip Optional clip rectange
+	 */
 	drawImageScale(o) {		// o:{ pos:Vector2, ?size:Vector2, img:HTMLImageElement, scale:Number, ?clip:Rect }
 		const size = ('size' in o) ? o.size : { x:o.img.naturalWidth, y:o.img.naturalHeight };
 		
@@ -509,6 +540,11 @@ class CanvasSurface {
 			if ('textBaseline' in params) this.ctx.textBaseline = params.textBaseline;			
 		}
 		this.ctx.fillText(text, pos.x, pos.y);
+
+		if ('stroke' in params) {
+			this.ctx.strokeStyle = params.stroke;
+			this.ctx.strokeText(text, pos.x, pos.y);
+		}
 	}
 	
 	flipImage(img, flipH, flipV) {

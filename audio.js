@@ -4,7 +4,10 @@
  @desc Tiny Game Engine: Audio/Sound Effects subsystem	
  Implements a simplified interface for using Web Audio API in games	
 */
+import { Events } from './events.js';
 import { getJSON } from './utils.js';
+
+const ImplementsEvents = 'ended';
 
 const AudioContext = window.AudioContext || window.webkitAudioContext;
 
@@ -92,6 +95,7 @@ class SFX {
 		this._fadeInfo  = null;
 		this._isMuted   = false;
 		this._position  = 0;
+		this._destroyOnComplete = true;
 
 		this._volume      = 1;
 		this.audioParams  = new AudioParams(o, this.owner.audioParams);		
@@ -123,6 +127,12 @@ class SFX {
 		
 		source.connect(gain).connect(pan).connect(audioContext.destination);
 
+		source.addEventListener('ended', () => {			
+			this.stop();
+			this.audioLib.events.fire('ended', { sfx:this });
+			if (this._destroyOnComplete) this.destroy();
+		});
+
 		this.nodes    = {
 			source,
 			gain,
@@ -137,7 +147,7 @@ class SFX {
 	}
 	get volume()		  { return this._volume; }
 	
-	set pan(value)	   	 { if ('pan' in this.nodes) this.nodes.pan.pan.value = value; }
+	set pan(value)	   	 { if ('pan' in this.nodes) this.nodes.pan.pan.value = value; } 
 	get pan()	   	   	     { if ('pan' in this.nodes) return this.nodes.pan.pan.value; }
 	
 	set rate(value)		 { this.nodes.source.playbackRate.value = value; }
@@ -205,11 +215,8 @@ class SFX {
 	}
 		
 	destroy() {
-		const n = this.owner.instances.findIndex(this);
-		if (n > -1) {
-			console.log('Destroying sound instance');
-			this.owner.instances.splice(n, 1);
-		}
+		const n = this.owner.instances.indexOf(this);
+		if (n > -1) this.owner.instances.splice(n, 1);
 	}
 }
 
@@ -234,6 +241,8 @@ class AudioLib {
 
 		/** Global volume levels */
 		this.masterVolume = new RangedVar(1);		
+
+		this.events		  = new Events(this, ImplementsEvents);
 	}	
 
 	get isMuted() {

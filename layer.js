@@ -39,7 +39,7 @@ class Layer {
     }
 
 	tick() {  
-        if (this.owner.position) {
+        if (this.owner?.position) {
             //this.position = Vec2.Add(Vec2.Mul(this.increment, this.owner.position), this.offset, this.increment);
 		    this.position.x = this.increment.x * this.owner.position.x + this.offset.x + this.increment.x;		
 		    this.position.y = this.increment.y * this.owner.position.y + this.offset.y + this.increment.y;				            

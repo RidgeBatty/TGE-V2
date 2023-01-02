@@ -3,18 +3,21 @@
  @author Ridge Batty
  @desc
 	Root
-	This class is the ancestor class for Actor or Scene
-	it may optionally contain colliders collection
+
+	This class is the ancestor class for stuff which is 
+	- displayed on the screen 
+	- may be connected to a GameLoop and/or World objects
+	- may collide with other stuff
 		
 */
 import { Collider } from './collider.js';
 import * as Types from './types.js';	
 import { TNode } from './tnode.js';
 
-const Vector2 = Types.Vector2;
+const Vec2 = Types.Vector2;
 
 class Transform {
-	constructor(position = Vector2.Zero(), rotation = 0, scale = 1) {
+	constructor(position = Vec2.Zero(), rotation = 0, scale = 1) {
 		Object.assign(this, { position, rotation, scale });
 	}
 }
@@ -54,8 +57,7 @@ const HitTestFlag = {
 class Root extends TNode {
 	/**	
 	 * @param {Object} [o={}] Parameters object 
-	 * @param {GameLoop} o.owner Gameloop which owns this Root object
-	 * @param {Vector2} o.position Position of the Root
+	 * @param {GameLoop} o.owner Gameloop which owns this Root object	 
 	 */
 	constructor(o = {}) {		
 		super(o);
@@ -67,8 +69,6 @@ class Root extends TNode {
 		this.data         = ('data' in o) ? o.data : {}; // user data	
 		this.flags        = { hasColliders:false };
 		this.renderHints  = { showColliders:false };
-				
-		this.world        = null;		
 
 		/**
 		 * @type {Collider} Collider object
@@ -83,13 +83,17 @@ class Root extends TNode {
 		this._createCollisionChannels();
 	}
 	
+	get world() {
+		return this?.owner?.engine?.world;
+	}
+	
 	_createCollisionChannels() {
 		this._hitTestGroup = this._defaultColliderType;				
 		this._hitTestFlag  = Object.assign({}, HitTestFlag);
 	}
 	
 	get hasColliders() { return this.flags.hasColliders; }		
-	set hasColliders(value) {		
+	set hasColliders(value) {	
 		if (value === true && this.flags.hasColliders == false) {
 			this.colliders = new Collider({ owner:this });
 			this._createCollisionChannels();
@@ -127,7 +131,9 @@ class Root extends TNode {
 
 	setCollisionResponseFlag(obj) {
 		for (const [k, v] of Object.entries(obj)) {
-			if ((k in this._hitTestFlag) && (v in Enum_HitTestMode)) this._hitTestFlag[k] = v;
+			if (!(k in this._hitTestFlag)) throw 'Invalid collision response channel name';
+			if (!(v in Object.values(Enum_HitTestMode))) throw 'Invalid collision response mode';
+			this._hitTestFlag[k] = v;			
 		}
 	}
 

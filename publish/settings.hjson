@@ -5,7 +5,7 @@
     source : '../..'
     target : {
         isRemote : false
-        path : 'C:/xampp/htdocs/vscode/PPG-Website/public/games/moneyman-halloween'
+        path : 'C:/xampp/htdocs/vscode/PPG-Website/public/games/snowballz'
     }
 
     options : {    

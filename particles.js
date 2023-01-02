@@ -156,6 +156,10 @@ class Emitter extends EventBroadcaster {
 	 */
 	async _initEmitter(params) {		
 		this._params     = AE.clone(params);
+
+		// AE.clone can't clone a CanvasSurface!
+		this._params.surface = params.surface;
+
 		// AE.clone can't clone an Image object!!!
 		if ('initParticle' in params && 'img' in params.initParticle && params.initParticle.img instanceof Image) {
 			this._params.initParticle.img = params.initParticle.img;
@@ -211,7 +215,7 @@ class Emitter extends EventBroadcaster {
 		if (params.initParticle) {
 			const shape = params.initParticle.shape;
 			if (shape) {
-				this.initFillColor = deserializeColorProperty('fillColor', shape);			
+				this.initFillColor = deserializeColorProperty('fillColor', shape);							
 			}
 			const textSettings = Object.assign({}, params.initParticle.textSettings);
 			if (textSettings) {
@@ -360,7 +364,8 @@ class Emitter extends EventBroadcaster {
 		p.opacity       = calc('opacity', init, 1);
 		p.textContent   = init.textContent;
 		p.textSettings  = this.initTextSettings;
-
+		p.hasTicked     = false;											// has particle been ticked yet?
+		
 		// apply filters
 		if ('filters' in init) {
 			p.filter = '';
@@ -394,8 +399,9 @@ class Emitter extends EventBroadcaster {
 			p.velocity   = Vec2.FromAngle(p.angle * Math.PI, p.speed);			
 
 		if ('shape' in init) {
-			p.shape     = ParticleShapes.findIndex(e => e == init.shape.type);
-			p.fillColor = calc('fill',this);				
+			p.shape     = ParticleShapes.findIndex(e => e == init.shape.type);			
+			p.fillColor = calc('fillColor', init.shape);	
+			
 			if (p.shape == 3) p.points = Polygon.Ring(calc('innerRadius', init.shape), calc('outerRadius', init.shape), Math.round(calc('points', init.shape)));
 			if (p.shape == 4) p.points = Polygon.Triangle(1);
 			if (p.shape == 5) p.points = Polygon.Ngon(calc('points', init.shape));
@@ -413,7 +419,7 @@ class Emitter extends EventBroadcaster {
 			if ('opacity' in evolve)      p.evolveOpacity      = evolve.opacity;
 			if ('acceleration' in evolve) p.evolveAcceleration = evolve.acceleration;
 			if ('scale' in evolve)        p.evolveScale        = evolve.scale;
-		}	
+		}
 
 		return p;
 	}
@@ -469,12 +475,14 @@ class Emitter extends EventBroadcaster {
 			if (p.evolveAcceleration)  p.velocity.mulScalar(p.evolveAcceleration);			
 			if (this.evolveColorStops) {
 				const c1 = this.evolveColorStops[Math.floor(m * (this.evolveColorStops.length - 1))];
-				const c2 = this.evolveColorStops[Math.ceil(m * (this.evolveColorStops.length - 1))];					
-				p.outColor = Color.Lerp(c1, c2, m);												
+				const c2 = this.evolveColorStops[Math.ceil(m * (this.evolveColorStops.length - 1))];				
+				p.outColor = Color.Lerp(c1, c2, m);						
 			} else
 			if (this.evolveTargetColor) {
 				if (p.fillColor) p.outColor = Color.Lerp(p.fillColor, p.evolveTint, m);
 				if (this.initTextColor) p.outColor = Color.Lerp(this.initTextColor, p.evolveTint, m);
+			} else {
+				p.outColor = p.fillColor;				
 			}
 
 			if (p.evolveScale) p.scale  *= p.evolveScale;
@@ -496,6 +504,8 @@ class Emitter extends EventBroadcaster {
 			p.position.add(p.velocity);			
 
 			if (this.evolveParticleTick)  this.evolveParticleTick(p);
+
+			p.hasTicked = true;
 		}
 
 		// TO-DO: Put this in the particle loop above, and early exit when condition is met?  condition met for stopping the emitter? 
@@ -512,15 +522,16 @@ class Emitter extends EventBroadcaster {
 
 		const tmp = this._tmpCanvas,	
 		      ctx = this.surface.ctx,
-		      pos = Vec2.Zero();		
+		      pos = Vec2.Zero();	
 
-		this.activeParticleCount = 0;
+		this.activeParticleCount = 0;		
 		
 		const savedCompositeState = ctx.globalCompositeOperation;
 		if (this.compositeOperation) ctx.globalCompositeOperation = this.compositeOperation;		
 		const alpha = ctx.globalAlpha;												// opacity
 		
 		for (const particle of this.particles) {
+			if (particle.hasTicked == false) continue;
 			if (!particle.active) continue;
 			
 			this.activeParticleCount++;
@@ -559,7 +570,7 @@ class Emitter extends EventBroadcaster {
 
 			// shape
 			if (particle.shape) {
-				const fill = ('outColor' in particle) ? particle.outColor.css : particle.fillColor.css;
+				const fill = ('outColor' in particle) ? particle.outColor : particle.fillColor.css;				// outColor = calculated property, fillColor = css
 				if (particle.shape == 1) this.surface.drawCircle(Vec2.Zero(), 1, { fill });
 				if (particle.shape == 2) this.surface.drawRectangle(-1, -1, 2, 2, { fill });						
 				if (particle.shape == 3) this.surface.drawPolyCut(particle.points.a, particle.points.b, { fill });
@@ -568,7 +579,7 @@ class Emitter extends EventBroadcaster {
 
 			// text operations
 			if (particle.textContent) {
-				if (particle.textSettings.color == 'particle' || this.evolveTargetColor) {
+				if (particle.textSettings.color == 'particle' || this.evolveTargetColor) {		
 					const copy = Object.assign({}, this.initTextSettings, { color:particle.outColor.css });
 					this.surface.textOut(Vec2.Zero(), particle.textContent, copy);			
 				}
@@ -611,11 +622,9 @@ class ParticleSystem {
 		}
 	}
 	
-	addEmitter(params) {
+	async addEmitter(params) {
 		const emitter = new Emitter(this);		
-		emitter._initEmitter(params);
-		Object.preventExtensions(emitter);
-		
+		await emitter._initEmitter(params);		
 		this.emitters.push(emitter);
 		this.gameLoop.zLayers[emitter.zIndex].push(emitter);				// add the emitter on gameLoop zLayer
 		return emitter;

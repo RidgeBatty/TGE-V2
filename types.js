@@ -560,6 +560,20 @@ class VectorBase {
 	set(vec) {		// vec:VectorBase
 		Object.keys(this).forEach((key) => { if (key in vec && isFinite(vec[key])) this[key] = vec[key]; });        
 	}
+
+	/**
+	 * Assigns values in arguments as values of the vector. Supports Vector2, Vector and Vector4
+	 * Example: v.assign(2, 55, 3); // sets vector x = 2, y = 55, z = 3
+	 */
+	assign() {
+		this.x = arguments[0];
+		this.y = arguments[1];			
+		if (this.constructor.name == 'Vector2') return this;
+		this.z = arguments[2];
+		if (this.constructor.name == 'Vector') return this;
+		this.w = arguments[3];
+		if (this.constructor.name == 'Vector4') return this;
+	}
 	
     toArray() {
         var result = [];
@@ -654,11 +668,11 @@ class VectorBase {
 	 * @returns {Vector2|Vector|Vector4}
 	 */
 	static Random() {			
-		const p = Math.random() * Math.PI * 2; 	
-		switch (this.constructor.name) {
-			case 'Vector2' : return new Vector2(Math.random(), Math.random());
-			case 'Vector'  : return new Vector(Math.random(), Math.random(), Math.random());
-			case 'Vector4' : return new Vector4(Math.random(), Math.random(), Math.random(), Math.random());
+		const p = Math.random() * Math.PI * 2; 			
+		switch (this.prototype.constructor) {
+			case Vector2 : return new Vector2(Math.random(), Math.random());
+			case Vector  : return new Vector(Math.random(), Math.random(), Math.random());
+			case Vector4 : return new Vector4(Math.random(), Math.random(), Math.random(), Math.random());		
 		}
 	}
 
@@ -669,9 +683,9 @@ class VectorBase {
 	 */
 	static RandomDir() {
 		const p = Math.random() * Math.PI * 2; 	
-		switch (this.constructor.name) {
-			case 'Vector2' : return new Vector2(Math.cos(p), Math.sin(p));		
-			case 'Vector'  : {
+		switch (this.prototype.constructor) {
+			case Vector2 : return new Vector2(Math.cos(p), Math.sin(p));		
+			case Vector  : {
 				const cosTheta = 2 * random() - 1;
 				const sinTheta = Math.sqrt(1 - cosTheta ** 2);
 				return new Vector(sinTheta * Math.cos( p ), sinTheta * Math.sin( p ), cosTheta);				
@@ -1328,6 +1342,16 @@ const V2 = (x, y) => { return new Vector2(x, y); }
 const V3 = (x, y, z) => { return new Vector(x, y, z); }
 const V4 = (x, y, z, w) => { return new Vector4(x, y, z, w); }
 
+/**
+ * 
+ * @param {number} x x
+ * @param {number} y y
+ * @param {number} w width
+ * @param {number} h height
+ * @returns 
+ */
+const RECT = (x, y, w, h) => { return new Rect(x, y, x+w, y+h); }
+
 export {
 	lerp,
 	wrapBounds,
@@ -1347,5 +1371,6 @@ export {
 	Text,
 	V2,
 	V3,
-	V4
+	V4,
+	RECT
 }

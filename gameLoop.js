@@ -5,7 +5,7 @@
 	
 
 */
-import { Hitpoints } from './actor-hp.js';
+import { Hitpoints } from './hitpoints.js';
 import { Player } from './player.js';
 import { Enemy } from './enemy.js';
 import { Projectile } from './projectile.js';
@@ -17,7 +17,7 @@ import { Vector2 } from './types.js';
 import { Engine } from './engine.js';
 import { HitTestFlag, Enum_HitTestMode } from './root.js';
 
-const ImplementsEvents = 'addactor';
+const ImplementsEvents = 'addactor removeactor activate deactivate';
 
 class HitTestGroups { constructor() { Object.keys(HitTestFlag).forEach(e => this[e] = []); }; clear() { Object.keys(HitTestFlag).forEach(e => this[e].length = 0); } }
 
@@ -30,7 +30,6 @@ class GameLoop {
 		this.events         = new Events(this, ImplementsEvents);
 		
 		this.levels         = [];
-		this.players        = [];	
 		this.actors         = [];
 		this.tickables      = [];
 		this.zLayers        = [...Array(16).keys()].map(e => []);
@@ -70,16 +69,31 @@ class GameLoop {
 			if (document.visibilityState == 'hidden') {
 				if (this.flags.isRunning) {
 					wasRunningBeforeVisibilityChange = true;
+					this.events.fire('deactivate', { wasRunningBeforeVisibilityChange });
 					return this.stop();
 				}
 			}
 			if (document.visibilityState == 'visible') {
 				if (wasRunningBeforeVisibilityChange) {
 					wasRunningBeforeVisibilityChange = false;
+					this.events.fire('activate', { wasRunningBeforeVisibilityChange });
 					return this.start();			
 				}
 			}
 		});	
+	}
+
+	/**
+	 * Clears all actors and objects from zLayers, calling the object's .destroy() method if one exists.
+	 */
+	clear() {
+		this.forActors(a => this.removeActor(a));
+		for (const layer of this.zLayers) {						
+			for (let i = 0; i < layer.length; i++) {
+				if ('destroy' in layer[i]) layer[i].destroy();				
+			}
+			layer.length = 0;
+		}
 	}
 
 	/**
@@ -112,13 +126,14 @@ class GameLoop {
 	 * @param {Actor=} o.actor Ties timer to an actor. When the actor is destroyed, the timer is also removed
 	 * @param {number} o.duration How many ticks between 
 	 * @param {number} o.repeat How many times the timer should repeat?
+	 * @param {boolean} o.isPaused Start timer in paused state (defaults to NOT paused)
 	 * @param {function=} o.onTick Fires on every tick
 	 * @param {function=} o.onRepeat Fires when the cycle repeats
 	 * @param {function=} o.onComplete Fires when the repeats are used up and the timer is destroyed
 	 */
 	addTimer(o) {
-		const repeatsLeft = ('repeat' in o) ? o.repeat : 1;
-		const timer = Object.assign({ ticksLeft : o.duration, repeatsLeft, isPaused:false }, o);
+		const repeatsLeft = ('repeat' in o) ? o.repeat : 0;
+		const timer = Object.assign({ ticksLeft : o.duration, repeatsLeft, isPaused:('isPaused' in o) ? o.isPaused : false }, o);
 		this.timers.push(timer);
 		return timer;
 	}
@@ -151,7 +166,7 @@ class GameLoop {
 		const a = this.actors;
 		for (let i = a.length; i--;) if (a[i].flags.isDestroyed == false) cb(a[i]);
 	}
-		
+			
 	/**
 	 * 	Loops through all actors and returns an array of actors based on their field values
 	 * @param {string} field The field name you want to test (e.g. 'name', 'position', etc.)
@@ -163,6 +178,10 @@ class GameLoop {
 		for (const actor of this.actors) if (actor[field] == value) list.push(actor);
 		return list;
 	}	
+
+	get players() {
+		return this.actors.filter(e => e.isPlayer);
+	}
 
 	findTimerByName(name) {
 		return this.timers.find(e => e.name == name);
@@ -179,6 +198,8 @@ class GameLoop {
 	}	
 
 	removeActor(actor) {		
+		this.events.fire('removeactor', { actor });
+
 		for (const olap of actor.overlaps) {										// signal "endoverlap" to all actors which this actor overlaps with
 			olap.overlaps = olap.overlaps.filter(e => e != actor);					// remove destroyed actor from (all the) other actors' overlaps list!
 			actor.events.fire('endoverlap', { actor, otherActor:olap });	
@@ -235,21 +256,21 @@ class GameLoop {
 
 	/**
 	 * Creates a new Actor (or descendant class) instance. The instance is not added into the gameLoop. The instance will have _type and objectType properties set accordingly.
-	 * @param {*} typeString Actor type to create as a string, e.g. 'player', 'enemy', etc.
-	 * @param {*} o Parameters to send to the Actor (or descendant) class constructor.
+	 * @param {string} typeString Actor type to create as a string, e.g. 'player', 'enemy', etc.
+	 * @param {object} o Parameters to send to the Actor (or descendant) class constructor.
 	 * @returns
 	 */
-	createTypedActor(typeString, o) {
+	createTypedActor(typeString, o) {				
 		let a;
 		switch (typeString) {
-			case 'player'      	: { a = new Player(o); const hp = new Hitpoints(); hp.assignTo(a); this.players.push(a); a._type = Enum_ActorTypes.Player; break; }
-			case 'enemy' 	  	: { a = new Enemy(o);  const hp = new Hitpoints(); hp.assignTo(a); a._type = Enum_ActorTypes.Enemy; break; } 
+			case 'player'      	: { a = new Player(o);     a._type = Enum_ActorTypes.Player; break; }
+			case 'enemy' 	  	: { a = new Enemy(o);      a._type = Enum_ActorTypes.Enemy; break; } 
 			case 'projectile'  	: { a = new Projectile(o); a._type = Enum_ActorTypes.Projectile; break; }			
-			case 'consumable'   : { a = new Actor(o); a._type = Enum_ActorTypes.Consumable; break; }
-			case 'obstacle'     : { a = new Actor(o); a._type = Enum_ActorTypes.Obstacle; break; }
-			case 'npc'  		: { a = new Actor(o); a._type = Enum_ActorTypes.Npc; break; }
-			case 'actor'  		: { a = new Actor(o); a._type = Enum_ActorTypes.Actor; break; }
-			default 	  		: { a = new aType(o); a._type = Enum_ActorTypes.Default; }
+			case 'consumable'   : { a = new Actor(o);      a._type = Enum_ActorTypes.Consumable; break; }
+			case 'obstacle'     : { a = new Actor(o);      a._type = Enum_ActorTypes.Obstacle; break; }
+			case 'npc'  		: { a = new Actor(o);      a._type = Enum_ActorTypes.Npc; break; }
+			case 'actor'  		: { a = new Actor(o);      a._type = Enum_ActorTypes.Actor; break; }
+			default 	  		: { a = new typeString(o); console.log(o) }
 		}
 		a.objectType = typeString;		
 		a.renderHints.showColliders   = this.flags.showColliders;
@@ -274,7 +295,7 @@ class GameLoop {
 	add(aType, o = {}) {		
 		o.owner = this;
 
-		if (aType instanceof Actor) {														// if the first parameter is an existing Actor instance...
+		if (aType instanceof Actor) {														// if the first parameter is an existing Actor instance...									
 			aType.owner = this;			
 
 			if (!('_type' in aType)) {
@@ -286,7 +307,7 @@ class GameLoop {
 			this._addActor(aType);			
 			return aType;
 		}
-
+			
 		var a;
 		if (aType == 'level')  { 															// Levels are a different beast. Add them in their own container and exit.
 			a = new Level(o); 
@@ -304,13 +325,12 @@ class GameLoop {
 
 		if (aType == 'layer') {
 			a = new Layer(o);
-			a.objectType = aType;
-			this.zLayers[a.zIndex].push(a);	
+			a.objectType = aType;			
 			return a;			
 		}
-					
-		if (a == null) {																// Actors and its descendants
-			a = this.createTypedActor(aType.toLowerCase(), o);							// create new actor type based on the given string, e.g. 'player', 'enemy', etc...			
+			
+		if (a == null) {																// Actors and its descendants			
+			a = this.createTypedActor(aType, o);										// create new actor type based on the given string, e.g. 'player', 'enemy', etc...			
 		}
 
 		this._addActor(a);
@@ -375,6 +395,12 @@ class GameLoop {
 		this.requestID = window.requestAnimationFrame(t => this._render(t));	// schedule next frame
 	}
 
+	/**
+	 * Removes an object from the z-layers. 
+	 * It will not be rendered by the gameLoop any more, but the object will remain in the memory and its .tick() method is still called automatically.
+	 * @param {Root} object Any root descendant which has an .update() method: actor, layer, etc.
+	 * @returns {number} Count of successfully removed objects. This can be used by the caller to verify that the object was indeed removed.
+	 */
 	removeFromZLayers(object) {
 		let deleteCount = 0;
 		for (const layer of this.zLayers) {
@@ -389,7 +415,7 @@ class GameLoop {
 	/**
 	 * DO NOT USE! This is called internally!
 	 */	
-	_tick(forceSingleTick) {
+	_tick(forceSingleTick) {				
 		const groups = this.hitTestGroups;
 
 		if (!this.flags.isRunning && !forceSingleTick) return;
@@ -397,10 +423,11 @@ class GameLoop {
 		const tickStart = performance.now();
 				
 		// run the ticks:
-		if (this.onBeforeTick) this.onBeforeTick(this.actors);
+		if (this.onBeforeTick) this.onBeforeTick(this);
 		if (this.engine.audio) this.engine.audio.tick();
+		if (this.engine.world) this.engine.world.tick();			
 		for (const t of this.tickables) t.tick();
-		for (const t of this.zLayers) for (const o of t) if (o.tick) o.tick();
+		for (const t of this.zLayers) for (const o of t) if (o.tick) o.tick();		
 		
 		// temp constants
 		const actorsArray = this.actors;				
@@ -421,8 +448,6 @@ class GameLoop {
 		this.collisionCheckTime = 0;
 		for (let i = 0; i < actorsArray.length; i++) {			
 			const actor = actorsArray[i];
-
-			actor.tick();										// tick all actors (actor.tick() returns immediately if actor is destroyed)
 			
 			// check for collisions and overlaps:
 			const collisionCheckTime = performance.now();
@@ -454,7 +479,7 @@ class GameLoop {
 		for (let i = this.timers.length; i--;) {
 			const evt = this.timers[i];
 
-			if ('actor' in evt && evt.actor.isDestroyed) {
+			if ('actor' in evt && evt.actor.flags.isDestroyed) {
 				this.timers.splice(i, 1);				
 				continue;
 			}
@@ -463,19 +488,19 @@ class GameLoop {
 				if ('onTick' in evt) evt.onTick(evt); 
 
 				evt.ticksLeft--;			
-				if (evt.ticksLeft == -1) { 						
-					if ('onRepeat' in evt) evt.onRepeat(evt); 					
+				if (evt.ticksLeft <= 0) { 											
 					
 					evt.ticksLeft = evt.duration;					
 					evt.repeatsLeft--;							
-					if (evt.repeatsLeft == -1) {
+					if (evt.repeatsLeft < 0) {
 						this.timers.splice(i, 1); 
 						if ('onComplete' in evt) evt.onComplete(evt); 
-					}					
+					} else 
+						if ('onRepeat' in evt) evt.onRepeat(evt);					
 				}
 			}
 		}
-		
+
 		this.tickCount++;
 		this._lastTick = performance.now() - tickStart;				
 	}

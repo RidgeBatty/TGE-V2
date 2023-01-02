@@ -9,11 +9,10 @@
 
 */
 import { Transform } from './root.js';
-import { Root, Actor, Engine } from './engine.js';
-import { Types, PhysicsShape, Circle, AABB, Box, Enum_PhysicsShape } from './physics.js';
+import { Root, Actor, Engine, Types } from './engine.js';
+import { PhysicsShape, Circle, AABB, Box, Enum_PhysicsShape, Poly } from './physics.js';
 
-const Vec2 = Types.Vector2;
-const Rect = Types.Rect;
+const { Vector2:Vec2, Rect, V2 } = Types;
 
 class Collider {
 	/**
@@ -40,6 +39,36 @@ class Collider {
 		AE.sealProp(this, 'objects', []);
 	}
 
+	/**
+	 * Deserializes colliders from array
+	 * @param {[SerializedCollider]} arr 
+	 * @returns {[array]} Contains an array of arrays
+	 */
+	static Parse(data) {
+		const result = [];
+
+		for (const c of data) {
+			if (c.type == null) {
+				var obj = null;
+			} else
+			if (c.type == 'box') {
+				var obj = new Box(V2(c.points[0], c.points[1]), V2(c.points[2], c.points[3]));
+			} else
+			if (c.type == 'poly') {				
+				var obj = new Poly(V2(c.position.x, c.position.y));
+				obj.fromArray(c.points);
+			} else
+			if (c.type == 'circle') {
+				var obj = new Circle(V2(c.position.x, c.position.y), c.radius);
+			} else throw new Error('Unsupported collider type ' + c.type);
+
+			if ('angle' in c) obj.angle = c.angle;
+
+			result.push(obj);
+		}					
+		return result;
+	}
+
 	remove(object) {
 		const i = this.objects.indexOf(object);
 		if (i > -1) this.objects.splice(i, 1);
@@ -55,7 +84,8 @@ class Collider {
 	 */
 	add(p) {
 		p.owner = this.actor;
-		this.objects.push(p);			
+		this.objects.push(p);
+		return p;
 	}
 
 	/**
@@ -71,37 +101,32 @@ class Collider {
 	 * Updates the collider visualizations. If required HTML and SVG elements do not exist, they will be created.		
 	*/
 	update() {				
-		const colliders = this.objects;
 		const actor     = this.actor;
+		const colliders = ('optimizedColliders' in actor) ? actor.optimizedColliders : actor.colliders.objects;
+		
 		const gameLoop  = actor.owner;
 		const ctx 		= Engine.renderingSurface.ctx;
 		const scale     = this.scale * this.actor.scale;
 		
-		// if this actor is not the World camera target, add offset to shift the colliders in right position
- 		let ofs         = (gameLoop.engine.world != null && gameLoop.engine.world.actor != actor) ? gameLoop.engine.world.camPos : Vec2.Zero();
-
 		for (var i = 0; i < colliders.length; i++) {
 			var c   = colliders[i];			
-			var cp  = actor.position.clone();
+			var cp  = actor.renderPosition;
 			var pos = Vec2.Zero();
-
-			if ('offset' in actor) cp.add(actor.offset);
-			if ('pivot'  in actor) cp.add(actor.pivot);
-		 	cp.sub(ofs);
 			
 			ctx.resetTransform();
 			ctx.translate(cp.x, cp.y);			
-			ctx.rotate(actor.rotation);						
+			if (!c.ignoreParentRotation) ctx.rotate(actor.rotation);						
 			ctx.scale(scale, scale);
 			ctx.translate(c.position.x, c.position.y);			
 			ctx.rotate(c.angle);
-											
+	
+			// NOTE! This will draw the colliders always on Engine.renderingSurface, because it is assumed that colliders are drawn as an overlay
 			switch (c.type) {				
 				case Enum_PhysicsShape.Poly:					
 					Engine.renderingSurface.drawPoly(c.points, { stroke:'black', fill:actor.overlaps.length > 0 ? this.hilite : this.color });					
 				break;
 				case Enum_PhysicsShape.Box:															
-					Engine.renderingSurface.drawRect(new Rect(pos.x - c.halfSize.x, pos.y - c.halfSize.y, c.halfSize.x, c.halfSize.y), { stroke:'black', fill:actor.overlaps.length > 0 ? this.hilite : this.color });					
+					Engine.renderingSurface.drawRect(new Rect(pos.x - c.halfSize.x, pos.y - c.halfSize.y, c.halfSize.x, c.halfSize.y), { stroke:'black', fill:actor.overlaps.length > 0 ? this.hilite : this.color });										
 				break;
 				case Enum_PhysicsShape.AABB: 					
 					
@@ -117,10 +142,10 @@ class Collider {
 	 * @param {Actor} otherActor
 	 * Checks whether this Actor's colliders overlap with otherActor's colliders
 	 */
-	resolveOverlap(otherActor) {	
-
+	resolveOverlap(otherActor) {			
 		// can we get any optimization?
 		const otherColliders = ('optimizedColliders' in otherActor) ? otherActor.optimizedColliders : otherActor.colliders.objects;
+		
 		const colliders      = this.objects;		
 		const actor          = this.actor;
 
@@ -129,10 +154,10 @@ class Collider {
 
 		let   result         = false;																	// final result of the actor vs. otherActor collision, assume they won't be colliding
 				
-		if (aResp == 2 && bResp == 2) {																	// BLOCK: If and only if both actors have "block" flag set against each other.		
+		if (aResp == 2 && bResp == 2) {																	// BLOCK: If and only if both actors have "block" flag set against each other.					
 			for (const a of colliders) for (const b of otherColliders) PhysicsShape.Collide(a, b);				
-		} else {								
-			if (aResp > 0 && bResp > 0) {																// OVERLAP
+		} else {											
+			if (aResp > 0 && bResp > 0) {																// OVERLAP								
 				for (const c of colliders)      c.isOverlapped = false;
 				for (const c of otherColliders) c.isOverlapped = false;
 								
@@ -140,10 +165,11 @@ class Collider {
 					result = true;					
 					
 					a.isOverlapped = true;
-					b.isOverlapped = true;
+					b.isOverlapped = true;				
 				}					
 			}
 		}	
+
 		return result;
 	}
 

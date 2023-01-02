@@ -1,7 +1,26 @@
+/**
+ * 
+ * AssetMananger for TGE
+ * =====================
+ * 
+ * Important usage note!
+ * 
+ * Since AssetManager creates an in-memory copy of the game assets, custom, extended and singleton objects (such as the Player) might be problematic. 
+ * Be careful when creating stuff in the constructor of your extended Actor, since those objects and properties will not be automatically cloned 
+ * when AssetManager.spawn() is called! Instead you should add an init() method to your extended/custom actor and call it manually after calling AssetManager.spawn()
+ * 
+ * Currently only the following objects/properties inside "params" object are parsed automatically:
+ *  - Vector2
+ *  - data                  ( may contain only JSON parseable types )
+ * 
+ * Everything else is sent to the Actor's constructor as is.
+ * 
+ */
+
 import { Engine, Actor, Enum_ActorTypes, Types } from './engine.js';
 import { Flipbook } from './flipbook.js';
 import { Box, Circle, Poly } from './physics.js';
-import { getJSON } from './utils.js';
+import { getJSON, preloadImages } from './utils.js';
 
 const { V2 } = Types;
 
@@ -27,56 +46,57 @@ const setDef = (target, source, field, useDefault) => {
 }
 
 class AssetManager {
-    constructor() {
-        this.flags = {
+    constructor(engine) {
+        this.engine = engine;        
+
+        AE.sealProp(this, 'flags', {
             addActorsToGameLoop : false,            
-        }
+        });
+
         this.assets = {
-            actors : []
-        }
+            actors : [],
+            images : []
+        };
+
+        this.engine.assetManager = this;
     }
 
     getAssetByName(str) {
-        return this.assets.actors.find(e => e.name == str);
+        const actor = this.assets.actors.find(e => e.name == str);
+        if (actor) return actor;
+
+        const image = this.assets.images.find(e => e.name == str);
+        if (image) return image;
     }
 
     /**
-     * Creates a new actor from JSON data. 
+     * Creates a new actor from (H)JSON data. 
      * By default the actor is created and stored only in the assetManager as an offline 'class' ready to be instantiated quickly
      * Optionally this method adds the new actor into the gameloop (if assetManager.flags.addActorsToGameLoop is set to true)     
-     * @param {*} data 
+     * @param {object} data Parsed (H)JSON object containing asset information
+     * @param {object} o Parameters of AssetManager.load() call
      * @returns 
      */
-    async deserializeActor(data) {
-        const params = {};
+    async deserializeActor(data, o) {
+        const params = data.params;  
 
-        setDef(params, data, 'type', 'actor');
-        setDef(params, data, 'zIndex');
-        setDef(params, data, 'scale');    
-        setDef(params, data, 'rotation');
-        setDef(params, data, 'position'); 
-        setDef(params, data, 'offset'); 
-        setDef(params, data, 'pivot'); 
-        setDef(params, data, 'name');    
-        setDef(params, data, 'isVisible', true);
-        setDef(params, data, 'imgUrl');    
+        setDef(params, params, 'position');
+        setDef(params, params, 'zIndex');
+        setDef(params, params, 'scale');
+        setDef(params, params, 'rotation');
+        setDef(params, params, 'offset');
+        setDef(params, params, 'origin');
+        setDef(params, params, 'imgUrl');
+
+        // check if a custom constructor was given to this actor (or not, in which case use the built-in actor types)
+        if ('class' in data && 'constructors' in o && o.constructors[data.class]) {             
+            var actor = new o.constructors[data.class](params);                           
+        } else 
+            var actor = Engine.gameLoop.createTypedActor(params.type, params);
         
-        const actor = Engine.gameLoop.createTypedActor(params.type, params);
+        if (data.data) actor.data = data.data;                                                      // user data        
+        if (data.flipbooks) actor.flipbooks = await Flipbook.Parse(data.flipbooks, actor);          // create flipbooks
 
-        if (data.data) actor.data = data.data;
-        
-        if (data.flipbooks) {                                                                       // create flipbooks
-            for (const fb of data.flipbooks) {
-                const flipbook = new Flipbook({ actor, fps:fb.fps });            
-                await flipbook.createSequencesFromVideo(fb.sequences);
-
-                if ('autoplay' in fb) {
-                    const seq = flipbook.sequences[fb.autoplay];
-                    if (seq) seq.play();
-                }
-            }            
-        }
-    
         if (data.colliders) {                                                                       // create colliders
             for (const c of data.colliders) {                
                 if (c.type == 'circle') {
@@ -99,26 +119,36 @@ class AssetManager {
             }
         }
 
-        if (this.flags.addActorsToGameLoop) Engine.gameLoop._addActor(actor);
+        if (this.flags.addActorsToGameLoop) Engine.gameLoop._addActor(actor); 
             else actor.owner = Engine.gameLoop;
         
         return actor;
     }
 
-    async loadAsset(o) {
-        const s = await getJSON(o.url);
+    async loadAsset(o, options) {
+        const s = await getJSON(o.url);        
         if (s.type == 'actor') {
-            const actor = await this.deserializeActor(s.data);            
-            this.assets.actors.push(actor);
-        }
+            const actor = await this.deserializeActor(s.data, options);
+            return this.assets.actors.push(actor);            
+        } 
+        if (s.type == 'images') {
+            const names  = s.data.map(e => e.name);
+            const images = await preloadImages({ urls:s.data.map(e => e.url) });
+            for (let i = 0; i < images.length; i++) {
+                this.assets.images.push({ name:names[i], image:images[i] });
+            }
+            return;
+        } 
+        throw 'Only object types "actor" and "images" is supported by the AssetManager';
     }
 
-    async load(o) {
+    async load(o, options) {
         if ('urls' in o) {
             for (const u of o.urls) {
                 let url = u;
+                if (u.indexOf('.') == -1) url += '.asset.hjson';                        // if no dots are found in the url, assume '.asset.hjson' extension
                 if ('path' in o) url = o.path + url;
-                await this.loadAsset({ url });
+                await this.loadAsset({ url }, options);
             }
         }        
     }
@@ -131,13 +161,14 @@ class AssetManager {
      */
     spawn(asset, o = {}) {
         if (typeof asset == 'string') {
-            asset = this.getAssetByName(asset);
+            const test = this.getAssetByName(asset);
+            if (test == null) throw 'Asset not found: ' + asset;            
+            asset = test;                                                               // proceed to (attempt to) create the actor 
         }
-        if (asset instanceof Actor) {
-            const actor = asset.clone(true);
-            if ('position' in o) actor.position = o.position;
+        if (asset instanceof Actor) {      
+            const actor = asset.clone(true, o);                        
             return actor;
-        }
+        }        
     }
 }
 

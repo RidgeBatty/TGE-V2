@@ -4,7 +4,7 @@
 
 */
 
-import { Actor, Enum_ActorTypes } from './actor.js';
+import { Actor } from './actor.js';
 import { Vector2 } from './types.js';
 
 class MissileInfo {
@@ -27,8 +27,8 @@ class Projectile extends Actor {
 	constructor(o) {						
 		// if instigator is specified we can guess a good collider group for this Projectile		
 		if (o.instigator != null) {
-			if (o.instigator._type == Enum_ActorTypes.player) o.colliderType = 'PlayerShot';			
-			if (o.instigator._type == Enum_ActorTypes.enemy)  o.colliderType = 'EnemyShot';
+			if (o.instigator.isPlayer) o.colliderType = 'PlayerShot';			
+			if (o.instigator.isEnemy)  o.colliderType = 'EnemyShot';
 		}
 
 		super(o);

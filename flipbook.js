@@ -19,6 +19,7 @@
 import { Events } from "./events.js";
 import { preloadImages } from './utils.js';
 import { VideoStream } from "./videoStream.js";
+import { V2 } from "./types.js";
 
 const ImplementsEvents = 'end';
 
@@ -85,11 +86,19 @@ class Sequence {
 	}
 	
 	get length() {
-		return Math.abs(this.start - this.end);
+		return Math.abs(this.end - this.start);
 	}
 	
-	play() {	
+	/**
+	 * Starts the animation from beginning, except when "doNotRestart" is set to "true". 
+	 * This feature can be useful for example when animation does not need to restart if the player is already walking in the desired direction.
+	 * @param {*} doNotRestart 
+	 * @returns 
+	 */
+	play(doNotRestart) {			
 		return new Promise(resolve => {
+			if (doNotRestart && this.flipbook.sequence == this && !this._isPaused) return resolve();
+
 			this.resetCycle();
 			
 			this._iterations = 0;		
@@ -99,7 +108,8 @@ class Sequence {
 			
 			if (this.length > 0 && this._iterationCount > 0 && this._iterationCount != Infinity) {
 				this.onComplete  = () => { resolve(); }
-			} else resolve();
+			} 
+			resolve();
 		});
 	}
 	
@@ -131,7 +141,7 @@ class Sequence {
 		It can progress forward or backward "this.direction".
 		Optional callback may be added, which is executed when animation ends.
 	*/		
-	next() {
+	next() {			
 		if (this._cycle == 'ended' || this._isPaused) return this.index;
 		if (this.length == 0) return this.start;		// return 1st frame if animation consists of only a single frame
 				
@@ -197,6 +207,7 @@ class Flipbook {
 	constructor(o = {}) { 
 		if (o.actor) this.assignTo(o.actor);
 	
+		this.name         = o.name;
 		this.dims         = ('dims' in o) ? o.dims : { x:0, y:0 };	// number of frames in x and y direction. MUST be specified for Atlas, it cannot be known
 		this.size         = this.dims.y * this.dims.x;
 		this.images       = [];
@@ -228,7 +239,7 @@ class Flipbook {
 	 * @returns {Flipbook}
 	 */
 	clone(attachToActor) {
-		const c     = new Flipbook({ actor:(typeof attachToActor == 'object') ? attachToActor : this.actor, dims:this.dims, fps:this._fps });
+		const c     = new Flipbook({ actor:(typeof attachToActor == 'object') ? attachToActor : this.actor, dims:this.dims, fps:this._fps, name:this.name });
 		c.images    = this.images;
 						
 		for (const [k, v] of Object.entries(this.sequences)) c.sequences[k] = v.clone(c);		// clone Sequences, and make the cloned Flipbook their owner
@@ -246,12 +257,44 @@ class Flipbook {
 	static Generate(count, callback) {
 		return Array(count).fill().map((_, i) => callback(i));
 	}
-	
-	/*
-		Returns the number of total frames in the flipbook
-	*/
-	get frameCount() {
-		return this.images.length;
+
+	/**
+	 * Parses flipbook information from (serialized) object
+	 * @param {object} data 
+	 * @param {Actor} actor Optional actor in which to assign the flipbook
+	 */
+	static async Parse(data, actor) {
+		const flipbooks = [];
+		for (const fb of data) {
+			const flipbook = new Flipbook({ actor, fps:fb.fps, name:fb.name });
+
+			if (fb.type == 'video') await flipbook.createSequencesFromVideo(fb.sequences);
+				else
+			if (fb.type == 'images') {
+				for (const s of fb.sequences) {
+					const images = await flipbook.loadAsFrames(s.urls, s.path, true);
+					const seq    = flipbook.appendSequence(s.name, s.urls.length, s.loop);
+					if ('direction' in s) seq.direction = s.direction;
+				}
+			}
+				else
+			if (fb.type == 'atlas') {
+				const atlas = await flipbook.loadAsAtlas(fb.url, fb.dims, fb.order);
+				for (const s of fb.sequences) {										
+					const seq = flipbook.addSequence({ name:s.name, startFrame : s.frames.from, endFrame : s.frames.to, loop:s.loop });					
+					if ('direction' in s) seq.direction = s.direction;
+				}
+			}
+				else throw 'Unknown Flipbook type in asset file';
+			
+			if ('autoplay' in fb) {
+				const seq = flipbook.sequences[fb.autoplay];                    
+				if (seq) seq.play();
+			}
+
+			flipbooks.push(flipbook);
+		}
+		return flipbooks;
 	}
 	
 	get sequenceCount() {
@@ -260,9 +303,7 @@ class Flipbook {
 	/*
 		Link this Flipbook with an Actor or ChildActor. Optionally start any animation sequence by providing its name (second parameter)		
 	*/
-	assignTo(actor, autoPlaySequence) {
-		actor.flipbook = this;
-		
+	assignTo(actor, autoPlaySequence) {		
 		this.actor = actor;
 		if (autoPlaySequence && this.sequences[autoPlaySequence]) this.sequences[autoPlaySequence].play();		
 	}	
@@ -282,10 +323,15 @@ class Flipbook {
 	/**
 	 * @async
 	 * @param {string} url 
+	 * @param {Vector2} dims Number of frames in the image (in vertical and horizontal direction)
+	 * @param {string} order Which order to read the images? Defaults to left-to-right, the other option is top-to-bottom
 	 * @returns {HTMLImageElement} <Promise>
 	 */
-	async loadAsAtlas(url) {
-		this._isAtlas = true;
+	async loadAsAtlas(url, dims, order = 'left-to-right') {
+		this.dims        = dims;
+		this._atlasOrder = order;
+		this._isAtlas    = true;		
+
 		return new Promise((resolve, reject) => {
 			const img = new Image();
 			img.onload  = (e) => { this.images.push(img); resolve(this) }
@@ -295,7 +341,7 @@ class Flipbook {
 	}
 
 	/**
-	 * 
+	 * Loads a video and converts it to individual frame images OR loads a bunch of individual images. Images are saved in flipbook's "images" array.
 	 * @param {[string]|string} urls 
 	 * @param {string} path 
 	 * @param {boolean} append 
@@ -315,8 +361,10 @@ class Flipbook {
 			return this.images;
 		}
 
+		// 1 frame/image
 		if (append) this.images.push(...await preloadImages({ urls, path })); 
 			else this.images = await preloadImages({ urls, path });		
+			
 		return this.images;
 	}
 
@@ -354,7 +402,7 @@ class Flipbook {
 	}
 	
 	/**
-	 * 
+	 * Creates a new sequence and adds it to the this flipbook
 	 * @param {object} o 
 	 * @param {string} o.name
 	 * @param {number} o.startFrame
@@ -374,17 +422,23 @@ class Flipbook {
 		return s;
 	}
 
-	appendSequence(name, images, loop) {
-		return this.addSequence({ name, startFrame : this.frameCount, endFrame : this.frameCount + images.length, loop });
+	appendSequence(name, frameCount, loop = false) {
+		let frames = 0;
+		for (const s of Object.values(this.sequences)) frames += s.length + 1;
+		return this.addSequence({ name, startFrame : frames, endFrame : frames + frameCount - 1, loop });
 	}
 	
 	removeSequence(name) {
 		if (this.sequences[name] == null) return;
 		delete this.sequences[name];
 	}
+
+	play(name, options) {
+		if (this.sequences[name]) this.sequences[name].play(options);
+	}
 	
 	stop(stopAll) {
-		if (stopAll) {			
+		if (stopAll) {	
 			for (const a of Object.values(this.sequences)) a.stop();
 			return;
 		}
@@ -401,14 +455,15 @@ class Flipbook {
 	/**
 	 * Automatically called from Actor.tick()
 	 */
-	tick() {
+	tick() {		
 		if (this.sequence == null || this.actor == null) return;	
-		
+				
 		const seq   = this.sequence;
 		if (seq == null || seq._cycle == 'ended') return;
 						
 		const frame = seq.next();
 		const img   = this.isAtlas ? this.images[0] : this.images[frame];
+		
 
 		if (img == null) return;
 
@@ -423,14 +478,16 @@ class Flipbook {
 				var a = Math.floor(frame / this.dims.x);
 				var b = Math.floor(frame % this.dims.x);
 			}
-			var w = Math.floor(iwidth  / this.dims.x);
-			var h = Math.floor(iheight / this.dims.y);						
+			var w = Math.floor(iwidth  / this.dims.x);			
+			var h = Math.floor(iheight / this.dims.y);									
 		} else {
 			var w = iwidth;
-			var h = iheight;
+			var h = iheight;			
 		}
-						
+		
+		if (!this.actor.img) { this.actor.size = V2(w, h); }
 		this.customRender = { img, a, b, w, h };
+		
 		this._lastFrame = frame;
 	}
 }

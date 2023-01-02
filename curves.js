@@ -55,7 +55,7 @@ const smoothPoints = (points, stepsPerCurve, tension = 1) => {		// points:[Vecto
 			let p3 = curEnd.clone().mulScalar(.5 * tCubed * (tension - 4) + .5 * tension * t - (tension - 3) * tSquared);
 			let p4 = next.clone().mulScalar(-.5 * tension * tSquared + .5 * tension * tCubed);
  
-			const p = p1.add(p2, p3, p4);    
+			const p = p1.add(p2).add(p3).add(p4);    
 			
 			result.push(p);
 		}		

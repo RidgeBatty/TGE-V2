@@ -14,8 +14,8 @@ const update = (r) => {
 }
 
 const main = async () => {    
-    Engine.setRootElement('game');                                      // First let's set up the engine               
-    Engine.setFlags({ hasEdges:false, hasRenderingSurface:true });    
+    Engine.setup({ rootElem:'game', flags:{ hasEdges:false, hasRenderingSurface:true } })
+
     Engine.gameLoop.clearColor = '#222';
     Engine.gameLoop.tickRate = 60;
 

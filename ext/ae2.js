@@ -773,6 +773,7 @@ AE.require = function(url, settings = {}) {  // url:string, settings:{ fileType:
         break;
         case 'js':            
             var tag = doc.createElement('script');
+			if (settings.module) tag.type = 'module';
             tag.src  = url;
         break;
 		default:

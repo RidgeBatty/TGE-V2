@@ -9,12 +9,14 @@ import { CustomLayer } from '../../customLayer.js';
 import { AngleWidget } from '../../ui/ui-angleWidget.js';
 import { UIComponents } from '../../ui/ui-html.js';
 import { FS } from '../filesystem-agent.js';
-import { preloadImages, remove } from '../../utils.js';
+import { addPropertyListener, preloadImages, remove } from '../../utils.js';
 
 const { Vector2 : Vec2, V2, Rect } = Types;
 const { UWindow, UCustomList, Confirmation } = UIComponents;
 
 const editor = {    
+    toolInfo        : '',
+    actorFilename   : '/assets/img/fort1.png',
     actor           : null,       
     mode            : null, 
     mousePos        : Vec2.Zero(),
@@ -46,14 +48,14 @@ const clearMap = async() => {
 
 const saveToFile = async () => {
     let saveWin = Engine.ui.findByName('save-window');
-
+    
     const onSave = async() => {
         editor.colliders = editor.colliders.filter(c => c.complete);
         const data = editor.colliders.map(c => {             
             const copy = structuredClone(c);
             copy.points.forEach(e => { 
-                e.x = +(e.x - Engine.dims.x * 0.5).toFixed(savePrecision); 
-                e.y = +(e.y - Engine.dims.y * 0.5).toFixed(savePrecision) 
+                e.x = +(e.x - Engine.dims.x * 0.5).toFixed(editor.savePrecision); 
+                e.y = +(e.y - Engine.dims.y * 0.5).toFixed(editor.savePrecision) 
             });
             delete copy.complete; 
             return copy; 
@@ -62,12 +64,14 @@ const saveToFile = async () => {
         const result = await editor.fileSystem.saveFile({ 
             filename: Engine.ui.findByName('save-filename').value, 
             data: Hjson.stringify({ version:'1.0', type:'TGE-Actor-Collider-Data', actor:editor.actor.name, data }) 
-        });        
+        });  
+        const fileList = saveWin.findByName('save-files', true); 
+        if (fileList) await fileList.update();
         
         saveWin.close();
     }
 
-    if (saveWin == null) saveWin = makeSaveCollidersWindow(onSave);
+    if (saveWin == null) saveWin = await makeSaveCollidersWindow(onSave);
         else saveWin.show();    
 }
 
@@ -78,15 +82,15 @@ const resetEditor = (clearColliders = true) => {
 
     Engine.ui.findByName('create-collider').clearSelection();
     
-    ID('tool-info').textContent = '';
+    editor.toolInfo = '';
 }
 
 const createNewCollider = (type) => {
     editor.colliders = editor.colliders.filter(c => c.complete);
 
-    if (type == 'poly')   ID('tool-info').textContent = 'Polygon';
-    if (type == 'box')    ID('tool-info').textContent = 'Box';
-    if (type == 'circle') ID('tool-info').textContent = 'Circle';
+    if (type == 'poly')   editor.toolInfo = 'Polygon';
+    if (type == 'box')    editor.toolInfo = 'Box';
+    if (type == 'circle') editor.toolInfo = 'Circle';
 
     editor.editedCollider = null;                                                           // remove the edited object
 
@@ -138,7 +142,11 @@ const makeImagesWindow = async (data) => {
         if (e.data.kind == 'file') {
             console.log('Downloading:', e.data.name);
             const file = await files.fileSystem.loadFile(e.data.name);
-            editor.actor.imageFromFile(file);        
+            await editor.actor.imageFromFile(file);      
+            
+            editor.cwdImages     = files.currentDir;
+            editor.actorFilename = e.data.name;
+            editor.toolInfo      = editor.toolInfo;
         }        
     });
 }
@@ -252,11 +260,13 @@ const updateColliders = () => {
     editor.lineDashOfs++;
     if (editor.lineDashOfs > 22) editor.lineDashOfs = 0;
 
+    /*
     if (editor.mode != null && editor.mouseOnCanvas) {                                                  // draw crosshair
         const m = editor.mousePos;
         s.drawLine(V2(0, m.y), V2(Engine.dims.x, m.y), { stroke:'rgba(255,255,255,0.5)'});
         s.drawLine(V2(m.x, 0), V2(m.x, Engine.dims.y), { stroke:'rgba(255,255,255,0.5)'});
     }
+    */
 }
 
 /* ----------------------------------------------------------------------------
@@ -264,7 +274,12 @@ const updateColliders = () => {
     Main entry point
 
    ----------------------------------------------------------------------------*/
-const createUI = async() => {    
+const createUI = async() => {        
+    addPropertyListener(editor, 'toolInfo', (e) => {
+        console.log(editor.actor);
+        ID('tool-info').textContent = e + ' [' + editor.actorFilename + ']';
+    });
+
     if (localStorage['TGE-Collider-Editor']) {
         const o = JSON.parse(localStorage['TGE-Collider-Editor']);
         editor.cwdImages = o.cwdImages;
@@ -278,7 +293,11 @@ const createUI = async() => {
     makeImagesWindow(Engine.ui._loadedData);
     makeColliderListWindow();
     
-    editor.actor       = Engine.gameLoop.add('actor', { position:Engine.dims.mulScalar(0.5), imgUrl:'/assets/img/fort1.png', name:'Fort1' });    
+
+    Engine.renderingSurface.ctx.imageSmoothingEnabled = false;
+	Engine.renderingSurface.ctx.imageSmoothingQuality = 'low';
+
+    editor.actor       = Engine.gameLoop.add('actor', { position:Engine.dims.mulScalar(0.5).sub(V2(0, 200)), imgUrl:editor.actorFilename, scale:2 });    
     editor.angleWidget = new AngleWidget({ position:V2(100, Engine.dims.y - 100), radius:80, actor:editor.actor });
     
     const layer        = new CustomLayer({ addLayer:true, zIndex:2 });     // draw the colliders on a custom layer:

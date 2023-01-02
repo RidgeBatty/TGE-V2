@@ -1,0 +1,8 @@
+{
+    rootElem:'game',
+    clearColor:'erase',
+    flags:{ hasEdges:false, hasWorld:true, hasRenderingSurface:true, hasUI:true, preventKeyDefaults:false },
+    gameLoop:{
+        flags: { collisionsEnabled:true, showColliders:true }
+    }
+}

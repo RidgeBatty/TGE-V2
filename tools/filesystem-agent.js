@@ -10,8 +10,9 @@ import { Engine } from "../engine.js";
 class FileSystemAgent {
     constructor(net, errorHandler) {
         if (net == null && Engine.net == null) throw 'Networking not available.'
-        this.net = net || Engine.net;    
-        this.onError = errorHandler ? errorHandler : function() {};    
+        this.net        = net || Engine.net;    
+        this.onError    = errorHandler ? errorHandler : function() {};    
+        this._cachedCwd = '';
     }
 
     _request() {
@@ -26,9 +27,9 @@ class FileSystemAgent {
         if (filter) return await this._request('/dir/' + filter);
         return await this._request('/dir');
     }
-    async getWorkingDirectory() { return await this._request('/cwd') }    
+    async getWorkingDirectory() { const cwd = await this._request('/cwd'); this._cachedCwd = cwd; return cwd; }    
     async getFileInfo(name) { return await this._request('/info/' + name) }
-    async changeDirectory(dir) { return await this._request('/cd', dir) }
+    async changeDirectory(dir) { const d = await this._request('/cd', dir); this._cachedCwd = d.currentDir; return d; }
     async loadFile(name) { return await this._request('/dl/' + name) }
     async saveFile(data) { return this._request('/save', data) }    
 }

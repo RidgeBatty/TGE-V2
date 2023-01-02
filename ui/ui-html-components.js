@@ -108,6 +108,7 @@ class UCustomList extends UBaseElement {
      * CustomList component has 3 different types: row, column or grid. Every type has a ".head" and ".body" element.
      * @param {object} o      
      * @param {string} o.tagName
+     * @param {string} o.type 'row' | 'column' | 'grid'
      */
     constructor(o) {
         if (!('tagName' in o)) o.tagName = 'ui-customlist';        

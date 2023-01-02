@@ -6,13 +6,12 @@
     Click on the actors to destroy them and spawn floating score particles at the location.
 
 */
-import * as TGE from '../../engine.js';
+import { Engine, Types } from '../../engine.js';
 import { ParticleSystem }  from '../../particles.js';
 import { getJSON } from '../../utils.js';
 import { Circle } from '../../physics.js';
 
-const Engine = TGE.Engine;	
-const { Vector2:Vec2, Rect } = TGE.Types;
+const { Vector2:Vec2, Rect } = Types;
 
 // Handle actor click event
 const onClickActor = (e) => {    
@@ -32,7 +31,7 @@ const main = async () => {
     
     // First let's set up the engine    
     Engine.setRootElement('game');
-    Engine.setFlags({ hasRenderingSurface:true });    
+    Engine.flags.setFlag('hasRenderingSurface');    
 
     try {        
         const layer = Engine.addLayer({ imgUrl:'img/level1.jpg' });        
@@ -48,7 +47,7 @@ const main = async () => {
             ship.hasColliders = true;
             
             ship.colliders.add(new Circle(Vec2.Zero(), 256));                                                                   // add a collider (to act as a mouse click target)            
-            ship.addEvent('click', (e) => onClickActor(e));                                                                         // add the click event handler
+            ship.events.add('click', (e) => onClickActor(e));                                                                         // add the click event handler            
         }      
         
         const particleSystem = new ParticleSystem(Engine);                                                                                       // create a particle system        

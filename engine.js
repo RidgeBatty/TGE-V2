@@ -19,7 +19,7 @@
 * For example a space invaders, tetris, pong, asteroids, etc. might have no use of container for static World but a platformer game definitely has.
 *
 */
-const VersionNumber = '2.4.1';
+const VersionNumber = '2.5';
 
 import * as Types from "./types.js";
 import { Root, Enum_HitTestMode } from "./root.js";
@@ -32,6 +32,7 @@ import * as Utils from "./utils.js";
 import { Flags } from "./flags.js";
 import { Events } from "./events.js";
 import { UI } from "./ui/ui-html.js";
+import { CustomLayer } from "./customLayer.js";
     
 const Rect         = Types.Rect;
 const Vector2	   = Types.Vector2;
@@ -50,6 +51,7 @@ const DefaultFlags = {
 	'autoZoomEnabled' : true,
 	'hasUI' : false,
 	'connection' : false,
+	'developmentMode' : false,
 }
 
 const die = (msg) => {
@@ -73,17 +75,20 @@ class TinyGameEngine {
 	constructor (o) {		
 		AE.sealProp(this, 'flags', new Flags(DefaultFlags, (a, b) => this.onFlagChange(a, b))); 				// create default flags and make 'this.flags' immutable
 		AE.sealProp(this, 'url', import.meta ? new URL('./', import.meta.url).pathname : null);
-				
-		this.renderingSurface = null;
-		this.gameLoop    = new GameLoop({ engine:this });		
-		this._zoom	     = 1;
-		this.resolution  = new Vector2(1152, 648);
 
-		/**
-		 * Optional network module
-		 */
+		// reserved names for optional modules:
+		AE.sealProp(this, 'assetManager');
+		AE.sealProp(this, 'audio');
 		AE.sealProp(this, 'net');
+		AE.sealProp(this, 'data', {});
 
+		// main rendering surface:
+		AE.sealProp(this, 'renderingSurface', null);
+
+		this.gameLoop     = new GameLoop({ engine:this });		
+		this._zoom	      = 1;
+		this.resolution   = new Vector2(1152, 648);
+		
 		/** 
 		 * @type {Types.Rect}
 		 * @desc Rectangle representing the game engine viewport area in the browser window 
@@ -95,12 +100,7 @@ class TinyGameEngine {
 		 * @desc Rectangle representing the area where actors are allowed to move 
 		 */		
 		this.edges      = new Rect(0, 0, 1920, 1080);			
-		
-		/** 		 
-		 * @type {Sounds}		 
-		 * @desc Reference to <a href="module-Audio-Sounds.html">Sounds class</a> (audio subsystem)* 
-		 */
-		this.audio		= null;
+		this.edgeAction = 'collide';		
 
 		this._rootElem  = document.body;
 		
@@ -118,6 +118,8 @@ class TinyGameEngine {
 				
 		this.events        = new Events(this, ImplementsEvents);		
 		this.preventedKeys = {};
+		this.allowedKeys   = {};
+
 		this.initCompleted = false;
 				
 		this.#installEventHandlers();				
@@ -133,6 +135,8 @@ class TinyGameEngine {
 		AE.addEvent(window, 'touchmove', (e) => { mousemove(e); }, { passive:false });
 		AE.addEvent(window, 'touchstart', (e) => { mousedown(e); });
 		AE.addEvent(window, 'touchend', (e) => { mouseup(e); });				
+
+		//AE.addEvent(window, 'beforeunload', (e) => { e.preventDefault(); e.stopPropagation(); return e.returnValue = null; });
 
 		// all internal event handlers:
 		const resize = (e) => {		
@@ -191,9 +195,7 @@ class TinyGameEngine {
 	
 			// to-do: optimize with a container that has only actors which have 'click' event installed
 			for (const actor of this.gameLoop.actors) if (actor.flags.mouseEnabled) {
-				for (const evt of actor._events.click) {
-					actor._clickEventHandler({ name:'click', button:e.button, position:Engine.mousePos.clone() });
-				}
+				actor._clickEventHandler({ name:'click', button:e.button, position:Engine.mousePos.clone() });				
 			}			
 		}		
 
@@ -218,13 +220,13 @@ class TinyGameEngine {
 		const keydown = (e) => {						
 			const evt = { event:e, code:e.code, key:e.key, target:e.target };
 			
-			this.events.fire('keydown', evt);			
+			this.events.fire('keydown', evt);					
 			
-			if (!this._keys.status[e.code]) this.events.fire('keypress', evt);
+			if (!this._keys.status[e.code]) this.events.fire('keypress', evt);					// keypress is fired exactly ONCE on keydown, but if key is held down for a longer time "keydown" event will fire repeatedly
 			this._keys.status[e.code] = true;	
 
 			if (this.flags.getFlag('hasUI') && this.ui.isInputElement(e.target)) return;
-			if (this.flags.getFlag('preventKeyDefaults') || this.preventedKeys[e.code]) e.preventDefault();
+			if (this.allowedKeys[e.code] == null && (this.flags.getFlag('preventKeyDefaults') || this.preventedKeys[e.code])) e.preventDefault();			
 		}
 
 		const keyup = (e) => {			
@@ -234,7 +236,7 @@ class TinyGameEngine {
 			this.events.fire('keyup', evt);
 
 			if (this.flags.getFlag('hasUI') && this.ui.isInputElement(e.target)) return;
-			if (this.flags.getFlag('preventKeyDefaults') || this.preventedKeys[e.code]) e.preventDefault();
+			if (this.allowedKeys[e.code] == null && (this.flags.getFlag('preventKeyDefaults') || this.preventedKeys[e.code])) e.preventDefault();
 		}	
 
 		const wheel = (e) => {			
@@ -246,6 +248,9 @@ class TinyGameEngine {
 		for (const evtName of this.events.names) {	
 			AE.addEvent(window, evtName, e => evt[evtName](e));
 		}
+
+		// synthetic events:
+		this.events.create('keypress');		
 	}
 
 	get startTime() {
@@ -260,7 +265,9 @@ class TinyGameEngine {
 		delta -= hours * 3600;
 		const mins  = ~~(delta / 60) % 60;
 		delta -= mins * 60;
-		return { days, hours, mins, secs:~~(delta % 60) }
+		const secs  = ~~(delta % 60);
+		const formatted = (hours ? (hours + '').padStart(2, '0') + ':' : '') + (mins + '').padStart(2, '0') + ':' + (secs + '').padStart(2, '0');
+		return { days, hours, mins, secs, formatted }
 	}
 
 	get viewport() {		
@@ -342,9 +349,8 @@ class TinyGameEngine {
 	*/
 	get hasWorld() { return this.flags.getFlag('hasWorld') }
 	set hasWorld(value) {											// hasWorld cannot be set to false!	
-		console.log('hello');
 		if (value === true && !this.flags.getFlag('hasWorld')) {			
-			this.world = new World({ owner:this });			
+			this.world = new World({ engine:this });			
 			this.flags.setFlag('hasWorld');
 		}
 	}	
@@ -391,6 +397,8 @@ class TinyGameEngine {
 		if (el instanceof HTMLElement) {
 			if (this._rootElem != el && this._rootElem instanceof HTMLElement) this._rootElem.style.zoom = '';
 			this._rootElem = el;
+			this.resolution.x = el.clientWidth;
+			this.resolution.y = el.clientHeight;
 			this.recalculateScreen();			
 			this.autoZoom();			
 		}
@@ -421,10 +429,7 @@ class TinyGameEngine {
 	 * GameLoop updates physics (if enabled), updates the Actors and responds to Controller input.
 	 * @param {function} beforeTickCallback A callback to be executed before every engine tick
 	 */
-	start(beforeTickCallback) {
-		//this.recalculateScreen();			
-		//this.autoZoom();			
-
+	start(beforeTickCallback) {		
 		this._startTime = new Date();
 		this.gameLoop.onBeforeTick = beforeTickCallback;
 		this.gameLoop.start();		
@@ -446,13 +451,39 @@ class TinyGameEngine {
 		this.start(this.gameLoop.onBeforeRender);
 	}
 
+	fadeIn(duration = 60) {
+		return new Promise(resolve => {	
+			const cl = new CustomLayer({ owner:this.gameLoop, zIndex:this.gameLoop.zLayers.length - 1, addLayer:true });
+
+			let tick = duration;			
+			cl.update = () => {
+				tick--;
+				const d    = Math.max(tick / duration, 0);
+				const fill = `rgba(0,0,0,${d})`;				
+
+				this.renderingSurface.resetTransform();
+				this.renderingSurface.drawRect(new Rect(0, 0, this.renderingSurface.width, this.renderingSurface.height), { fill });
+
+				if (d == 0) cl.destroy();
+			}
+		});
+	}
+
 	fadeOut(duration = 60) {
 		return new Promise(resolve => {			
-			this.gameLoop.addTimer({ duration, onTick:(e) => {
-				const d = 1 - e.ticksLeft / e.duration;
+			const cl = new CustomLayer({ owner:this.gameLoop, zIndex:this.gameLoop.zLayers.length - 1, addLayer:true });
+
+			let tick = 0;	
+			cl.update = () => {
+				tick++;
+				const d    = Math.min(tick / duration, 1);
 				const fill = `rgba(0,0,0,${d})`;				
-				this.renderingSurface.drawRect(0, 0, this.renderingSurface.width, this.renderingSurface.height, { fill });
-			}, onComplete:() => { resolve(); } });
+
+				this.renderingSurface.resetTransform();
+				this.renderingSurface.drawRect(new Rect(0, 0, this.renderingSurface.width, this.renderingSurface.height), { fill });
+
+				if (d == 1) cl.destroy();
+			}
 		});
 	}
 
@@ -478,12 +509,13 @@ class TinyGameEngine {
 
 	/**
 	 * Creates a new World instance and saves the reference to Engine.world property.
-	 * @param {*} o 	
+	 * @param {object|World} o Constructor parameters for World object | user created descendant of World object
 	 */	
 	createWorld(o) {		
 		if (this.world == null) {
-			this.world = new World(o);
-			this.flags.setFlag('hasWorld');
+			if (typeof o == 'object') this.world = new World(o);							
+			if (o instanceof World)   this.world = o;
+			this.flags.setFlag('hasWorld');								
 		}
 	}
 	
@@ -493,6 +525,7 @@ class TinyGameEngine {
 		let s = parentElem ? parentElem : this._rootElem;
 		s = (typeof s == 'string') ? ID(s) : s;		
 		this.renderingSurface = new Renderer(s, surfaceFlags);
+		this.renderingSurface.name = 'EngineRenderingSurface';
 		this.flags.setFlag('hasRenderingSurface');
 	}
 
@@ -506,7 +539,7 @@ class TinyGameEngine {
 	onFlagChange(name, value) {
 		if (value && name == 'hasRenderingSurface' && this.renderingSurface == null) this.createRenderingSurface();
 		if (value && name == 'hasUI' && this.ui == null) this.createUI('hud');
-		if (value && name == 'hasWorld' && this.world == null) this.createWorld(this);
+		if (value && name == 'hasWorld' && this.world == null) this.createWorld({ engine:this });
 	}
 	
 	_setupComplete() {						// this function is called when engine has completed init() and setup()
@@ -525,8 +558,15 @@ class TinyGameEngine {
 		this._mainFunction = mainFunction;
 		if (setupOptions) this.setup(setupOptions);
 			else {
-				this.initCompleted = true;
-				mainFunction();
+				this.initCompleted = true;				
+				return new Promise(async resolve => {								// put the mainFunction() in a promise in case it throws!
+					try {
+						await mainFunction();				
+						resolve(true);
+					} catch (e) {
+						console.error(e);						
+					}
+				});
 			}
 	}
 
@@ -550,7 +590,24 @@ class TinyGameEngine {
 					this.gameLoop.flags[k] = v;
 				}
 			}			
-		}			
+		}
+		if ('edgeAction' in o)    this.edgeAction = o.edgeAction;
+
+		if ('preventedKeys' in o) Object.assign(this.preventedKeys, o.preventedKeys);
+		if ('allowedKeys' in o)   Object.assign(this.allowedKeys, o.allowedKeys);		
+
+		if (this.flags.getFlag('hasRenderingSurface')) {
+			if ('imageSmoothingEnabled' in o) this.renderingSurface.ctx.imageSmoothingEnabled = o.imageSmoothingEnabled;
+			if ('imageSmoothingQuality' in o && ['low', 'medium', 'high'].includes(o.imageSmoothingQuality)) this.renderingSurface.ctx.imageSmoothingQuality = o.imageSmoothingQuality;			
+		}
+
+		if (this.flags.getFlag('developmentMode')) {
+			console.warn('Development mode enabled');
+			Object.assign(this.allowedKeys, { F5:true, F11:true, F12:true });
+			AE.require('engine/tools/development.js', { module:true });
+			AE.require('engine/css/devtools.css');			
+		}
+		
 		if (!this.initCompleted) this._setupComplete();
 	}
 }

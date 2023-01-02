@@ -15,11 +15,12 @@ class TNode {
         if ('scale' in o && !AE.isNumeric(o.scale)) throw 'Parameter "scale" must be a Number';
         if ('rotation' in o && !AE.isNumeric(o.rotation)) throw 'Parameter "rotation" must be a Number';
 		
+        this.offset       = ('offset' in o) ? o.offset : Vec2.Zero();		
         this.position     = ('position' in o) ? o.position : Vec2.Zero();
         this.rotation     = ('rotation' in o) ? o.rotation : 0;		
         this.scale        = ('scale' in o) ? o.scale : 1;		    
         this.velocity     = ('velocity' in o) ? o.velocity : Vec2.Zero();		
-        this.pivot		  = ('pivot' in o) ? o.pivot : Vec2.Zero();
+        this.origin		  = ('origin' in o) ? o.origin : Vec2.Zero();
 
         this.parent       = o.parent;
         this.children     = [];

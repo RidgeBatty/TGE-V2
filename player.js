@@ -7,9 +7,11 @@ import { Actor } from './actor.js';
 import * as Types from './types.js';
 import { KeyController, GamepadController, PointerController } from './gameController.js';
 import { Enum_HitTestMode } from './engine.js';
+import { Hitpoints } from './hitpoints.js';
+import { Mixin } from './utils.js';
 
-const Vector2 = Types.Vector2;
-const { Overlap, Ignore } = Enum_HitTestMode;		
+const { Vector2:Vec2, V2 } = Types;
+const { Overlap, Ignore }  = Enum_HitTestMode;		
 
 const Enum_PlayerMovement = {	
 	None         	   : 0,	
@@ -43,6 +45,12 @@ class Player extends Actor {
 		this.lives		    = ('lives' in o) ? o.lives : 1;
 		this.customMovement = null;
 		this.score          = 0;
+		this.keyMask        = {											// set mask to false to temporarily disable key processing in updateMovement()
+			up    : true,
+			down  : true,
+			left  : true,
+			right : true,	
+		}
 
 		if ('controls' in o) {
 			const c = o.controls;
@@ -53,7 +61,15 @@ class Player extends Actor {
 		
 		if ('movement' in o) this.setMovementType(Enum_PlayerMovement[o.movement]);
 		
-		//if (Engine.useWorld) this.world = Engine.world;
+		Mixin(this, Hitpoints, o);
+	}
+
+	disableControllers() {
+		for (const c of Object.values(this.controllers)) c.isActive = false;
+	}
+
+	enableControllers() {
+		for (const c of Object.values(this.controllers)) c.isActive = true;
 	}
 
 	setMovementType(value) {		
@@ -145,9 +161,10 @@ class Player extends Actor {
 		const p    = this;
 		const keys = p.controllers['keyboard'];	
 		
-		if (keys == null || p._movementType == Enum_PlayerMovement.None) return;
+		if (keys == null || p._movementType == Enum_PlayerMovement.None || this._isMovementCancelled) return;
 		
-		const ks   = keys.keyState;
+		const ks = Object.assign({}, keys.keyState);
+		for (const [k, v] of Object.entries(this.keyMask)) ks[k] = ks[k] & v;		
 		
 		switch (p._movementType) {
 		case Enum_PlayerMovement.FirstPersonShooter: {
@@ -156,13 +173,13 @@ class Player extends Actor {
 			const turnRate = p.movement.turnRate * delta;
 			const sAcc     = p.movement.strafe * delta;
 			
-			if (ks.left)  	  p.addImpulse(Vector2.Left().rotate(p.rotation).mulScalar(sAcc));		
-			if (ks.right) 	  p.addImpulse(Vector2.Right().rotate(p.rotation).mulScalar(sAcc));
+			if (ks.left)  	  p.addImpulse(Vec2.Left().rotate(p.rotation).mulScalar(sAcc));		
+			if (ks.right) 	  p.addImpulse(Vec2.Right().rotate(p.rotation).mulScalar(sAcc));
 			if (ks.turnLeft)  p.rotation -= turnRate;	
 			if (ks.turnRight) p.rotation += turnRate;	
 				
-			if (ks.up)    	  p.addImpulse(Vector2.Up().rotate(p.rotation).mulScalar(acc));
-			if (ks.down)  	  p.addImpulse(Vector2.Down().rotate(p.rotation).mulScalar(acc));
+			if (ks.up)    	  p.addImpulse(Vec2.Up().rotate(p.rotation).mulScalar(acc));
+			if (ks.down)  	  p.addImpulse(Vec2.Down().rotate(p.rotation).mulScalar(acc));
 			
 			break; }
 		case Enum_PlayerMovement.SpaceShip: {
@@ -173,18 +190,18 @@ class Player extends Actor {
 			if (ks.left)  	  p.rotation -= turnRate;	
 			if (ks.right) 	  p.rotation += turnRate;	
 			
-			if (ks.up)    	  p.addImpulse(Vector2.Up().rotate(p.rotation).mulScalar(acc));
-			if (ks.down)  	  p.addImpulse(Vector2.Down().rotate(p.rotation).mulScalar(acc));
+			if (ks.up)    	  p.addImpulse(Vec2.Up().rotate(p.rotation).mulScalar(acc));
+			if (ks.down)  	  p.addImpulse(Vec2.Down().rotate(p.rotation).mulScalar(acc));
 			
 			break; }	
 		case Enum_PlayerMovement.Car: {
 			if (this.velocity.length > 0) {
 				// calculate how much the current travel angle deviates from the vehicle's sides, i.e. going sideways to the travel angle would cause maximum friction.
-				const dev = Math.acos(this.velocity.clone().normalize().dot(Vector2.FromAngle(p.rotation))) / Math.PI;						
+				const dev = Math.acos(this.velocity.clone().normalize().dot(Vec2.FromAngle(p.rotation))) / Math.PI;						
 				this.velocity.mulScalar(1 - (dev * this.movement.friction));
 
 				if (isNaN(this.velocity.length)) {				// make sure velocity does not underflow
-					this.velocity = new Vector2(0, 0);
+					this.velocity = Vec2.Zero();
 				}
 			}
 
@@ -192,8 +209,8 @@ class Player extends Actor {
 			const acc       = p.movement.acceleration * delta;
 			const turnRate  = p.movement.turnRate * delta;						
 						
-			if (ks.up)    	  p.addImpulse(Vector2.Up().rotate(p.rotation).mulScalar(acc));
-			if (ks.down)  	  p.addImpulse(Vector2.Down().rotate(p.rotation).mulScalar(acc));			
+			if (ks.up)    	  p.addImpulse(Vec2.Up().rotate(p.rotation).mulScalar(acc));
+			if (ks.down)  	  p.addImpulse(Vec2.Down().rotate(p.rotation).mulScalar(acc));			
 
 			this.velocity.mulScalar(1 - this.movement.rollingFriction);
 
@@ -201,11 +218,11 @@ class Player extends Actor {
 			if (ks.right) 	  p.rotation += turnRate * this.velocity.length;	
 			break; }
 		case Enum_PlayerMovement.Arcade:
-		case Enum_PlayerMovement.Default:
-			if (ks.up)  	  p.velocity.add(new Vector2(0, -p.movement.acceleration));
-			if (ks.down)  	  p.velocity.add(new Vector2(0, p.movement.acceleration));			
-			if (ks.left)  	  p.velocity.add(new Vector2(-p.movement.acceleration,  0));
-			if (ks.right)  	  p.velocity.add(new Vector2(p.movement.acceleration, 0));
+		case Enum_PlayerMovement.Default:		
+			if (ks.up)  	  p.velocity.add(V2(0, -p.movement.acceleration));
+			if (ks.down)  	  p.velocity.add(V2(0, p.movement.acceleration));			
+			if (ks.left)  	  p.velocity.add(V2(-p.movement.acceleration,  0));
+			if (ks.right)  	  p.velocity.add(V2(p.movement.acceleration, 0));
 			break;
 		case Enum_PlayerMovement.Custom:
 			if (this.customMovement) this.customMovement(ks);

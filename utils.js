@@ -8,6 +8,7 @@
 import './ext/random.js';
 import './ext/hjson.min.js';
 import * as Types from './types.js';
+
 const Vec2 = Types.Vector2;
 
 /**
@@ -132,8 +133,8 @@ const rtByActorType = (o) => {
 const waitClick = async (elem) => {
 	let clickResolve = null;
 	
-	AE.addEvent(elem, 'click', _ => {
-		if (clickResolve != null) clickResolve();
+	AE.addEvent(elem, 'click', e => {
+		if (clickResolve != null) clickResolve(e);
 	});		
 	
 	return new Promise(resolve => {				
@@ -187,6 +188,10 @@ const randomInRange = (arr) => {
 	return Math.random() * Math.abs(arr[0] - arr[1]) + arr[0];
 }	
 
+const randomOfArray = (arr) => {
+	return arr[Math.floor(Math.random() * arr.length)];
+}
+
 /**
  * loadedJsonMap stores the url's and raw text of the loaded (h)json files. 
  * Why? Because getJson() promise can't return multiple parameters + most of the time this additional data is not needed + the signature would change if the getJSON() returned an object
@@ -201,8 +206,8 @@ const getJSON = (url, getText) => {
 			let text;
 			const isHjson = (url.split('.').pop() == 'hjson');
 			fetch(url)
-				.then(response => response.text())
-				.then(asText => { text = asText; return isHjson ? Hjson.parse(text) : JSON.parse(text); })
+				.then(response => { if (response.status == '404') return reject({ error:'file not found', context:url }); return response.text(); })
+				.then(asText => { text = asText; try { return isHjson ? Hjson.parse(text) : JSON.parse(text); } catch (e) { reject({ error:'parse error', debug:e, context:url }) } })
 				.then(json => {
 					if (getText) loadedJsonMap.set(json, { text, url });
 					resolve(json);
@@ -285,11 +290,13 @@ const Mixin = (target, source, createParams) => {
 }
 
 const addElem = (o) => {
-    const el = AE.newElem(o.parent, 'type' in o ? o.type : 'div', o.className);
-    if ('text' in o) el.textContent = o.text;
-    if ('html' in o) el.innerHTML = o.html;
-    if ('id' in o) el.id = o.id;
-   return el;
+    const el = document.createElement('type' in o ? o.type : 'div');
+    if ('text' in o)  el.textContent = o.text;
+    if ('class' in o) el.className = o.class;
+    if ('id' in o)    el.id = o.id;
+    const parent = ('parent' in o) ? ((typeof o.parent == 'string') ? document.getElementById(o.parent) : o.parent) : document.body;
+    parent.appendChild(el);
+    return el;
 }
 
 const addPropertyListener = (object, prop, handler) => {
@@ -306,6 +313,29 @@ const addPropertyListener = (object, prop, handler) => {
 		}
 	});
 }
+
+/**
+ * Get shortest distance between two angles (in radians)
+ * @param {number} a0 Angle (in radians)
+ * @param {number} a1 Angle (in radians)
+ * @returns 
+ */
+const shortAngleDist = (a0, a1) => {
+    var max = Math.PI * 2;
+    var da = (a1 - a0) % max;
+    return 2 * da % max - da;
+}
+
+/**
+ * Smooth interpolation between two angles using shortest path (in radians)
+ * @param {number} a0 Starting angle (in radians)
+ * @param {number} a1 Ending angle (in radians)
+ * @param {number} t Float 0 - 1 interpolation where 0 is starting angle and 1 is ending angle
+ * @returns 
+ */
+const angleLerp = (a0, a1, t) => {
+    return a0 + shortAngleDist(a0, a1) * t;
+}
 	
 export { 
 	loadedJsonMap,
@@ -321,7 +351,10 @@ export {
 
 	rtByActorType,
 	randomInRange, 
+	randomOfArray,
 	wrapBounds,
+	shortAngleDist,
+	angleLerp,
 
 	removeDuplicates, 
 	arraysEqual,

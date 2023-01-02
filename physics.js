@@ -27,6 +27,7 @@ class PhysicsShape {
 		this.mass		 = 1;
 		this._angle      = 0;		
 		this.points      = [];
+		this.ignoreParentRotation = false;
 
 		AE.sealProp(this, 'isEnabled', true);
 		AE.sealProp(this, 'data', {});
@@ -99,10 +100,10 @@ class PhysicsShape {
 		if (this._angle != 0) p.rotate(this._angle);				
 		p.add(this.position);
 		
-		if (o.rotation != 0) p.rotate(o.rotation);				
+		if (!this.ignoreParentRotation) p.rotate(o.rotation);				
 		p.mulScalar(o.scale);
-		p.add(o.position);								
-		p.add(o.pivot);				
+		p.add(o.renderPosition);								
+		p.add(o.offset);				
 		return p;
 	}
 
@@ -162,6 +163,9 @@ class Circle extends PhysicsShape {
 		c2.velocity.sub(pTan.mulScalar(c2.restitution));				
 	}
 	*/	
+	get projectedPoints() {				
+		return [this.project(Zero)];
+	}
 
 	extent() {
 		const point  = this.project(Zero);		
@@ -432,10 +436,10 @@ class Poly extends PhysicsShape {
  * Applies full transform to all points of this polygon. Returns a new array with copies of points.
  */
 	get projectedPoints() {		
-		if (this._projectedPointsCache.length == 0) {			
-			this._projectedPointsCache = super.projectedPoints();
-		} else result = this._projectedPointsCache;
-		return result;
+		if (this._projectedPointsCache.length == 0) {				
+			this._projectedPointsCache = super.projectedPoints;
+		} 		
+		return this._projectedPointsCache;
 	}
 
 /**
@@ -445,8 +449,7 @@ class Poly extends PhysicsShape {
 		if ( !Array.isArray(arr)) throw 'Parameter must be an array';
 		if (arr.length % 2 == 0) {
 			this.points.length = arr.length / 2;
-			for (var i = 0; i < arr.length / 2; i++) {				
-				
+			for (var i = 0; i < arr.length / 2; i++) {			
 				this.points[i] = new Vector2(arr[i * 2], arr[i * 2 + 1]);				
 			}
 		}
@@ -535,6 +538,12 @@ class Poly extends PhysicsShape {
 			if (n) return true;
 		}		
 		return false;
+	}
+
+	clone() {
+		const p = new Poly(this.position.clone(), this.angle);
+		p.points = [...this.points];
+		return p;
 	}
 }
 
