@@ -103,8 +103,12 @@ class Actor extends Root {
 		 */
 		AE.sealProp(this, 'movement', new ActorMovement(this));								// movement object (TO-DO: might need a Class?)
 		AE.sealProp(this, 'data', ('data' in o) ? o.data : {});								// Container for custom user data
+		AE.sealProp(this, 'surface');
 
-		this.surface         = ('surface' in o) ? o.surface : Engine.renderingSurface;
+		if ('surface' in o) this.surface = o.surface;
+			else
+				if (o?.owner?.surface) this.surface = this.owner.surface;			
+		
 		this.flipbooks       = [];
 		this._target         = null;														// follow/tracking target (actor or some object with a position)
 		this._follower       = null;
@@ -253,7 +257,7 @@ class Actor extends Root {
 		if (this.hpMax)           createParams.hpMax  = this.hpMax;
 		if (this.hp)              createParams.hp     = this.hp;
 		if (this.lives)           createParams.lives  = this.lives;
-
+		
 		const actor = new this.constructor(Object.assign(createParams, appendCreateParams));		
 		
 		// add optional properties to the actor after creation
@@ -276,7 +280,12 @@ class Actor extends Root {
 		}
 		
 		this.flipbooks.forEach(fb => actor.flipbooks.push(fb.clone(actor)));	// clone flipbooks collection
+		
 		if (addToGameLoop)  this.owner.add(actor);								// add to gameLoop?
+
+		if (!(('surface') in appendCreateParams) && this?.owner?.surface) {		// copy reference to original actor's rendering surface if new one is not given in appendCreateParams
+			actor.surface = this.owner.surface;
+		}
 
 		return actor;
 	}
@@ -328,8 +337,8 @@ class Actor extends Root {
 		if (len > this.movement.maxVelocity) this.velocity.normalize().mulScalar(this.movement.maxVelocity);	
 	}
 
-	_renderFlipbooks(c) {
-		for (const fb of this.flipbooks) {
+	_renderFlipbooks(c) {		
+		for (const fb of this.flipbooks) {			
 			fb.update();						// select a frame from a flipbook if the actor has one specified			
 			
 			const n = fb.customRender;			
@@ -356,8 +365,8 @@ class Actor extends Root {
 			c.rotate(rotation);
 			c.translate(size.x * origin.x, size.y * origin.y);
 			
-			if (img.isCanvasSurface) c.drawImage(img.canvas, 0, 0);							
-				else c.drawImage(img, 0, 0);
+			if (n.img.isCanvasSurface) c.drawImage(n.img.canvas, 0, 0);							
+				else c.drawImage(n.img, 0, 0);
 		}
 	}
 

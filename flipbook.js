@@ -272,8 +272,18 @@ class Flipbook {
 				else
 			if (fb.type == 'images') {
 				for (const s of fb.sequences) {
-					const images = await flipbook.loadAsFrames(s.urls, s.path, true);
-					const seq    = flipbook.appendSequence(s.name, s.urls.length, s.loop);
+					var urls = s.urls;
+					if (typeof s.urls == 'object' && !Array.isArray(s.urls)) {
+						if (!('name' in s.urls && 'start' in s.urls && 'end' in s.urls)) throw 'URLs object must contain name, start and end properties';
+						var hashCount = 0, urls = [];
+						for (const c of s.urls.name) hashCount += (c == '#');
+						for (let i = s.urls.start; i <= s.urls.end; i++) {
+							let str = (i + '').padStart(hashCount, '0');							
+							urls.push(s.urls.name.replace('#'.repeat(hashCount), str));
+						}
+					} 						
+					const images = await flipbook.loadAsFrames(urls, s.path, true);					
+					const seq    = flipbook.appendSequence(s.name, urls.length, s.loop);
 					if ('direction' in s) seq.direction = s.direction;
 				}
 			}

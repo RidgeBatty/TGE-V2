@@ -75,7 +75,6 @@ class TileMapRenderer extends CustomLayer {
 		
 		this.params    = params;
 		this.map       = new TileMap(params.tileMap);
-		this.objects   = [];
 		this.time      = 0;
 		this.colliders = new Collider({ owner:this });		
 		this.events    = new Events(this, ImplementsEvents);			
@@ -85,9 +84,7 @@ class TileMapRenderer extends CustomLayer {
 			clearBuffer   : false,			
 			isometric     : ('isometric' in params) ? params.isometric : false,
 		});		
-		this.cursor    = V2(-1, -1);																// x/y coordinates of last selected map tile
-		this._drag     = false;
-		this._oldPos   = Vec2.Zero();																// Save the old position of the map before mouse drag+move. Required only in the editor(?)
+		this.cursor    = V2(-1, -1);																// x/y coordinates of last selected map tile		
 		this.optimizedColliders = [];
 		this.objectType         = 'renderer';
 		this.objectZLayer       = ('objectZLayer' in params) ? params.objectZLayer : this.zIndex;	// on which layer the objects should be rendered on?
@@ -131,14 +128,14 @@ class TileMapRenderer extends CustomLayer {
 				const texture  = map.textures[o.texture];	
 				
 				for (const p of o.positions) {
-					if (this.flags.isometric) {
-						const pn = this.project(p[0], p[1]);
-						var position = V2(pn.left, pn.top);
+					if (this.flags.isometric) {												
+						var position = this.project(V2(p[0], p[1])).add(V2(map.tileSize * 0.5, map.tileSize * 0.5));
 					} else {
 						var position = V2(~~(p[0] * map.tileSize), ~~(p[1] * map.tileSize));
 					}
 
 					const origin = ('origin' in o) ? V2(o.origin.x, o.origin.y) : V2(-0.5, -0.5);
+
 				    const params = { 
 						name:     o.name,
 						position, 
@@ -148,10 +145,12 @@ class TileMapRenderer extends CustomLayer {
 						rotation: (p[3] != null) ? p[3] : 0,
 						surface:  this.buffer,												
 					}
+					
 					if ('texture' in o) { params.img = texture.canvas };
+					if ('image' in o)   { params.imgUrl = o.image; };
 
 					const actor     = this.engine.gameLoop.createTypedActor('obstacle', params);
-
+					
 					if ('flipbooks' in o) actor.flipbooks = await Flipbook.Parse(o.flipbooks, actor);				// load flipbooks
 
 					if (p[4] != null) {																				// 4th value is mirror: 1 = x, 2 = y, 3 = x+y
@@ -181,10 +180,14 @@ class TileMapRenderer extends CustomLayer {
 	}	
 
 	getTileAtCoords(p) {
-		const size = this.map.tileSize;
-		const x    = ~~(p.x / size);
-		const y    = ~~(p.y / size);
-		if (y < 0 || x < 0 || x >= this.map.width || y >= this.map.height) return -1;
+		const { map, position, world } = this;
+
+		const size = map.tileSize;
+
+		if (this.flags.isometric) var p = this.unProject(p);		
+		var x = ~~(p.x / size);
+		var y = ~~(p.y / size);			
+		if (y < 0 || x < 0 || x >= map.width || y >= map.height) return -1;
 		return this.map.tiles[y][x];
 	}
 
@@ -222,21 +225,32 @@ class TileMapRenderer extends CustomLayer {
 
 	/**
 	 * Converts tile coordinates to screen coordinates. Uses this.isometricProjection attribute to determine how the tiles are laid on the screen.
-	 * @param {number} x Tile x coordinate
-	 * @param {number} y Tile y coordinate	 
+	 * @param {Vector2} c Tile coordinates	 
 	 */
-	project(x, y) {
+	project(c) {
+		const {x, y} = c;
 		const camPos = (this.world == null) ? this.position : this.world.camPos;
 		const size   = this.map.tileSize;
 		if (this.projectionMode == 'zigzag') {
-			const top    = (y * size * 0.25) - ~~camPos.y;
-			const left   = (x * size * 1) + ((y % 2) * size * 0.5) - ~~camPos.x;
-			return { top, left }
+			const top    = (y * size * 0.25)                       - ~~camPos.y - size * 0.5;
+			const left   = (x * size * 1) + ((y % 2) * size * 0.5) - ~~camPos.x - size;
+			return V2(left, top);
 		} 
 		if (this.projectionMode == 'angle') {			
-			const top    = (y * size * 0.25) + (x * size * 0.25) - ~~camPos.y;
-			const left   = (x * size * 0.5)  - (y * size * 0.5)  - ~~camPos.x;
-			return { top, left }
+			const top    = (y * size * 0.25) + (x * size * 0.25) - ~~camPos.y - size * 0.25;
+			const left   = (x * size * 0.5)  - (y * size * 0.5)  - ~~camPos.x - size * 0.5;
+			return V2(left, top);
+		}		
+	}
+
+	unProject(c) {
+		const {x, y} = c;
+		const camPos = (this.world == null) ? this.position : this.world.camPos;
+		const size   = this.map.tileSize;
+		if (this.projectionMode == 'angle') {			
+			const top    = y / size * 2 - x / size + 0.5 + camPos.y / size * 2 - camPos.x / size;
+			const left   = x / size + y / size * 2 + 0.5 + camPos.y / size * 2 + camPos.x / size;
+			return V2(left, top);
 		}		
 	}
 
@@ -256,23 +270,18 @@ class TileMapRenderer extends CustomLayer {
 		
 		for (let y = 0; y < map.height; y++) {			
 			for (let x = 0; x < map.width; x++) {				
-				const p    = this.project(x, y);				
+				const p = this.project(V2(x, y));
 				
-				if (!((p.top + size) < 0 || p.top > canvas.height || (p.left + size) < 0 || p.left > canvas.width)) {
+				if (!((p.y + size) < 0 || p.y > canvas.height || (p.x + size) < 0 || p.x > canvas.width)) {
 					const id = map.tiles[y][x];
 					const s  = map.shift[id];
 					
 					if (this.flags.ownerDraw) {						
-						if (s) ctx.drawImage(map.textures[id].canvas, p.left + s.x, p.top + s.y);
-							else ctx.drawImage(map.textures[id].canvas, p.left, p.top);
-
-						/*
-						const t = x + ':' + y;
-						const m = ctx.measureText(t);
-						ctx.fillText(t, p.left - (m.width >> 1) + 64, p.top - ((m.fontBoundingBoxDescent - m.fontBoundingBoxAscent) >> 1) + 32);
-						*/
+						if (s) ctx.drawImage(map.textures[id].canvas, p.x + s.x, p.y + s.y);
+							else ctx.drawImage(map.textures[id].canvas, p.x, p.y);
 					}
-					this.events.fire('customdraw', { renderer:this, x, y, ctx, tileId:id, drawPos:V2(p.x, p.y) });
+
+					this.events.fire('customdraw', { renderer:this, x, y, ctx, tileId:id, drawPos:p });
 				}
 			}
 		}
@@ -326,7 +335,7 @@ class TileMapRenderer extends CustomLayer {
 				
 		for (let y = 0; y < map.height; y++) {			
 			for (let x = 0; x < map.width; x++) {				
-				const p = this.project(x, y);				
+				const p = this.project(V2(x, y));	
 				
 				if (!((p.top + size) < 0 || p.top > canvas.height || (p.left + size) < 0 || p.left > canvas.width)) {
 					const tileId = map.tiles[y][x];					

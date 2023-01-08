@@ -526,6 +526,8 @@ class TinyGameEngine {
 		s = (typeof s == 'string') ? ID(s) : s;		
 		this.renderingSurface = new Renderer(s, surfaceFlags);
 		this.renderingSurface.name = 'EngineRenderingSurface';
+		this.gameLoop.surface = this.renderingSurface;
+		
 		this.flags.setFlag('hasRenderingSurface');
 	}
 

@@ -10,6 +10,7 @@ class Events {
         for (const e of o) this.#list[e] = [];
 
         this.owner = owner;
+        this._stopPropagation = '';
     }
 
     get names() {
@@ -102,8 +103,9 @@ class Events {
         if (!e) return;
         const o = Object.assign({ instigator:this.owner, name }, args);
         for (const evt of e) {
-            if (evt.isActive) evt.handler(o);
+            if (evt.isActive && name != this._stopPropagation) evt.handler(o);
         }
+        this._stopPropagation = '';
     }
 
     findByHandler(handler) {
@@ -124,6 +126,14 @@ class Events {
         return null;
     }
 
+    getEventsByName(eventName) {
+        const events = Object.entries(this.#list);
+        for (const evt of events) {            
+            if (evt[0] == eventName) return evt[1];
+        }
+        return null;
+    }
+
     enable(dispatcher) {        
         const events = Object.entries(this.#list);
         for (const evt of events) {
@@ -138,6 +148,10 @@ class Events {
             const f = evt[1].find(e => e.dispatcher == dispatcher);
             if (f) f.isActive = false;
         }
+    }
+
+    stopPropagation(eventName) {
+        this._stopPropagation = eventName;
     }
 }
 

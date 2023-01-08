@@ -28,6 +28,13 @@ class UCaption extends UBaseElement {
 }
 
 class UButton extends UBaseElement {
+    /**
+     * 
+     * @param {object} o Params object
+     * @param {string} o.className
+     * @param {string} o.caption
+     * @param {function=} o.onClick click event handler 
+     */
     constructor(o) {
         o.tagName = 'ui-button';        
         super(o);                
@@ -35,25 +42,34 @@ class UButton extends UBaseElement {
 
         this.events.create('click');
 
-        const mousedown = (e) => {            
+        const mouseup = (e) => {            
             if (o.behavior && o.behavior == 'close-window') this.getOwnerWindow().close();
             this.events.fire('click', Object.assign(e, { name:'click' }));
         }
-
-        this.events.add('mousedown', mousedown); 
+        this.events.add('mouseup', mouseup); 
+        if ('onClick' in o) this.events.add('click', o.onClick);
     }
 }
 
-class UEdit extends UBaseElement {
+class UInputElement extends UBaseElement {
     constructor(o) {
-        o.tagName   = 'ui-edit';
         o.className = ('className' in o) ? o. className : 'panel-frame';
         super(o);           
 
         this.title = new UCaption({ owner:this, caption:o.caption });
         this.input = addElem({ parent:this.elem, type:'input' });
 
-        if ('edit' in o) this.input.value = o.edit;
+        this.events.create('change');
+        const mousedown = e => {
+            const target = e.target;    
+            const o      = { value:target.value };
+            if ('checked' in target) o.checked = target.checked;
+            this.events.fire('change', o);
+        }        
+        this.elem.addEventListener('change', mousedown);
+        if ('onChange' in o) this.events.add('change', o.onChange);
+
+        if ('value' in o) this.value = o.value;
     }
 
     get value() {
@@ -65,11 +81,110 @@ class UEdit extends UBaseElement {
     }
 }
 
+/**
+ * Caption and Input "text"
+ */
+class UEdit extends UInputElement {    
+    /**
+     * 
+     * @param {object} o Params object
+     * @param {string} o.className
+     * @param {string} o.caption
+     * @param {function=} o.onChange 
+     */
+    constructor(o) {        
+        o.tagName   = 'ui-edit';
+        super(o);                   
+        this.input.setAttribute('type', 'text');
+    }
+}
+
+class USwitch extends UInputElement {
+    constructor(o) {
+        o.tagName   = 'ui-switch';
+        super(o);           
+        this.input.setAttribute('type', 'checkbox');
+        if ('checked' in o)  this.value = o.checked;
+    }
+
+    get value() {
+        return this.input.checked;
+    }
+
+    set value(v) {
+        this.input.checked = v === true ? true : false;
+    }
+}
+
+class USlider extends UInputElement {
+    constructor(o) {
+        o.tagName   = 'ui-slider';
+        super(o);           
+        this.input.setAttribute('type', 'range');
+        if ('min' in o) this.input.setAttribute('min', o.min);
+        if ('max' in o) this.input.setAttribute('max', o.max);
+        if ('step' in o) this.input.setAttribute('step', o.step);
+    }
+}
+
 class UPanel extends UBaseElement {
     constructor(o) {
         o.tagName   = 'ui-panel';
         o.className = ('className' in o) ? o. className : 'panel-frame';
         super(o);                        
+    }
+}
+
+class UMenu extends UBaseElement {
+    constructor(o) {
+        o.tagName   = 'ui-menu';
+        o.className = ('className' in o) ? o. className : '';        
+        super(o);
+
+        this.events.create('show close selectitem');
+
+        this.frame   = AE.newElem(this.elem, 'div', 'frame');
+        this.head    = AE.newElem(this.frame, 'div', 'head');
+        this.body    = AE.newElem(this.frame, 'div', 'body');
+        this.items   = [];
+        this.objectType = 'UMenu';
+
+        if ('items' in o) this.addItems(o.items);
+
+        const mouseup = e => {
+            const target = e.event.target;
+            if (target.tagName == 'UI-MENUITEM') {
+                this.events.fire('selectitem', { target, caption:target.textContent });                
+            }
+            this.close();
+        }
+        this.events.add('mouseup', mouseup);
+
+        if ('createHidden' in o && o.createHidden == true) return this.close();
+    }
+
+    popup(v) {
+        this.position = v;
+        this.show();
+    }
+
+    show() {
+        this.events.fire('show');
+        this.ui.active = this;
+        this.elem.style.display = '';
+    }
+
+    close() {        
+        this.ui.active = null;
+        this.elem.style.display = 'none';
+        this.events.fire('close');
+    }
+
+    addItems(items) {
+        for (const i of items) {
+            let e = addElem({ parent:this.body, text:i, type:'ui-menuitem' });
+            this.items.push(e);
+        }
     }
 }
 
@@ -86,6 +201,9 @@ class UWindow extends UBaseElement {
         this.body    = AE.newElem(this.frame, 'div', 'body');
         this.cpTitle = new UCaption({ parent:this.head, owner:this, caption:o.caption });
         this.btClose = new UButton({ parent:this.head, owner:this, caption:'🗙', position:'auto', className:'close-window', behavior:'close-window' });
+        this.objectType = 'UWindow';
+
+        if ('createHidden' in o && o.createHidden == true) return this.close();
 
         this.ui.active = this;        
     }
@@ -97,9 +215,9 @@ class UWindow extends UBaseElement {
     }
 
     close() {        
-        this.ui.active = null;
         this.elem.style.display = 'none';
-        this.events.fire('close');
+        this.events.fire('close');        
+        this.ui.active = null;        
     }
 }
 
@@ -125,7 +243,7 @@ class UCustomList extends UBaseElement {
         AE.sealProp(this, 'items');
         AE.sealProp(this, 'events');
 
-        const mousedown = e => {            
+        const mouseup = e => {            
             const r = this.items.find(i => i.listElem.contains(e.target));
             if (r) {
                 let found;
@@ -162,7 +280,7 @@ class UCustomList extends UBaseElement {
                 return e;
             }
         }
-        this.events.add('mousedown', mousedown);
+        this.events.add('mouseup', mouseup);
     }
 
     get listType() {
@@ -336,6 +454,7 @@ class UDialog extends UWindow {
         o.tagName    = 'ui-window';        
         super(o);
         this.elem.className  = 'modal dialog';
+        this.objectType      = 'UDialog';
 
         const msg    = new UCaption({ owner:this, position:'auto', align:'even center' });
         if ('message' in o) msg.caption = o.message;
@@ -365,4 +484,4 @@ const Confirmation = async(o) => {
     })
 }
 
-export { UBaseElement, UWindow, UPanel, UButton, UEdit, UCaption, UCustomList, UCustomFileList, UFileList, UDialog, Confirmation }
+export { UBaseElement, UWindow, UPanel, UButton, UEdit, UCaption, USwitch, UCustomList, UCustomFileList, UFileList, UDialog, UMenu, USlider, Confirmation }

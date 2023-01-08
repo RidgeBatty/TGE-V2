@@ -374,6 +374,10 @@ class Color extends BaseColor {
 		c.css = str;			
 		return c;		
 	}
+
+	static FromObject(o) {
+		return new Color(o.r, o.g, o.b, o.a);
+	}
 	
 	clone() {
         return new Color(this.r, this.g, this.b, this.a);

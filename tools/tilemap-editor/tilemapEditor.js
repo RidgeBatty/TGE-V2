@@ -3,7 +3,7 @@ import { Types } from "../../engine.js";
 
 const { Vector2:Vec2 } = Types;
 
-const ImplementsEvents = 'beforedraw customdraw afterdraw mousedown';
+const ImplementsEvents = 'beforedraw customdraw afterdraw mousedown mousemove';
 
 const beforedraw = (o) => {
     o.ctx.strokeStyle = 'black';    
@@ -30,42 +30,47 @@ const afterdraw = (o) => {
     }
 }
 
-class TilemapEditor extends TileMapRenderer {
+class TileMapEditor extends TileMapRenderer {
     constructor(o) {
         super(o);     
         this.selectedTileIndex = -1;          
+        this._dragStartPos     = Vec2.Zero();																// Save the old position of the map before mouse drag+move. Required only in the editor(?)
+        this._drag             = false;
+        this._mouseDownButton  = 0;
+
+        this.events.create(ImplementsEvents);  
         this.addMouseControls();
     }
     
 	addMouseControls() {
 		const ui = this.engine.ui;			
 
-		const mousemove = (e) => {                                  // move mouse on map		
-			if (this._drag && (ui == null || ui.active == null)) {        
-				this.position.set(this._oldPos.clone().sub(e.delta));		
-			}			
-		}
-		
-		const mouseup = (e) => {    			
+		const mouseup = (e) => {    	
+            const position = e.position;
+
 			if (this._drag && (ui == null || ui.active == null)) {
-				this.position.set(this._oldPos.clone().sub(e.delta));
+				this._dragStartPos = e.position.clone();
 			}
 			this._drag = false;
 		}
 
-		const mousedown = (e) => {			
-			if (ui != null && ui.active != null) return;
+		const mousedown = (e) => {	            
+            if (ui != null && ui.active != null) return;
 
-			const position = Vec2.Add(this.position, e.downPos);				// calculate the absolute clicked map position taking scrolling into account
-			const tile     = Vec2.ToInt(position.clone().divScalar(this.map.tileSize));
+			const position = e.position;
 			
-			if (e.button == 0) {
-				this.cursor.set(tile);
-				this.events.fire('onMouseDown', { renderer:this, cursor:this.cursor });
-			}
-			if (e.button == 2) this._drag = true;
+            this.events.fire('mousedown', { renderer:this, position, dragStartPosition:this._dragStartPos.clone(), tileCoords:this.unProject(position), button:e.button, event:e.event });
+            this._drag = true;
+            this._dragStartPos = e.position.clone();		
+            this._mouseDownButton = e.button;
+		}
+        
+		const mousemove = (e) => {                                  // move mouse on map		
+            if (ui != null && ui.active != null) return;
 
-			this._oldPos = this.position.clone();
+            const position = e.position;            
+            this.events.fire('mousemove', { renderer:this, position, dragStartPosition:this._dragStartPos.clone(),tileCoords:this.unProject(position), drag:e.dragging, event:e.event, button:this._mouseDownButton });
+            if (e.dragging) this._dragStartPos = position.clone();
 		}
 		
 		this.engine.events.register(this, { mousemove, mouseup, mousedown });
@@ -77,8 +82,7 @@ class TilemapEditor extends TileMapRenderer {
             const map = await this.loadMap({ url:params.url });
             if ('size' in params) map.rescaleTextures(params.size, params.size);    
         }
-
-        this.events.create(ImplementsEvents);
+    
         this.events.register(this, { beforedraw, customdraw, afterdraw });  
     /*      
         this.events.add('mousedown', e => {        
@@ -91,4 +95,4 @@ class TilemapEditor extends TileMapRenderer {
     }    
 }
 
-export { TilemapEditor }
+export { TileMapEditor }

@@ -16,11 +16,12 @@ class UBaseElement {
 
         this.#owner    = o.owner;
         this.#ui       = o.ui || o.owner.ui || o.owner;
-        this.events    = new Events(this, 'mousedown');
+        this.events    = new Events(this, 'mousedown mouseup');
         this.children  = [];
         this.enabled   = true;
         this.modal     = ('modal' in o);        
-        this.name      = ('name' in o) ? o.name : '';        
+        this.name      = ('name' in o) ? o.name : '';     
+        this.isMovable = false;                                                             // can the element be repositioned by dragging it with mouse?   
 
         this._position = Vec2.Zero(); 
         this.position  = ('position' in o) ? o.position : this._position;
@@ -102,7 +103,7 @@ class UBaseElement {
     }
 
     get position() {
-        if (this._position == 'auto') return null;
+        if (this._position == 'auto') return V2(this.elem.offsetLeft, this.elem.offsetTop);
         return this._position.clone();
     }
 
@@ -126,9 +127,9 @@ class UBaseElement {
     }
 
     getOwnerWindow() {
-        let o = this;
-        while (o) {
-            if (o.constructor.name == 'UWindow' || o.constructor.name == 'UDialog') return o;
+        let o = this;        
+        while (o) {            
+            if ('objectType' in o && (o.objectType == 'UWindow' || o.objectType == 'UDialog' || o.objectType == 'UMenu')) return o;
             o = o.owner;
         }
     }

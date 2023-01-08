@@ -28,6 +28,7 @@ class GameLoop {
 		this._flags		    = { isRunning:false, showColliders:false, collisionsEnabled:false, showBoundingBoxes:false };
 		this.flags          = Object.seal(this._flags);  // flags
 		this.events         = new Events(this, ImplementsEvents);
+		this.surface        = this.engine.renderingSurface;
 		
 		this.levels         = [];
 		this.actors         = [];
@@ -43,6 +44,7 @@ class GameLoop {
 		this.onBeforeRender = ('onBeforeRender' in o && typeof o.onBeforeRender == 'function') ? o.onBeforeRender : null; 
 		this.onBeforeTick   = ('onBeforeTick' in o && typeof o.onBeforeTick == 'function') ? o.onBeforeTick : null; 
 		this.onPanic        = ('onPanic' in o && typeof o.onPanic == 'function') ? o.onPanic : null;
+		this.onAfterRender  = ('onAfterRender' in o && typeof o.onAfterRender == 'function') ? o.onAfterRender : null;
 		this.timers		    = [];
 		
 		// other:
@@ -342,13 +344,13 @@ class GameLoop {
 	 * DO NOT USE! This is called internally!
 	 */	
 	_render(timeStamp) {
-		if (!this._flags.isRunning && this._oneShotRender == false) {	  		// frame processing cannot be cancelled when isRunning is false - otherwise debugger will not be able to run its injected code
+		if (!this._flags.isRunning && this._oneShotRender == false) {	  									// frame processing cannot be cancelled when isRunning is false - otherwise debugger will not be able to run its injected code
 			this._lastTickLen  = performance.now();
 			this._frameStart   = this._lastTick;
 			return;		
 		}
 		
-		if (Engine.renderingSurface) Engine.renderingSurface.resetTransform();								// reset transform (before ticks)
+		this.surface.resetTransform();																	// reset transform (before ticks)
 		
 		// --- tick ---
 		const nextTick = this._lastTickLen + this._tickRate;
@@ -359,7 +361,7 @@ class GameLoop {
 			this._tickQueue     = ~~(timeSinceTick / this._tickRate);
 		}
 		
-		if (this._tickQueue > 120) { 											// handle tick timer panic
+		if (this._tickQueue > 120) { 																		// handle tick timer panic
 			this._lastTickLen = performance.now(); 
 			if (this.onPanic) this.onPanic(this._tickQueue);
 			return; 
@@ -374,9 +376,10 @@ class GameLoop {
 		if (this._frameStart == null) this._frameStart = timeStamp;		
 		this.frameDelta = timeStamp - this._frameStart;		
 		
-		if (this.clearColor) {
-			if (this.clearColor == 'erase') Engine.renderingSurface.ctx.clearRect(0,0, Engine.dims.x, Engine.dims.y);			// clear
-				else Engine.renderingSurface.drawRectangle(0,0, Engine.dims.x, Engine.dims.y, { fill:this.clearColor });		// clear with color
+		if (this.clearColor) {			
+			const { width, height } = this.surface;			
+			if (this.clearColor == 'erase') this.surface.ctx.clearRect(0, 0, width, height); 				// clear
+				else this.surface.drawRectangle(0,0, width, height, { fill:this.clearColor });				// clear with color
 		}
 		if (this.onBeforeRender) this.onBeforeRender();		
 		
@@ -385,6 +388,8 @@ class GameLoop {
 				layer[i].update();				
 			}			
 		}
+
+		if (this.onAfterRender) this.onAfterRender();		
 		
 		// time delta and average fps calculations		
 		this.frameTimes[this.frameCount % 30] = this.frameDelta;			

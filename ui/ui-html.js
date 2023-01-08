@@ -3,6 +3,7 @@
  * This file contains the basic setup for UI HTML system, but not the actual components
  * 
  */
+import { Engine } from "../engine.js";
 import { Vector2 as Vec2, V2 } from "../types.js";
 import { getJSON, addElem } from "../utils.js";
 import * as UIComponents from "./ui-html-components.js";
@@ -14,7 +15,7 @@ class UI {
         this.engine        = engine;
         this.elem          = ID(UIRootElement || engine._rootElem);
         this.flags         = {
-            disablePointerEvents : false
+            disablePointerEvents : false,            
         }
         this.pointer       = {
             downPos          : Vec2.Zero(),
@@ -28,20 +29,37 @@ class UI {
             if (this.flags.disablePointerEvents) return;                        
             const f = this.components.filter(c => c.elem.contains(e.target));          
 
-            this.active = null;
+            const oldActive = this.active;
+            this.active   = null;
             for (const c of f) {
-                if (c.elem.tagName == 'UI-WINDOW' && c.enabled) {
+                if ((c.elem.tagName == 'UI-WINDOW' || c.elem.tagName == 'UI-MENU') && c.enabled) {
                     this.active = c;
-                    this.pointer.downComponentPos = c.position;                    
-                }                
-                if (c.enabled && ('events' in c) && c.events.names.includes('mousedown')) c.events.fire('mousedown', e);                
-            }    
+                    this.pointer.downComponentPos = c.position;                                        
+                }                   
+                if (c.enabled && ('events' in c) && c.events.names.includes('mousedown')) c.events.fire('mousedown', e);
+            }       
+            
+            if (this.active == null && oldActive && oldActive.elem.tagName == 'UI-MENU') oldActive.close();                    
+        }
+
+        const mouseup = (e) => {
+            if (this.flags.disablePointerEvents) return;                        
+            const f = this.components.filter(c => c.elem.contains(e.target));          
+
+            this.active   = null;
+            for (const c of f) {
+                if ((c.elem.tagName == 'UI-WINDOW' || c.elem.tagName == 'UI-MENU') && c.enabled) {
+                    this.active = c;
+                    this.pointer.downComponentPos = c.position;                                        
+                }                   
+                if (c.enabled && ('events' in c) && c.events.names.includes('mouseup')) c.events.fire('mouseup', e);
+            }            
         }
 
         const mousemove = (e) => {
-            if (this.flags.disablePointerEvents) return;                        
+            if (this.flags.disablePointerEvents) return;   
 
-            if (e.dragging && this.active != null) {                // if we have an active UWindow component and we're dragging with mouse, move the window!                
+            if (e.dragging && this.active != null && this.active.isMovable) {                // if we have an active UWindow component and we're dragging with mouse, move the window!                
                 this.moveWindow(this.active, e.delta);
             }
             const f = this.components.filter(c => c.elem.contains(e.target));                        
@@ -65,7 +83,7 @@ class UI {
             }                       
         }
 
-        engine.events.register(this, { mousedown, mousemove, keydown, keyup });
+        engine.events.register(this, { mousedown, mouseup, mousemove, keydown, keyup });
     }
 
     isInputElement(elem) {
@@ -83,7 +101,7 @@ class UI {
     }
 
     moveWindow(win, delta) {
-        if (this.active.modal) return;
+        if (this.active.modal || this.active instanceof UIComponents.UButton) return;
 
         win.position = Vec2.Add(this.pointer.downComponentPos, delta);
         const p = win.position;

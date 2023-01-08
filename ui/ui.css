@@ -10,9 +10,8 @@ body {
 
 ui-panel {
 	display: flex;
-	position: relative;
-	width:100%;
-	height: 100%;;
+	position: relative;	
+	flex: 1;
 }
 .ui-panel.center {
 	align-items: center;
@@ -24,6 +23,52 @@ ui-panel {
 	border:1px solid black;		
 }
 
+ui-edit {
+	margin:1px;
+	display:flex;
+	align-items: center;	
+}
+ui-edit > ui-caption {
+	font-size:14px;
+	margin:1px;	
+}
+ui-edit > input {
+	font-size:14px;
+	margin:1px;
+	border-radius:8px;
+	padding:0px 4px;
+}
+
+/*
+    SWITCH
+*/
+ui-switch, ui-slider {
+	width:100%;
+}
+/*
+    MENU
+*/
+ui-menu {
+	cursor: pointer;
+	position: absolute;
+	background-color: rgba(80,0,0,1);
+	border:1px solid red;
+	box-shadow:0px 0px 5px 1px black;
+	padding-top:2px;
+	padding-bottom:2px;
+}
+ui-menu .body {
+	display: flex;
+	flex-direction: column;
+}
+ui-menu .body > ui-menuitem {
+	display: block;
+	padding-left:1em;
+	padding-right:1em;
+}
+ui-menu .body > ui-menuitem:hover {
+	background-color: red;
+}
 /*
     BUTTON
 */
@@ -33,8 +78,8 @@ ui-button {
 ui-button:not(.close-window) {
 	background-color: rgba(255,0,0,0.5);
 	box-shadow:0px 0px 2px 2px black, 0px 0px 0px 5px red;
-	padding:0.5em 1.5em;
-	margin:1px;
+	padding:0.25em 1.5em;
+	margin:5px;
 	width:4em;
 	text-align: center;
 	border-radius: 1.5em;

@@ -12,13 +12,39 @@ const { Vector2 : Vec2, V2 } = Types;
 const textures = {};
 
 class Texture {
-	constructor(name) {
+	constructor(name, createCanvas) {
 		this.image  = null;				
 		this.canvas = null;
 		this.ctx    = null;				
 		this.name   = name;
 		this._imgData = null;
 		this.data   = {}; 
+
+		if (createCanvas) this.createCanvas(createCanvas.width, createCanvas.height);
+	}
+
+	createCanvas(w, h) {
+		try {			
+			this.canvas = new OffscreenCanvas(w, h);		
+		} catch(e) {
+			this.canvas = document.createElement('canvas');
+			this.canvas.width  = w;
+			this.canvas.height = h;
+		}		
+		this.ctx = this.canvas.getContext('2d');		
+	}
+
+	/*
+		Internal callback function, executed when image is loaded in Texture.load();
+	*/
+	_imgLoaded(cb) {
+		const img = this.image;
+		
+		this.createCanvas(img.naturalWidth, img.naturalHeight)		
+		this.ctx.drawImage(img, 0, 0);				
+		textures[this.name] = this;
+		
+		if (typeof cb == 'function') cb(this);
 	}
 	
 	load(url) {
@@ -43,47 +69,42 @@ class Texture {
 		this.canvas.height = h;
 		this.ctx.drawImage(this.image, 0, 0, w, h);
 	}
-
-	/*
-		Internal callback function, executed when image is loaded in constructor
-	*/
-	_imgLoaded(cb) {
-		const img = this.image;
-		
-		try {			
-			this.canvas = new OffscreenCanvas(img.naturalWidth, img.naturalHeight);		
-		} catch(e) {
-			this.canvas = document.createElement('canvas');
-		}
-		
-		this.ctx    = this.canvas.getContext('2d');
-		this.ctx.drawImage(img, 0, 0);		
-		
-		textures[this.name] = this;
-		
-		if (typeof cb == 'function') cb(this);
-	}
 	
 	static ByName(name) {
 		if (textures[name]) return textures[name];
 		throw `Texture "${name}" not found`;
 	}
 	
-    walk(f) {
-		const p = this.imageData.data;
+    walk(f) {		
+		const p = this.loadPixels();
 		const d = this.size;
     	for (let y = 0; y < d.y; y++) {
 	        for (let x = 0; x < d.x; x++) {
             	const ofs = (y * d.x + x) * 4;
-				f(x, y, { r:p[ofs+0], g:p[ofs+1], b:p[ofs+2], a:p[ofs+3]  });
+				const pix = { r:p[ofs+0], g:p[ofs+1], b:p[ofs+2], a:p[ofs+3] }
+				f(x, y, pix);
+				p[ofs+0] = pix.r;
+				p[ofs+1] = pix.g;
+				p[ofs+2] = pix.b;
+				p[ofs+3] = pix.a;
 			}
-		}
+		}		
+		this.savePixels();
 	}
 
+	/**
+	 * Copies pixels from image to an internal read/write buffer. While buffered, individual pixels can be accessed using getPixel() and setPixel() functions.
+	 * To write pixels back to the image, use the savePixels() function.
+	 * Returns an array containing all pixels of the image.
+	 */
 	loadPixels() {
 		this._imgData = this.imageData;
+		return this._imgData.data;
 	}
 
+	/**
+	 * Writes pixel buffer (created by previous call to loadPixels() function) back onto the image.
+	 */
 	savePixels() {
 		this.ctx.putImageData(this._imgData, 0, 0);
 	}
