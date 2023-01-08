@@ -7,6 +7,7 @@ class TileMap {
 		this.tiles     = [];
 		this.textures  = [];
 		this.shift     = [];
+		this.overlays  = [];
 		this.colliders = {};
 		this.tileSize  = 0;	
 		this.origin    = '';			
@@ -43,7 +44,7 @@ class TileMap {
 	}
 
 	setTileAt(x, y, v) {
-		if (v < 0 || v >= this.textures.length) throw 'Texture ID out of range (' + v + ')';
+		//if (v < 0 || v >= this.textures.length) throw 'Texture ID out of range (' + v + ')';
 		if (y < 0 || y >= this.height || x < 0 || x >= this.width) throw 'Tile coordinates out of range';
 		this.tiles[y][x] = v;
 	}
@@ -69,13 +70,15 @@ class TileMap {
 	async loadTextures(data) {
 		const p   = [];																				// load textures
 		const ext = ('textureExt' in data) ? data.textureExt : '';
+		const arr = [];
 				
 		for (const t of data.textures) {
-			const tex = new Texture();
-			p.push(tex.load(data.texturePath + t + ext));
-			this.textures.push(tex);					
+			const tex = new Texture(t);																// give it a name (image filename as it is in the hjson file, usually without extension)
+			p.push(tex.load(data.texturePath + t + ext));			
+			arr.push(tex);
 		}
 		await Promise.all(p);				
+		return arr;
 	}
 
 	loadFromObject(data, clearData = true) {
@@ -83,10 +86,6 @@ class TileMap {
 			if (clearData) this.clear();
 			try {
 				if ('tileSize' in data) this.tileSize = data.tileSize;
-
-				if ('shift' in data) {																		// file contains 'shift' information for textures
-					this.shift = data.shift.map(e => V2(e.x, e.y));					
-				}
 				
 				for (const row of data.tiles) {																// parse map tiles
 					const cells = row.split(' ');
@@ -103,19 +102,28 @@ class TileMap {
 					this.objects = data.objects;
 				}
 
-				await this.loadTextures(data);
-				
-				if (data.colliders) {																		// load static colliders attached to map tiles
-					let tileId = 0;
-					for (const tile of data.colliders) {
-						this.colliders[tileId] = Collider.Parse(tile);						
-						tileId++;
-					}
-				}				
+				this.textures = await this.loadTextures(data);												// load textures
+				if ('textureMetaData' in data) {															// if textures have metadata...
+					const meta = data.textureMetaData;
+					if ('colliders' in meta) {																// load static colliders attached to map tiles
+						let tileId = 0;
+						for (const tile of meta.colliders) {
+							this.colliders[tileId] = Collider.Parse(tile);						
+							tileId++;
+						}
+					}	
+					if ('shift' in meta) {																	// file contains 'shift' information for textures
+						this.shift = meta.shift.map(e => V2(e.x, e.y));					
+					}		
+					if ('overlays' in meta) {
+						this.overlays = await this.loadTextures({ textures:meta.overlays, texturePath:data.texturePath, textureExt:data.textureExt });	
+						this.overlays.forEach(o => o.data.isOverlay = true);						
+					}			
+				}			
 			} catch (e) {
 				console.warn('Unable to parse tilemap!');				
 				reject(e);
-			}
+			}			
 			resolve(this.tiles);
 		});
 	}
@@ -139,8 +147,11 @@ class TileMap {
 	}
 
 	clear() {
-		this.tiles.length    = 0;
-		this.textures.length = 0;
+		this.tiles.length     = 0;
+		this.textures.length  = 0;
+		this.shift.length     = 0;
+		this.overlays.length  = 0;
+		this.colliders        = {};
 	}
 }
 

@@ -382,6 +382,10 @@ class Color extends BaseColor {
 	clone() {
         return new Color(this.r, this.g, this.b, this.a);
     }
+
+	get int() {
+		return (this.value[0] << 24) + (this.value[1] << 16) + (this.value[2] << 8) + this.value[3];
+	}
 	
 	/**
 	 * Returns a CSS representation of the color 
@@ -509,6 +513,18 @@ class Rect {
 
 	static FromStruct(o) {
 		return new Rect(o.left, o.top, ('width' in o) ? o.width + o.left : o.right, ('height' in o) ? o.height + o.top : o.bottom);
+	}
+
+	static ToInt(r) {
+		return new Rect(~~r.left, ~~r.top, ~~r.right, ~~r.bottom);
+	}
+
+	expand(size) {
+		this.left   -= size;
+		this.top    -= size;
+		this.right  += size;
+		this.bottom += size;
+		return this;
 	}
 	
     clone() {

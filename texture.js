@@ -70,11 +70,6 @@ class Texture {
 		this.ctx.drawImage(this.image, 0, 0, w, h);
 	}
 	
-	static ByName(name) {
-		if (textures[name]) return textures[name];
-		throw `Texture "${name}" not found`;
-	}
-	
     walk(f) {		
 		const p = this.loadPixels();
 		const d = this.size;
@@ -122,6 +117,20 @@ class Texture {
 		i[ofs+1] = c.g;
 		i[ofs+2] = c.b;
 		i[ofs+3] = c.a;
+	}
+	
+	static ByName(name) {
+		if (textures[name]) return textures[name];
+		throw `Texture "${name}" not found`;
+	}
+
+	static async FromFile(file) {
+		const t      = new Texture();
+		const obj    = URL.createObjectURL(file);
+		await t.load(obj);
+		URL.revokeObjectURL(obj);
+        
+		return t;
 	}
 }
 

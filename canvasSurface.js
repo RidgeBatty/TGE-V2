@@ -365,7 +365,7 @@ class CanvasSurface {
 		}
 		if (p.stroke) {			
 			this.ctx.strokeStyle = p.stroke; 
-			this.ctx.strokeRect(~~x, ~~y, ~~w, ~~h);
+			this.ctx.strokeRect(~~x + 0.5, ~~y + 0.5, ~~w, ~~h);
 		}
 	}
 
@@ -376,7 +376,7 @@ class CanvasSurface {
 	 * @param {string} [p.stroke='black'] Stroke (outline color)
 	 * @param {string=} p.fill Optional fill color	  
 	 */
-	drawRect(r, p = { stroke:'black' }) {
+	drawRect(r, p = {}) {
 		if (p.fill) { 
 			this.ctx.fillStyle = p.fill; 			
 			this.ctx.fillRect(~~r.left, ~~r.top, ~~r.width, ~~r.height); 

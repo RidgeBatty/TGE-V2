@@ -1,6 +1,8 @@
 import { Vector2 as Vec2, V2 } from "../types.js";
 import { Events } from "../events.js";
 
+const UI_ELEMENT_ID_PREFIX = 'ui-';                                                         // this prefix is added to all ID's which are automatically added to all UI elements
+
 class UBaseElement {
     #ui;
     #owner;    
@@ -19,9 +21,10 @@ class UBaseElement {
         this.events    = new Events(this, 'mousedown mouseup');
         this.children  = [];
         this.enabled   = true;
-        this.modal     = ('modal' in o);        
-        this.name      = ('name' in o) ? o.name : '';     
+        this.modal     = ('modal' in o);                
         this.isMovable = false;                                                             // can the element be repositioned by dragging it with mouse?   
+        this.name      = ('name' in o) ? o.name : '';   
+        if (this.name != '') this.elem.id = UI_ELEMENT_ID_PREFIX + this.name;               // set the ID of the element using the default prefix
 
         this._position = Vec2.Zero(); 
         this.position  = ('position' in o) ? o.position : this._position;
@@ -135,4 +138,4 @@ class UBaseElement {
     }
 }
 
-export { UBaseElement }
+export { UBaseElement, UI_ELEMENT_ID_PREFIX }

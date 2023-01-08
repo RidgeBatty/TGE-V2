@@ -9,6 +9,7 @@ class Events {
         if (typeof o == 'string') var o = o.split(' ');
         for (const e of o) this.#list[e] = [];
 
+        this.isActive = true;
         this.owner = owner;
         this._stopPropagation = '';
     }
@@ -99,6 +100,7 @@ class Events {
     }
 
     fire(name, args) {
+        if (!this.isActive) return;
         const e = this.#list[name];        
         if (!e) return;
         const o = Object.assign({ instigator:this.owner, name }, args);
@@ -132,22 +134,6 @@ class Events {
             if (evt[0] == eventName) return evt[1];
         }
         return null;
-    }
-
-    enable(dispatcher) {        
-        const events = Object.entries(this.#list);
-        for (const evt of events) {
-            const f = evt[1].find(e => e.dispatcher == dispatcher);
-            if (f) f.isActive = true;
-        }
-    }
-
-    disable(dispatcher) {
-        const events = Object.entries(this.#list);
-        for (const evt of events) {
-            const f = evt[1].find(e => e.dispatcher == dispatcher);
-            if (f) f.isActive = false;
-        }
     }
 
     stopPropagation(eventName) {

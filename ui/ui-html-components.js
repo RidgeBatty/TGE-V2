@@ -127,6 +127,16 @@ class USlider extends UInputElement {
     }
 }
 
+class UColorPicker extends UInputElement {
+    constructor(o) {
+        o.tagName            = 'ui-colorpicker'; 
+        super(o);           
+        this.objectType      = 'UColorPicker';
+        
+        this.input.setAttribute('type', 'color');        
+    }
+}
+
 class UPanel extends UBaseElement {
     constructor(o) {
         o.tagName   = 'ui-panel';
@@ -451,7 +461,7 @@ class UFileList extends UCustomFileList {
 
 class UDialog extends UWindow {
     constructor(o) {
-        o.tagName    = 'ui-window';        
+        o.tagName            = 'ui-window';        
         super(o);
         this.elem.className  = 'modal dialog';
         this.objectType      = 'UDialog';
@@ -484,4 +494,4 @@ const Confirmation = async(o) => {
     })
 }
 
-export { UBaseElement, UWindow, UPanel, UButton, UEdit, UCaption, USwitch, UCustomList, UCustomFileList, UFileList, UDialog, UMenu, USlider, Confirmation }
+export { UBaseElement, UWindow, UPanel, UButton, UEdit, UCaption, USwitch, UCustomList, UCustomFileList, UFileList, UDialog, UMenu, USlider, UColorPicker, Confirmation }

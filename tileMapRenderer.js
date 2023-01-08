@@ -274,14 +274,21 @@ class TileMapRenderer extends CustomLayer {
 				
 				if (!((p.y + size) < 0 || p.y > canvas.height || (p.x + size) < 0 || p.x > canvas.width)) {
 					const id = map.tiles[y][x];
-					const s  = map.shift[id];
+					const s  = map.shift[id] || Vec2.Zero();
+					p.add(s);
+
+					const tileId     = id & 255;
+					const hasOverlay = id > 255;
+					const overlayId  = (id >> 8) - 1;
 					
-					if (this.flags.ownerDraw) {						
-						if (s) ctx.drawImage(map.textures[id].canvas, p.x + s.x, p.y + s.y);
-							else ctx.drawImage(map.textures[id].canvas, p.x, p.y);
+					if (this.flags.ownerDraw) {												
+						ctx.drawImage(map.textures[tileId].canvas, p.x, p.y);							
+						if (hasOverlay) {							
+							ctx.drawImage(map.overlays[overlayId].canvas, p.x, p.y);
+						}
 					}
 
-					this.events.fire('customdraw', { renderer:this, x, y, ctx, tileId:id, drawPos:p });
+					this.events.fire('customdraw', { renderer:this, x, y, ctx, tileId, overlayId, drawPos:p });
 				}
 			}
 		}

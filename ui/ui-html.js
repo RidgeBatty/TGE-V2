@@ -32,13 +32,15 @@ class UI {
             const oldActive = this.active;
             this.active   = null;
             for (const c of f) {
-                if ((c.elem.tagName == 'UI-WINDOW' || c.elem.tagName == 'UI-MENU') && c.enabled) {
+                // NOTE! button is here because we can add button in "thin air" think of a hamburger icon, which cannot let the mousedown even "go through" it on the underlaying layer. Maybe another kind of component is needed for this?
+                if ((c.elem.tagName == 'UI-WINDOW' || c.elem.tagName == 'UI-MENU' || c.elem.tagName == 'UI-BUTTON') && c.enabled) {                      
                     this.active = c;
                     this.pointer.downComponentPos = c.position;                                        
                 }                   
                 if (c.enabled && ('events' in c) && c.events.names.includes('mousedown')) c.events.fire('mousedown', e);
             }       
             
+            // close menus on user click (basically a click anywhere in the UI should close a menu)
             if (this.active == null && oldActive && oldActive.elem.tagName == 'UI-MENU') oldActive.close();                    
         }
 

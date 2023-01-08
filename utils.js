@@ -218,7 +218,16 @@ const getJSON = (url, getText) => {
 	});
 }
 
-const createFileDropZone = (HTMLElementOrID, handlers = {}) => {			// HTMLElementOrID:String|HTMLElement, ?handlers:{ ?dragenter:Function, ?dragleave?:Function, ?drop:Function, ?filesready }
+/**
+ * Creates a file drop zone on given HTMLElement
+ * @param {string} HTMLElementOrID 
+ * @param {object} handlers 
+ * @param {function=} handlers.dragenter Optional
+ * @param {function=} handlers.dragleave Optional
+ * @param {function} handlers.drop Required. Return FALSE to overried the default drop handling
+ * @param {function=} handlers.filesready Optional
+ */
+const createFileDropZone = (HTMLElementOrID, handlers = {}) => {			
 	const elem = (ID(HTMLElementOrID) == null) ? HTMLElementOrID : ID(HTMLElementOrID);
 	
 	AE.addEvent(elem, 'drop', (e) => onDropFile(e));	
@@ -226,7 +235,7 @@ const createFileDropZone = (HTMLElementOrID, handlers = {}) => {			// HTMLElemen
 	AE.addEvent(elem, 'dragenter', (e) => { if ('dragenter' in handlers) handlers.dragenter(e); });
 	AE.addEvent(elem, 'dragleave', (e) => { if ('dragleave' in handlers) handlers.dragleave(e); });
 	
-	const onDropFile = (e) => {
+	const onDropFile = (e) => {		
 		e.preventDefault();
 		
 		const runDefaultCode = ('drop' in handlers) ? handlers.drop(e) : true;			// return FALSE from custom handler to override the default drop handling
