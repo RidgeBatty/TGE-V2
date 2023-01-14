@@ -378,6 +378,11 @@ class Color extends BaseColor {
 	static FromObject(o) {
 		return new Color(o.r, o.g, o.b, o.a);
 	}
+
+	static FromInt(i) {
+		i >>>= 0;    	
+		return new Color(((i & 0xFF000000) >>> 24), (i & 0xFF0000) >>> 16, (i & 0xFF00) >>> 8, i & 0xFF);
+	}
 	
 	clone() {
         return new Color(this.r, this.g, this.b, this.a);
@@ -487,6 +492,15 @@ class Color extends BaseColor {
 							 parseInt(str[4] + str[5], 16),
 							 255);
 		}
+	}
+
+	/**
+	 * Flips the byte order of an interger (RGBA <-> ABGR)
+	 * @param {*} val 
+	 * @returns 
+	 */
+	static FlipOrder(val) {
+		return ((val & 0xFF) << 24) | ((val & 0xFF00) << 8) | ((val >> 8) & 0xFF00) | ((val >> 24) & 0xFF);
 	}
 }
 

@@ -501,15 +501,16 @@ class CanvasSurface {
 	 *	Note! All coordinates "pos", "size", "clip" are in source image space!
 	 *	Optional "clip" rectangle defines how many pixels to clip from each direction: top, left, right, bottom
 	 * @param {object} o Parameters object
-	 * @param {Vector2} o.pos 
-	 * @param {Image=} o.img HTMLImageElement or equivalent
+	 * @param {Vector2} o.pos Draw position on the target canvas
+	 * @param {Image} o.img HTMLImageElement or equivalent
 	 * @param {number=} o.scale Scale of the image, defaults to img.naturalWidth/Height
 	 * @param {Vector2=} o.size Optional
 	 * @param {Rect} o.clip Optional clip rectange
 	 */
-	drawImageScale(o) {		// o:{ pos:Vector2, ?size:Vector2, img:HTMLImageElement, scale:Number, ?clip:Rect }
-		const size = ('size' in o) ? o.size : { x:o.img.naturalWidth, y:o.img.naturalHeight };
-		
+	drawImageScale(o) {		
+		if ('width' in o.img && 'height' in o.img) var size = { x:o.img.width, y:o.img.height }
+			else var size = ('size' in o) ? o.size : { x:o.img.naturalWidth, y:o.img.naturalHeight };
+
 		if ('clip' in o) {
 			const cw = size.x - o.clip.right - o.clip.left;
 			const ch = size.y - o.clip.bottom - o.clip.top;
@@ -521,6 +522,28 @@ class CanvasSurface {
 					           cw * o.scale, ch * o.scale);					
 		} else this.ctx.drawImage(o.img, o.pos.x, o.pos.y, size.x * o.scale, size.y * o.scale);
 	}		
+
+	/**
+	 * 
+	 * @param {*} o 
+	 * @param {Rect} o.clip Clip rectangle
+	 * @param {Vector2} o.pos Draw position on the target canvas	 
+	 * @param {Vector2=} o.size Optional
+	 * @param {Image} o.img HTMLImageElement or equivalent
+	 */
+	drawImageClip(o) {
+		if ('width' in o.img && 'height' in o.img) var size = { x:o.img.width, y:o.img.height }
+			else var size = ('size' in o) ? o.size : { x:o.img.naturalWidth, y:o.img.naturalHeight };
+		
+		const cw = size.x - o.clip.right - o.clip.left;
+		const ch = size.y - o.clip.bottom - o.clip.top;
+		
+		this.ctx.drawImage(o.img, 
+							o.clip.left, o.clip.top, 
+							cw, ch,
+							o.pos.x, o.pos.y,
+							cw, ch);	
+	}
 	
 	/**
 	 * Writes text on canvas

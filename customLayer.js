@@ -23,6 +23,7 @@ class CustomLayer extends Root {
 		this.engine  = o.engine;
 		this.surface = ('surface' in o) ? o.surface : Engine.renderingSurface;
 		this._buffer = null;
+		this._bufferSize = null;
         
         if ('addLayer' in o && o.addLayer == true) {
             this.owner.zLayers[this.zIndex].push(this);
@@ -38,9 +39,9 @@ class CustomLayer extends Root {
     }
     
     updateViewport() {
-        const { engine } = this;
-		const width  = engine.viewport.width;
-		const height = engine.viewport.height;
+        const { engine, _bufferSize } = this;
+		const width  = _bufferSize ? _bufferSize.x : engine.viewport.width;
+		const height = _bufferSize ? _bufferSize.y : engine.viewport.height;
 				
 		if (this._canvas == null) {			
 			this._buffer      = new CanvasSurface({ dims:V2(width, height), preferOffscreenCanvas:true });			

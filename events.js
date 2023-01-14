@@ -9,7 +9,6 @@ class Events {
         if (typeof o == 'string') var o = o.split(' ');
         for (const e of o) this.#list[e] = [];
 
-        this.isActive = true;
         this.owner = owner;
         this._stopPropagation = '';
     }
@@ -84,6 +83,20 @@ class Events {
         return removedHandlers;
     }
 
+    /**
+     * Disable or enable dispatcher
+     * Note! Affects only the handlers of this Events object, not all Event objects which the dispatcher has subscribed to.
+     * @param {*} dispatcher 
+     * @param {boolean} isActive 
+     */
+    setDispatcherState(dispatcher, isActive) {
+        const events = Object.entries(this.#list);
+        for (const evt of events) {
+            const f = evt[1].findIndex(e => e.dispatcher == dispatcher);
+            if (f > -1) f.isActive = isActive;            
+        }        
+    }
+
     remove(name, handler) {        
         const e = this.#list[name];
         if (e) for (let i = e.length; i--;) if (e[i].handler == handler) e.splice(i, 1);        
@@ -99,12 +112,12 @@ class Events {
         }
     }
 
-    fire(name, args) {
-        if (!this.isActive) return;
+    fire(name, args) {        
         const e = this.#list[name];        
         if (!e) return;
         const o = Object.assign({ instigator:this.owner, name }, args);
-        for (const evt of e) {
+        for (const evt of e) {                  
+            if (evt.dispatcher && evt.dispatcher.active === false) continue;
             if (evt.isActive && name != this._stopPropagation) evt.handler(o);
         }
         this._stopPropagation = '';
@@ -121,11 +134,12 @@ class Events {
 
     findByDispatcher(dispatcher) {
         const events = Object.entries(this.#list);
+        const list   = [];
         for (const evt of events) {
             const f = evt[1].find(e => e.dispatcher == dispatcher);
-            if (f) return { name:evt[0], event:f };
+            if (f) list.push({ name:evt[0], event:f });
         }
-        return null;
+        return list;
     }
 
     getEventsByName(eventName) {

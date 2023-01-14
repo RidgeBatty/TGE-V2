@@ -46,7 +46,12 @@ const setDef = (target, source, field, useDefault) => {
 }
 
 class AssetManager {
-    constructor(engine) {
+    /**
+     * 
+     * @param {TinyGameEngine} engine 
+     * @param {boolean} assignAsDefault Assign this assetManager as Engine's default asset manager
+     */
+    constructor(engine, assignAsDefault = true) {
         this.engine = engine;        
 
         AE.sealProp(this, 'flags', {
@@ -58,7 +63,7 @@ class AssetManager {
             images : []
         };
 
-        this.engine.assetManager = this;
+        if (assignAsDefault) this.engine.assetManager = this;
     }
 
     getAssetByName(str) {
@@ -125,6 +130,14 @@ class AssetManager {
         return actor;
     }
 
+    /**
+     * 
+     * @param {object} o 
+     * @param {string} o.url URL to ".asset.hjson" file
+     * @param {object} options Optional "options" object which is sent to the deserialization method
+     * @returns 
+     */
+
     async loadAsset(o, options) {
         const s = await getJSON(o.url);        
         if (s.type == 'actor') {
@@ -133,9 +146,10 @@ class AssetManager {
         } 
         if (s.type == 'images') {
             const names  = s.data.map(e => e.name);
+            const data   = s.data.map(e => e.data);
             const images = await preloadImages({ urls:s.data.map(e => e.url) });
             for (let i = 0; i < images.length; i++) {
-                this.assets.images.push({ name:names[i], image:images[i] });
+                this.assets.images.push({ name:names[i], image:images[i], data:data[i] });
             }
             return;
         } 

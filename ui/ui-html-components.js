@@ -44,10 +44,18 @@ class UButton extends UBaseElement {
 
         const mouseup = (e) => {            
             if (o.behavior && o.behavior == 'close-window') this.getOwnerWindow().close();
-            this.events.fire('click', Object.assign(e, { name:'click' }));
+            this.events.fire('click', Object.assign(e, { name:'click', button:this }));
         }
         this.events.add('mouseup', mouseup); 
         if ('onClick' in o) this.events.add('click', o.onClick);
+    }
+
+    get caption() {
+        return this.cpTitle.caption;
+    }
+
+    set caption(c) {
+        this.cpTitle.caption = c;
     }
 }
 
@@ -192,9 +200,16 @@ class UMenu extends UBaseElement {
 
     addItems(items) {
         for (const i of items) {
-            let e = addElem({ parent:this.body, text:i, type:'ui-menuitem' });
+            const menu = { parent:this.body };
+            Object.assign(menu, (i == '-') ? { type:'ui-menudivider' } : { text:i, type:'ui-menuitem' });
+            const e = addElem(menu);
             this.items.push(e);
         }
+    }
+
+    clear() {
+        for (const i of this.items) i.remove();
+        this.items.length = 0;
     }
 }
 

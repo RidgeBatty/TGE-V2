@@ -48,6 +48,19 @@ class UBaseElement {
         if (this.#owner instanceof UBaseElement) this.#owner.children.push(this);
     }
 
+    destroy() {        
+        this.removeChildren();
+        for (let i = this.ui.components.length; i--;) if (this.ui.components[i] === this) this.ui.components.splice(i, 1);        
+        this.elem.remove();
+    }
+
+    removeChildren() {
+        for (let i = this.children.length; i--;) {
+            this.children[i].destroy();        
+            this.children.splice(i, 1);        
+        }
+    }
+
     get owner() {
         return this.#owner;
     }

@@ -48,14 +48,14 @@ ui-switch, ui-slider {
 /*
     MENU
 */
-ui-menu {
+ui-menu {	
 	cursor: pointer;
 	position: absolute;
 	background-color: rgba(80,0,0,1);
 	border:1px solid red;
 	box-shadow:0px 0px 5px 1px black;
 	padding-top:2px;
-	padding-bottom:2px;
+	padding-bottom:2px;	
 }
 ui-menu .body {
 	display: flex;
@@ -65,9 +65,16 @@ ui-menu .body > ui-menuitem {
 	display: block;
 	padding-left:1em;
 	padding-right:1em;
+	padding-top:1px;
+	padding-bottom:1px;
+	margin:1px;
 }
 ui-menu .body > ui-menuitem:hover {
-	background-color: red;
+	background-color: rgba(160,0,0,1);
+}
+ui-menu ui-menudivider {
+	margin:4px;
+	border-bottom:1px solid rgba(160, 0, 0, 1);	
 }
 /*
     BUTTON

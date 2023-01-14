@@ -29,12 +29,13 @@ class GameLoop {
 		this.flags          = Object.seal(this._flags);  // flags
 		this.events         = new Events(this, ImplementsEvents);
 		this.surface        = this.engine.renderingSurface;
+		this.name			= 'name' in o ? o.name : null;
 		
 		this.levels         = [];
 		this.actors         = [];
 		this.tickables      = [];
 		this.zLayers        = [...Array(16).keys()].map(e => []);
-		this.clearColor     = null;
+		this.clearColor     = 'clearColor' in o ? o.clearColor : null;
 		
 		this.overlaps       = [];			// list of overlapping objects during the current frame, after overlap calculations
 		this.hitTestGroups  = new HitTestGroups();
@@ -420,7 +421,7 @@ class GameLoop {
 	/**
 	 * DO NOT USE! This is called internally!
 	 */	
-	_tick(forceSingleTick) {				
+	_tick(forceSingleTick) {						
 		const groups = this.hitTestGroups;
 
 		if (!this.flags.isRunning && !forceSingleTick) return;

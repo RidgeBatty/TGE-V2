@@ -1,31 +1,54 @@
 /*
 
-	Bitmap Texture which can be manipulated on canvas. Attempts to use offScreenCanvas, but falls back to regular, off-DOM canvas.
+	Bitmap Texture which can be manipulated using canvas. Attempts to use offScreenCanvas, but falls back to regular, off-DOM canvas.
 	
 	Usage example:	
 	let myTexture = new Texture('brickwall').load('img/wall01.jpg');	
 
 */
+import { Picture } from './picture.js';
 import * as Types from './types.js';
-const { Vector2 : Vec2, V2 } = Types;
+const { Vector2 : Vec2, V2, Color } = Types;
 
 const textures = {};
 
-class Texture {
+class Texture extends Picture {
+	/**
+	 * Creates a new Texture which may contain either an image or canvas (which gives access to pixel data) or both.
+	 * @param {string} name 
+	 * @param {object|Vector2=} createCanvas Optional. If this object exists, an empty canvas is created. Canvas measurements are provided by either Vec2 or width and height properties
+	 * @param {number} createCanvas.width 
+	 * @param {number} createCanvas.height
+	 */
 	constructor(name, createCanvas) {
-		this.image  = null;				
-		this.canvas = null;
-		this.ctx    = null;				
-		this.name   = name;
-		this._imgData = null;
-		this.data   = {}; 
+		super(name);
 
-		if (createCanvas) this.createCanvas(createCanvas.width, createCanvas.height);
+		this.canvas   = null;
+		this.ctx      = null;				
+		this._imgData = null;
+		this.pixelWalkMode = 'rgba';			// Format for handling pixel data in .walk() method: "rgba" or "color" or "int"
+		this.cacheTextures = false;
+
+		if (createCanvas) {
+			if (Vec2.IsVector2(createCanvas)) this.createCanvas(createCanvas.x, createCanvas.y);
+				else this.createCanvas(createCanvas.width, createCanvas.height);
+		}
+	}
+
+	set pixelSmooth(value) {
+		if (!AE.isBoolean(value) || !this.ctx) return;	
+		console.log('Smoothing:', value)	
+		this.ctx.imageSmoothingEnabled = value;
+	}
+	
+	get pixelSmooth() {
+		if (!this.ctx) return;		
+		return this.ctx.imageSmoothingEnabled;
 	}
 
 	createCanvas(w, h) {
 		try {			
-			this.canvas = new OffscreenCanvas(w, h);		
+			this.canvas = new OffscreenCanvas(w, h);					
 		} catch(e) {
 			this.canvas = document.createElement('canvas');
 			this.canvas.width  = w;
@@ -34,32 +57,28 @@ class Texture {
 		this.ctx = this.canvas.getContext('2d');		
 	}
 
-	/*
-		Internal callback function, executed when image is loaded in Texture.load();
-	*/
-	_imgLoaded(cb) {
-		const img = this.image;
-		
-		this.createCanvas(img.naturalWidth, img.naturalHeight)		
-		this.ctx.drawImage(img, 0, 0);				
-		textures[this.name] = this;
-		
-		if (typeof cb == 'function') cb(this);
-	}
-	
+	/**
+	 * Loads an image and returns a promise. Create a canvas and context for the image and copies the image on the canvas. Add the image in the global "textures" collection
+	 * @param {*} url 
+	 */
 	load(url) {
-		return new Promise((resolve, reject) => {
-			this.image         = new Image();
-			this.image.onerror = _ => { reject(this.image); }
-			this.image.onload  = _ => { this._imgLoaded(); resolve(this.image); }
-			this.image.src     = url;		
-		})
+		return new Promise(async (resolve, reject) => {
+			let a = await this.loadFile(url);
+			
+			const img = this.image;		
+			this.createCanvas(img.naturalWidth, img.naturalHeight);		
+			this.ctx.drawImage(img, 0, 0);				
+
+			if (this.cacheTextures) textures[this.name] = this;													// add to textures collection (TO-DO: a textureCollection object)			
+
+			resolve(this.image); 
+		});
 	}
 	
 	get imageData() {
 		return this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);	
 	}
-	
+	get intBuffer() { if (this._imgData == null) this.loadPixels(); return new Uint32Array(this._imgData.data.buffer); }	
 	get width()  { return this.canvas.width; }
 	get height() { return this.canvas.height; }
 	get size()   { return V2(this.width, this.height) }
@@ -73,17 +92,42 @@ class Texture {
     walk(f) {		
 		const p = this.loadPixels();
 		const d = this.size;
-    	for (let y = 0; y < d.y; y++) {
-	        for (let x = 0; x < d.x; x++) {
-            	const ofs = (y * d.x + x) * 4;
-				const pix = { r:p[ofs+0], g:p[ofs+1], b:p[ofs+2], a:p[ofs+3] }
-				f(x, y, pix);
-				p[ofs+0] = pix.r;
-				p[ofs+1] = pix.g;
-				p[ofs+2] = pix.b;
-				p[ofs+3] = pix.a;
-			}
-		}		
+		if (this.pixelWalkMode == 'rgba') {
+			for (let y = 0; y < d.y; y++) {
+				for (let x = 0; x < d.x; x++) {
+					const ofs = (y * d.x + x) * 4;
+					const pix = { r:p[ofs+0], g:p[ofs+1], b:p[ofs+2], a:p[ofs+3] }
+					f(x, y, pix);
+					p[ofs+0] = pix.r;
+					p[ofs+1] = pix.g;
+					p[ofs+2] = pix.b;
+					p[ofs+3] = pix.a;
+				}
+			}		
+		} 
+		if (this.pixelWalkMode == 'color') {
+			for (let y = 0; y < d.y; y++) {
+				for (let x = 0; x < d.x; x++) {
+					const ofs = (y * d.x + x) * 4;
+					const pix = new Color(p[ofs+0], p[ofs+1], p[ofs+2], p[ofs+3]);
+					f(x, y, pix);					
+					p[ofs+0] = pix.r;
+					p[ofs+1] = pix.g;
+					p[ofs+2] = pix.b;
+					p[ofs+3] = pix.a;
+				}
+			}	
+		}
+		if (this.pixelWalkMode == 'int') {
+			const buf = this.intBuffer;
+			for (let y = 0; y < d.y; y++) {
+				let addr = y * d.x;
+				for (let x = 0; x < d.x; x++) {										
+					buf[addr] = f(x, y, buf[addr]);					
+					addr++;
+				}
+			}	
+		}
 		this.savePixels();
 	}
 
@@ -124,13 +168,16 @@ class Texture {
 		throw `Texture "${name}" not found`;
 	}
 
-	static async FromFile(file) {
-		const t      = new Texture();
-		const obj    = URL.createObjectURL(file);
-		await t.load(obj);
-		URL.revokeObjectURL(obj);
-        
-		return t;
+	static FromFile(file) {
+		return new Promise(async (resolve, reject) => {
+			const t = new Texture();
+			const b = await t.load(file);
+			resolve(t);
+		});
+	}
+
+	static ClearCache() {
+		textures = {};
 	}
 }
 

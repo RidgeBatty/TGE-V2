@@ -39,7 +39,7 @@ class Flags {
 				else this[k] = v;
 		}
 
-		this.#owner.update = (this.isometric) ? this.#owner.renderIsometric : this.#owner.renderAxisAligned;
+		//this.#owner.prototype.update = (this.isometric) ? this.#owner.renderIsometric : this.#owner.renderAxisAligned;
 	}
 
 	get isometric() {
@@ -49,10 +49,10 @@ class Flags {
 	set isometric(v) {
 		if (v === true) {
 			this.#isometric = true;
-			this.owner.update = this.renderIsometric;
+			//this.owner.update = this.renderIsometric;
 		} else {
 			this.#isometric = false;
-			this.owner.update = this.renderAxisAligned;
+			//this.owner.update = this.renderAxisAligned;
 		}
 	}
 }
@@ -93,10 +93,15 @@ class TileMapRenderer extends CustomLayer {
 		this.projectionMode     = 'angle';															// "zigzag", "angle"
 				
 		this.updateViewport();																		// acquire canvasSurface
+		this.buffer.name        = 'TileMapRenderingBuffer';
 
-		this.engine.events.add('resize', _ => { 			
+		this.engine.events.add('resize', _ => { 
 			this.buffer.setCanvasSize(this.engine.screen.width, this.engine.screen.height);
 		});
+	}
+
+	update() {		
+		if (this.flags.isometric) this.renderIsometric(); else this.renderAxisAligned();
 	}
 
 	get renderPosition() {
@@ -127,57 +132,67 @@ class TileMapRenderer extends CustomLayer {
 			for (const o of map.objects) {
 				const texture  = map.textures[o.texture];	
 				
-				for (const p of o.positions) {
-					if (this.flags.isometric) {												
-						var position = this.project(V2(p[0], p[1])).add(V2(map.tileSize * 0.5, map.tileSize * 0.5));
-					} else {
-						var position = V2(~~(p[0] * map.tileSize), ~~(p[1] * map.tileSize));
-					}
-
-					const origin = ('origin' in o) ? V2(o.origin.x, o.origin.y) : V2(-0.5, -0.5);
-
-				    const params = { 
-						name:     o.name,
-						position, 
-						origin, 
-						zIndex:   this.objectZLayer, 
-						scale:    (p[2] != null) ? p[2] : ('scale' in o) ? o.scale : 1,
-						rotation: (p[3] != null) ? p[3] : 0,
-						surface:  this.buffer,												
-					}
-					
+				for (const p of o.positions) {					
+					const params = {
+						name     : o.name,						
+						origin   : ('origin' in o) ? V2(o.origin.x, o.origin.y) : V2(-0.5, -0.5),
+						zIndex   : this.objectZLayer,
+						scale    : (p[2] != null) ? p[2] : ('scale' in o) ? o.scale : 1,
+						rotation : (p[3] != null) ? p[3] : 0,						
+					}					
 					if ('texture' in o) { params.img = texture.canvas };
-					if ('image' in o)   { params.imgUrl = o.image; };
-
-					const actor     = this.engine.gameLoop.createTypedActor('obstacle', params);
+					if ('url' in o)     { params.imgUrl = o.url; };
 					
-					if ('flipbooks' in o) actor.flipbooks = await Flipbook.Parse(o.flipbooks, actor);				// load flipbooks
-
-					if (p[4] != null) {																				// 4th value is mirror: 1 = x, 2 = y, 3 = x+y
-						if ((p[4] & 1) == 1) actor.renderHints.mirrorX = true;
-						if ((p[4] & 2) == 2) actor.renderHints.mirrorY = true;					
+					if (p != null) {
+						if (p[4] != null) {																					// 4th value is mirror: 1 = x, 2 = y, 3 = x+y
+							if ((p[4] & 1) == 1) actor.renderHints.mirrorX = true;
+							if ((p[4] & 2) == 2) actor.renderHints.mirrorY = true;					
+						}
+						if (p[5] != null) {																					// 5th value is offset
+							actor.offset.set({ x:p[5], y:p[6] });
+						}
 					}
-					if (p[5] != null) {																				// 5th value is offset
-						actor.offset.set({ x:p[5], y:p[6] });
-					}
+					
+					this.addStaticActor(V2(p[0], p[1]), params, async (actor) => {
+						if ('flipbooks' in o) actor.flipbooks = await Flipbook.Parse(o.flipbooks, actor);					// load flipbooks
 
-					Engine.gameLoop._addActor(actor);																// create actor
-
-					if (o.colliders) {																				// create colliders (if any)
-						actor.hasColliders = true;
-						actor.colliderType = 'WorldStatic';
-						const colliders    = Collider.Parse(o.colliders);
-						for (const c of colliders) actor.colliders.add(c);						
-					}
-
-					this.staticActors.push(actor);
-					this.events.fire('createprop', { prop:actor });
+						if (o.colliders) {																					// create colliders (if any)
+							actor.hasColliders = true;
+							actor.colliderType = 'WorldStatic';
+							const colliders    = Collider.Parse(o.colliders);
+							for (const c of colliders) actor.colliders.add(c);						
+						}
+						console.log(actor);
+					});			
 				}				
 			}
 		}
 		
 		return map;
 	}	
+
+	/**
+	 * Adds a new static actor in the current gameLoop and links it to this tileMap	 
+	 * @param {Vector2} position In map coordinates (tiles)
+	 * @param {object} o Standard Actor create parameters	 	 
+	 * @param {function} onAfterCreate Optional callback function. Called before the created actor is inserted in the gameLoop
+	 */
+	async addStaticActor(position, o = {}, onAfterCreate) {
+		const { map } = this;	
+
+		const params = {
+			position : (this.flags.isometric) ? this.project(position, true).add(V2(map.tileSize * 0.5, map.tileSize * 0.5)) : position.mul(map.tileSize).toInt(),
+			surface  : this.buffer,	
+		}
+		Object.assign(params, o);
+
+		const actor = this.engine.gameLoop.createTypedActor('obstacle', params);							// create the actor		;
+		if (onAfterCreate) onAfterCreate(actor);
+
+		this.engine.gameLoop._addActor(actor);																// add the actor in the gameloop		
+		this.staticActors.push(actor);
+		this.events.fire('createprop', { prop:actor });
+	}
 
 	getTileAtCoords(p) {
 		const { map, position, world } = this;
@@ -227,9 +242,12 @@ class TileMapRenderer extends CustomLayer {
 	 * Converts tile coordinates to screen coordinates. Uses this.isometricProjection attribute to determine how the tiles are laid on the screen.
 	 * @param {Vector2} c Tile coordinates	 
 	 */
-	project(c) {
+	project(c, ignoreCamPos) {
 		const {x, y} = c;
-		const camPos = (this.world == null) ? this.position : this.world.camPos;
+		
+		if (!ignoreCamPos) var camPos = (this.world == null) ? this.position : this.world.camPos;
+			else var camPos = Vec2.Zero();
+
 		const size   = this.map.tileSize;
 		if (this.projectionMode == 'zigzag') {
 			const top    = (y * size * 0.25)                       - ~~camPos.y - size * 0.5;
@@ -292,6 +310,7 @@ class TileMapRenderer extends CustomLayer {
 				}
 			}
 		}
+		
 		this.events.fire('afterdraw', { renderer:this, ctx });
 	}
 

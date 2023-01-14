@@ -46,9 +46,8 @@ class TileMapEditor extends TileMapRenderer {
 		const ui = this.engine.ui;			
 
 		const mouseup = (e) => {    	
-            const position = e.position;
-
 			if (this._drag && (ui == null || ui.active == null)) {
+                const position = e.position;
 				this._dragStartPos = e.position.clone();
 			}
 			this._drag = false;
@@ -75,7 +74,7 @@ class TileMapEditor extends TileMapRenderer {
 		
 		this.engine.events.register(this, { mousemove, mouseup, mousedown });
 	}
-
+/*
     async init(params) {
         if ('url' in params) {
             console.log('Loading map:', params.url);
@@ -84,15 +83,16 @@ class TileMapEditor extends TileMapRenderer {
         }
     
         this.events.register(this, { beforedraw, customdraw, afterdraw });  
-    /*      
+        
         this.events.add('mousedown', e => {        
             if (Engine.ui.active == null) {                        
                 if (this.selectedTileIndex == -1) return;
                 this.map.tiles[e.cursor.y][e.cursor.x] = this.selectedTileIndex;
             }
         });
-        */
+        
     }    
+    */
 }
 
 export { TileMapEditor }

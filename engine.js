@@ -85,7 +85,7 @@ class TinyGameEngine {
 		// main rendering surface:
 		AE.sealProp(this, 'renderingSurface', null);
 
-		this.gameLoop     = new GameLoop({ engine:this });		
+		this.gameLoop     = new GameLoop({ engine:this, name:'DefaultGameLoop' });		
 		this._zoom	      = 1;
 		this.resolution   = new Vector2(1152, 648);
 		
