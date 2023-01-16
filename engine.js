@@ -19,7 +19,7 @@
 * For example a space invaders, tetris, pong, asteroids, etc. might have no use of container for static World but a platformer game definitely has.
 *
 */
-const VersionNumber = '2.5';
+const VersionNumber = '2.6';
 
 import * as Types from "./types.js";
 import { Root, Enum_HitTestMode } from "./root.js";
@@ -34,8 +34,7 @@ import { Events } from "./events.js";
 import { UI } from "./ui/ui-html.js";
 import { CustomLayer } from "./customLayer.js";
     
-const Rect         = Types.Rect;
-const Vector2	   = Types.Vector2;
+const { Rect, Vector2, V2, LineSegment } = Types;
 
 const ImplementsEvents = 'resize contextmenu mousemove mouseup mousedown mouseover mouseout wheel keyup keydown';
 
@@ -75,6 +74,9 @@ class TinyGameEngine {
 	constructor (o) {		
 		AE.sealProp(this, 'flags', new Flags(DefaultFlags, (a, b) => this.onFlagChange(a, b))); 				// create default flags and make 'this.flags' immutable
 		AE.sealProp(this, 'url', import.meta ? new URL('./', import.meta.url).pathname : null);
+
+		// line segments describing the current screen:
+		AE.sealProp(this, 'viewportLineSegments');
 
 		// reserved names for optional modules:
 		AE.sealProp(this, 'assetManager');
@@ -408,9 +410,27 @@ class TinyGameEngine {
 	recalculateScreen() {	
 		const pos = AE.getPos(this._rootElem);
 		this.screen = new Rect(pos.left, pos.top, pos.left + pos.width, pos.top + pos.height);
-		this.edges  = new Rect(0, 0, pos.width, pos.height);
+		this.edges  = new Rect(0, 0, Math.round(pos.width), Math.round(pos.height));
 
-		if (this.flags.getFlag('hasRenderingSurface')) this.renderingSurface.setCanvasSize(pos.width + 1, pos.height + 1);			
+		const screen = this.edges;
+		this.viewportLineSegments = {
+			top    : new LineSegment(V2(0, 0), V2(screen.width, 0)),
+        	left   : new LineSegment(V2(0, 0), V2(0, screen.height)),
+        	right  : new LineSegment(V2(screen.width, 0), V2(screen.width, screen.height)),
+        	bottom : new LineSegment(V2(0, screen.height), V2(screen.width, screen.height)),
+		}
+
+		if (this.flags.getFlag('hasRenderingSurface')) this.renderingSurface.setCanvasSize(this.edges.width, this.edges.height);			
+	}
+
+	/**
+	 * Checks whether the given LineSegment crosses any of the viewport's edges (zero or one end of the line is inside the viewport)
+	 * Useful for optimizing linedrawing when you need to know if a line crosses any edge of the viewport. Note that if both ends of the line are inside the viewport, this will return false!
+	 * @param {Types.LineSegment} l 
+	 */
+	crossesViewport(l) {
+		const vp = this.viewportLineSegments;
+		return (vp.top.intersectsLine(l) || vp.left.intersectsLine(l) || vp.right.intersectsLine(l) || vp.bottom.intersectsLine(l));
 	}
 
 	autoZoom() {

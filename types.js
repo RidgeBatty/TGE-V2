@@ -533,6 +533,11 @@ class Rect {
 		return new Rect(~~r.left, ~~r.top, ~~r.right, ~~r.bottom);
 	}
 
+	/**
+	 * Grow the rectangle
+	 * @param {number} size 
+	 * @returns 
+	 */
 	expand(size) {
 		this.left   -= size;
 		this.top    -= size;
@@ -583,10 +588,6 @@ class Rect {
 	
 */
 class VectorBase {
-    constructor() {
-		
-    }
-	
 	/**
 	*	Assigns source vector 'vec' into this vector. 
 	*	Source vector can be of any length. Only properties which exist and contain numbers are copied.
@@ -884,7 +885,8 @@ class Vector extends VectorBase {
 class Vector2 extends VectorBase {
     constructor (x, y) {
         super();
-        Object.assign(this, { x,y });        
+        this.x = x;
+		this.y = y;
     }   
 	
     clone() {        

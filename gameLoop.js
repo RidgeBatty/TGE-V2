@@ -421,7 +421,7 @@ class GameLoop {
 	/**
 	 * DO NOT USE! This is called internally!
 	 */	
-	_tick(forceSingleTick) {						
+	_tick(forceSingleTick) {		
 		const groups = this.hitTestGroups;
 
 		if (!this.flags.isRunning && !forceSingleTick) return;

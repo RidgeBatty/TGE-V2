@@ -282,8 +282,17 @@ class Flipbook {
 							urls.push(s.urls.name.replace('#'.repeat(hashCount), str));
 						}
 					} 						
-					const images = await flipbook.loadAsFrames(urls, s.path, true);					
-					const seq    = flipbook.appendSequence(s.name, urls.length, s.loop);
+					const images = await flipbook.loadAsFrames(urls, s.path, true);	
+					
+					if ('frames' in s) {													// "frames" can be used to recreate non-linear animation by duplicating and rearranging the image frames
+						const order = images.slice(images.length - urls.length);			// get the images that belong to this sequence
+						const rearr = [];
+						for (let i = 0; i < order.length; i++) rearr.push(order[i]);
+						images.push(...rearr);
+						var seq = flipbook.appendSequence(s.name, s.frames.length, s.loop);
+					} else
+						var seq = flipbook.appendSequence(s.name, urls.length, s.loop);
+
 					if ('direction' in s) seq.direction = s.direction;
 				}
 			}

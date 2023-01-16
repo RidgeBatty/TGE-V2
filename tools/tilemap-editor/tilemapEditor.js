@@ -1,7 +1,8 @@
 import { TileMapRenderer } from "../../tileMapRenderer.js";
 import { Types } from "../../engine.js";
+import { UStaticActorsDialog } from "../../../ui/staticActorsDialog.js";
 
-const { Vector2:Vec2 } = Types;
+const { Vector2:Vec2, V2 } = Types;
 
 const ImplementsEvents = 'beforedraw customdraw afterdraw mousedown mousemove';
 
@@ -74,6 +75,30 @@ class TileMapEditor extends TileMapRenderer {
 		
 		this.engine.events.register(this, { mousemove, mouseup, mousedown });
 	}
+    
+	stringifyStaticActors() {
+		const objects = [];
+		for (const actor of this.staticActors) {
+            
+			var o = objects.find(e => e.name == actor.name);			// if actor exists in the export structure, add information to it (otherwise it needs to be created)			
+			if (o == null) {                                            // not found, create 
+				var o = {
+					name      : actor.name,
+					positions : [],					
+                    origin    : actor.origin.toJSON(),
+                    url       : new URL(actor.imgUrl).pathname,
+				};
+                objects.push(o);
+			} 
+			const mirror = actor.renderHints.mirrorX + actor.renderHints.mirrorY * 2;            
+            const pos    = this.unProject(actor.position.clone(), true).sub(V2(1, 1));      // subtract half a tile (adding a static actor does the opposite)
+			const arr    = [pos.x, pos.y, actor.scale, actor.rotation, mirror, actor.offset.x, actor.offset.y];
+			o.positions.push(arr);
+		}        
+        console.log(objects)
+		return objects;
+	}
+
 /*
     async init(params) {
         if ('url' in params) {

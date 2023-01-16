@@ -4,29 +4,57 @@ import { Collider } from './collider.js';
 import { V2 } from './types.js';
 class TileMap {
 	constructor() {	
-		this.tiles     = [];
 		this.textures  = [];
 		this.shift     = [];
 		this.overlays  = [];
 		this.colliders = {};
 		this.tileSize  = 0;	
-		this.origin    = '';			
+		this.origin    = '';
+
+		this._size     = V2(0, 0);
+		this.tiles     = new Uint32Array();		
+	}
+
+	resize(sx, sy, clearContent = false) {
+		if (sx < 0 || sy < 0 || sx > 4096 || sy > 4096) throw 'Illegal tilemap size';
+		let clear = false;
+
+		const newArray = new Uint32Array(sx * sy);
+
+		if (!clearContent) {
+			for (let y = 0; y < sy; y++) {
+				for (let x = 0; x < sx; x++) {                    					
+					newArray[sx * y + x] = (x < this._size.x && y < this._size.y) ? this.tiles[this._size.x * y + x] : 0;
+				}
+			}
+		}
+
+		this.tiles = newArray;		
+		this._size = V2(sx, sy);
 	}
 
 	/**
-	 * Returns the size of tile map as a Vector2. The result is number of tiles in vertical and horizontal direction.
+	 * Returns the size (in pixels) of tile map as a Vector2.
 	 */
-	get size() {
+	get pixelSize() {
 		return V2(this.width * this.tileSize, this.height * this.tileSize);
 	}
 
+	get size() {
+		return this._size.clone();
+	}
+
+	set size(v) {
+		this.resize(v.x, v.y);
+	}
+
 	get height() {
-		return this.tiles.length;
+		return this._size.y;
 	}
 
 	get width() {
-		return this.tiles[0].length;
-	}
+		return this._size.x;
+	}	
 
 	/**
 	 * Adds a new texture into the tileMap internal array. Returns the ID of the added texture.
@@ -40,13 +68,13 @@ class TileMap {
 
 	tileAt(x, y) {
 		if (y < 0 || y >= this.height || x < 0 || x >= this.width) throw 'Tile coordinates out of range';
-		return this.tiles[y][x];
+		return this.tiles[y * this.size.x + x];
 	}
 
 	setTileAt(x, y, v) {
 		//if (v < 0 || v >= this.textures.length) throw 'Texture ID out of range (' + v + ')';
 		if (y < 0 || y >= this.height || x < 0 || x >= this.width) throw 'Tile coordinates out of range';
-		this.tiles[y][x] = v;
+		this.tiles[y * this.size.x + x] = v;
 	}
 
 	/**
@@ -87,10 +115,16 @@ class TileMap {
 			try {
 				if ('tileSize' in data) this.tileSize = data.tileSize;
 				
-				for (const row of data.tiles) {																// parse map tiles
-					const cells = row.split(' ');
-					const r     = cells.map(e => +e);
-					this.tiles.push(r);
+				if (data.tiles.length > 0) {
+					let rowLen = 0;
+					this.resize(data.tiles.length, data.tiles[0].split(' ').length);						// create the buffer				
+					
+					for (const row of data.tiles) {															// parse map tiles
+						const cells = row.split(' ');
+						const r     = cells.map(e => +e);
+						this.tiles.set(r, rowLen);
+						rowLen += cells.length;						
+					}
 				}
 
 				if ('mapOrigin' in data) {																	// flip the order of rows?
@@ -147,7 +181,7 @@ class TileMap {
 	}
 
 	clear() {
-		this.tiles.length     = 0;
+		this.tiles.fill(0);
 		this.textures.length  = 0;
 		this.shift.length     = 0;
 		this.overlays.length  = 0;

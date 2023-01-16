@@ -264,6 +264,18 @@ const imageFromBlob = (fileOrBlob) => {
 	});
 }
 
+const downloadFile = (filename, data, type = 'application/json') => {
+	if (filename != '') {
+		const blob = new Blob([this.createExportObject()], { type });
+		const url  = URL.createObjectURL(blob);
+		const e    = window.document.createElement('a');
+		e.href     = url;
+		e.download = filename;
+		e.click();  
+		URL.revokeObjectURL(url);
+	}
+}
+
 const wrapMax = (x, max) => {
 	return (max + (x % max)) % max;
 }
@@ -353,6 +365,7 @@ export {
 	getJSON, 
 	createFileDropZone,
 	imageFromBlob,
+	downloadFile,
 	imgDims,
 
 	delay, 
