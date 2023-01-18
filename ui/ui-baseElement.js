@@ -6,7 +6,8 @@ const UI_ELEMENT_ID_PREFIX = 'ui-';                                             
 class UBaseElement {
     #ui;
     #owner;    
-    constructor(o) {             
+    constructor(o) {  
+        if (!('owner' in o)) throw 'UI components must have owner specified.';
         if (!(o.owner || o.owner.objectType != 'UI') && !o.ui) throw 'Reference to UI object was not given when creating a new UI component.';
 
         if (o.owner instanceof UBaseElement || o.owner.objectType == 'UI') {

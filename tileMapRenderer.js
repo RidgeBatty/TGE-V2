@@ -89,7 +89,6 @@ class TileMapRenderer extends CustomLayer {
 		this.objectType         = 'renderer';
 		this.objectZLayer       = ('objectZLayer' in params) ? params.objectZLayer : this.zIndex;	// on which layer the objects should be rendered on?
 		this.staticActors       = [];		
-		this.shift				= [];																// how much each texture should be shifted in y-direction
 		this.projectionMode     = 'angle';															// "zigzag", "angle"
 				
 		this.updateViewport();																		// acquire canvasSurface
@@ -120,17 +119,19 @@ class TileMapRenderer extends CustomLayer {
 	}
 
 	/**
-	 * Loads a map file in memory and then calls TileMap.loadFromFile() which extracts tilemap data and texture information.
-	 * It then proceeds to extract static objects (and potentially other non-tilemap/texture data from the same file)
+	 * Loads a map file in memory and then calls TileMap.LoadFromFile() which extracts tilemap data and texture information.
+	 * It then proceeds to parse static objects (and potentially other non-tilemap/texture data from the same file)
 	 */
 	async loadMap(options) {																					
-		const { map } = this;			
-		await map.loadFromFile(options);																			// load tilemap/texture data
-		if (map.objects) this.loadStaticActorsFromObject(map.objects);												// load static actors from map file "objects" collection
-		return map;
+		const o = await TileMap.LoadFromFile(options);														// load tilemap/texture data
+		if (o.data.objects) this.parseStaticActorsFromObject(o.data.objects);								// load static actors from map file "objects" collection
+
+		this.map = o.map;
+
+		return o;
 	}	
 
-	async loadStaticActorsFromObject(objects) {
+	async parseStaticActorsFromObject(objects) {
 		for (const o of objects) {
 			const texture  = this.map.textures[o.texture];	
 			
@@ -188,7 +189,7 @@ class TileMapRenderer extends CustomLayer {
 		if (onAfterCreate) onAfterCreate(actor);
 
 		await this.engine.gameLoop._addActor(actor);														// add the actor in the gameloop		
-		if ('flipbooks' in o) actor.flipbooks = await Flipbook.Parse(o.flipbooks, actor);					// load flipbooks
+		if (o.flipbooks) actor.flipbooks = await Flipbook.Parse(o.flipbooks, actor);						// load flipbooks
 
 		this.staticActors.push(actor);
 		this.events.fire('createprop', { prop:actor });
@@ -303,7 +304,7 @@ class TileMapRenderer extends CustomLayer {
 				if ((p.y + size) < 0 || p.y > cH || (p.x + size) < 0 || p.x > cW) continue;
 
 				const id = map.tileAt(x, y);
-				const s  = map.shift[id] || Vec2.Zero();
+				const s  = map.textures[id].meta.shift || Vec2.Zero();
 				p.add(s);
 
 				const tileId     = id & 255;
@@ -371,19 +372,15 @@ class TileMapRenderer extends CustomLayer {
 		const cW     = canvas.width;
 		const cH     = canvas.height;
 				
-		let cl = 0;
-		let point = Vec2.Zero();
-
 		for (let y = 0; y < map.height; y++) {			
 			for (let x = 0; x < map.width; x++) {				
 				const p = this.project(V2(x, y));
 				
 				if ((p.y + size) < 0 || p.y > cH || (p.x + size) < 0 || p.x > cW) continue;
-				cl++;
 				
 				const tileId = map.tileAt(x, y);					
 				const tex    = map.textures[tileId];
-				const shift  = map.shift[tileId];
+				const shift  = tex.meta.shift;														// texture shift not re-implemented yet
 				const cList  = map.colliders[tileId];
 
 				if (cList) for (const c of cList) {					
@@ -401,8 +398,7 @@ class TileMapRenderer extends CustomLayer {
 					this.optimizedColliders.push(collider);						
 				}									
 			}
-		}				
-		//console.log(cl)
+		}						
 	}
 
 	tick() {		

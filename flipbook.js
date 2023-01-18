@@ -287,9 +287,10 @@ class Flipbook {
 					if ('frames' in s) {													// "frames" can be used to recreate non-linear animation by duplicating and rearranging the image frames
 						const order = images.slice(images.length - urls.length);			// get the images that belong to this sequence
 						const rearr = [];
-						for (let i = 0; i < order.length; i++) rearr.push(order[i]);
+						for (let i = 0; i < s.frames.length; i++) rearr.push(order[s.frames[i]]);
 						images.push(...rearr);
 						var seq = flipbook.appendSequence(s.name, s.frames.length, s.loop);
+						
 					} else
 						var seq = flipbook.appendSequence(s.name, urls.length, s.loop);
 

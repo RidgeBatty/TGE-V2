@@ -1,37 +1,11 @@
-import { TileMapRenderer } from "../../tileMapRenderer.js";
-import { Types } from "../../engine.js";
-import { UStaticActorsDialog } from "../../../ui/staticActorsDialog.js";
+import { TileMapRenderer } from "../tileMapRenderer.js";
+import { Types } from "../engine.js";
 
 const { Vector2:Vec2, V2 } = Types;
 
 const ImplementsEvents = 'beforedraw customdraw afterdraw mousedown mousemove';
 
-const beforedraw = (o) => {
-    o.ctx.strokeStyle = 'black';    
-    o.ctx.lineWidth = 1;
-    o.ctx.beginPath();
-}
-
-const customdraw = (o) => {
-    const size = o.renderer.map.tileSize;
-    o.ctx.rect(o.drawPos.x, o.drawPos.y, size, size);
-}
-
-const afterdraw = (o) => {    
-    o.ctx.stroke();
-    const cursor = o.renderer.cursor;
-    if (cursor.x > -1) {
-        const size = o.renderer.map.tileSize;
-        const ofs  = o.renderer.position;
-        o.ctx.beginPath();
-        o.ctx.strokeStyle = 'red';    
-        o.ctx.lineWidth = 3;
-        o.ctx.rect(cursor.x * size - ofs.x, cursor.y * size - ofs.y, size, size);
-        o.ctx.stroke();        
-    }
-}
-
-class TileMapEditor extends TileMapRenderer {
+export class CustomTileMapEditor extends TileMapRenderer {
     constructor(o) {
         super(o);     
         this.selectedTileIndex = -1;          
@@ -98,7 +72,7 @@ class TileMapEditor extends TileMapRenderer {
         console.log(objects)
 		return objects;
 	}
-
+}
 /*
     async init(params) {
         if ('url' in params) {
@@ -117,7 +91,30 @@ class TileMapEditor extends TileMapRenderer {
         });
         
     }    
-    */
+
+const beforedraw = (o) => {
+    o.ctx.strokeStyle = 'black';    
+    o.ctx.lineWidth = 1;
+    o.ctx.beginPath();
 }
 
-export { TileMapEditor }
+const customdraw = (o) => {
+    const size = o.renderer.map.tileSize;
+    o.ctx.rect(o.drawPos.x, o.drawPos.y, size, size);
+}
+
+const afterdraw = (o) => {    
+    o.ctx.stroke();
+    const cursor = o.renderer.cursor;
+    if (cursor.x > -1) {
+        const size = o.renderer.map.tileSize;
+        const ofs  = o.renderer.position;
+        o.ctx.beginPath();
+        o.ctx.strokeStyle = 'red';    
+        o.ctx.lineWidth = 3;
+        o.ctx.rect(cursor.x * size - ofs.x, cursor.y * size - ofs.y, size, size);
+        o.ctx.stroke();        
+    }
+}
+
+*/

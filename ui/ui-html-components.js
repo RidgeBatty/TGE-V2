@@ -147,9 +147,64 @@ class UColorPicker extends UInputElement {
 
 class UPanel extends UBaseElement {
     constructor(o) {
-        o.tagName   = 'ui-panel';
-        o.className = ('className' in o) ? o. className : 'panel-frame';
+        o.tagName   = ('tagName' in o) ? o.tagName : 'ui-panel';
+        o.className = ('className' in o) ? o.className : 'panel-frame';
         super(o);                        
+
+        this._orientation = '';
+    }
+
+    set orientation(v) {
+        if (v == 'column' || v == 'row' || v == '') {
+            this._orientation = v;
+            this.elem.classList.add(v);        
+        }
+    }
+
+    get orientation() {
+        if (v == 'column') return this._orientation;
+    }
+}
+
+class URadioButton extends UInputElement {
+    constructor(o) {
+        o.tagName            = 'ui-radiobutton'; 
+        super(o);           
+        this.objectType      = 'URadioButton';
+        
+        this.input.setAttribute('type', 'radio');
+        if ('group' in o) this.input.setAttribute('name', o.group);
+    }
+}
+
+class URadioGroup extends UPanel {
+    #uid = 0;
+    /**
+     * 
+     * @param {object} o parameters
+     * @param {[string]} o.options Optional. List of option names
+     * @param {string=} o.group Optional. Name of the group for this radiogroup     
+     **/
+    constructor(o) {
+        o.tagName   = 'ui-radiogroup';
+        o.className = ('className' in o) ? o.className : 'panel-frame';
+        super(o);
+        this.objectType = 'URadioGroup';
+
+        this.options = [];
+        this.group   = o.group || 'ui-radiogroup-' + this.#uid++;        
+
+        if ('options' in o) this.addOptions(o.options);
+        if ('selectedIndex' in o && this.options[o.selectedIndex]) this.options[o.selectedIndex].input.checked = true;
+    }
+
+    get selected() { return this.options.find(e => e.input.checked); }
+    set selected(nameOrIndex) { return this.options.forEach((e, i) => (e.input.name == nameOrIndex || i == nameOrIndex)); }
+
+    addOptions(list) {
+        for (const o of list) {
+            this.options.push(new URadioButton({ owner:this, name:o, caption:o, group:this.group, className:'radio-left', align:'left' }));
+        }
     }
 }
 
@@ -243,6 +298,11 @@ class UWindow extends UBaseElement {
         this.elem.style.display = 'none';
         this.events.fire('close');        
         this.ui.active = null;        
+    }
+
+    destroy() {
+        this.close();
+        super.destroy();
     }
 }
 
@@ -340,7 +400,7 @@ class UCustomList extends UBaseElement {
         for (const e of o) {
             const wrapper  = addElem({ parent:this.body });
             const isImages = (typeof e == 'object') && ('src' in e);
-
+            
             if (isImages) {                                                     // copies image from existing <img> tags (or Image instances) or from anonymous object which has "src" property                
                 const img = addElem({ parent:wrapper, type:'img' });
                 img.src = e.src;
@@ -509,4 +569,4 @@ const Confirmation = async(o) => {
     })
 }
 
-export { UBaseElement, UWindow, UPanel, UButton, UEdit, UCaption, USwitch, UCustomList, UCustomFileList, UFileList, UDialog, UMenu, USlider, UColorPicker, Confirmation }
+export { UBaseElement, UWindow, UPanel, UButton, UEdit, UCaption, USwitch, UCustomList, UCustomFileList, UFileList, UDialog, UMenu, USlider, UColorPicker, URadioButton, URadioGroup, Confirmation }

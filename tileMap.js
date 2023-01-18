@@ -3,9 +3,8 @@ import { getJSON } from './utils.js';
 import { Collider } from './collider.js';
 import { V2 } from './types.js';
 class TileMap {
-	constructor() {	
+	constructor(size) {	
 		this.textures  = [];
-		this.shift     = [];
 		this.overlays  = [];
 		this.colliders = {};
 		this.tileSize  = 0;	
@@ -13,6 +12,7 @@ class TileMap {
 
 		this._size     = V2(0, 0);
 		this.tiles     = new Uint32Array();		
+		if (size) this.resize(size);
 	}
 
 	resize(sx, sy, clearContent = false) {
@@ -101,78 +101,37 @@ class TileMap {
 		const arr = [];
 				
 		for (const t of data.textures) {
-			const tex = new Texture(t);																// give it a name (image filename as it is in the hjson file, usually without extension)
-			p.push(tex.load(data.texturePath + t + ext));			
+			const tex = new Texture(t.name);					// give it a name (image filename as it is in the hjson file, usually without extension)			
+			p.push(tex.load(data.texturePath + t.name + ext));			
+
+			tex.meta = {};
+			for (const [k, v] of Object.entries(t)) {
+				if (k != 'name') tex.meta[k] = v;
+			}
+
 			arr.push(tex);
 		}
 		await Promise.all(p);				
 		return arr;
-	}
-
-	loadFromObject(data, clearData = true) {
-		return new Promise(async (resolve, reject) => {
-			if (clearData) this.clear();
-			try {
-				if ('tileSize' in data) this.tileSize = data.tileSize;
-				
-				if (data.tiles.length > 0) {
-					let rowLen = 0;
-					this.resize(data.tiles.length, data.tiles[0].split(' ').length);						// create the buffer				
-					
-					for (const row of data.tiles) {															// parse map tiles
-						const cells = row.split(' ');
-						const r     = cells.map(e => +e);
-						this.tiles.set(r, rowLen);
-						rowLen += cells.length;						
-					}
+/*
+		if ('textureMetaData' in data) {															// if textures have metadata...
+			const meta = data.textureMetaData;
+			if ('colliders' in meta) {																// load static colliders attached to map tiles
+				let tileId = 0;
+				for (const tile of meta.colliders) {
+					this.colliders[tileId] = Collider.Parse(tile);						
+					tileId++;
 				}
-
-				if ('mapOrigin' in data) {																	// flip the order of rows?
-					this.origin = data.mapOrigin;
-					if (data.mapOrigin == 'bottom-left') this.tiles = this.tiles.reverse();					
-				}
-
-				if (data.objects) {																			// load objects
-					this.objects = data.objects;
-				}
-
-				this.textures = await this.loadTextures(data);												// load textures
-				if ('textureMetaData' in data) {															// if textures have metadata...
-					const meta = data.textureMetaData;
-					if ('colliders' in meta) {																// load static colliders attached to map tiles
-						let tileId = 0;
-						for (const tile of meta.colliders) {
-							this.colliders[tileId] = Collider.Parse(tile);						
-							tileId++;
-						}
-					}	
-					if ('shift' in meta) {																	// file contains 'shift' information for textures
-						this.shift = meta.shift.map(e => V2(e.x, e.y));					
-					}		
-					if ('overlays' in meta) {
-						this.overlays = await this.loadTextures({ textures:meta.overlays, texturePath:data.texturePath, textureExt:data.textureExt });	
-						this.overlays.forEach(o => o.data.isOverlay = true);						
-					}			
-				}			
-			} catch (e) {
-				console.warn('Unable to parse tilemap!');				
-				reject(e);
+			}	
+			if ('shift' in meta) {																	// file contains 'shift' information for textures
+				this.shift = meta.shift.map(e => V2(e.x, e.y));					
+			}		
+			if ('overlays' in meta) {
+				this.overlays = await this.loadTextures({ textures:meta.overlays, texturePath:data.texturePath, textureExt:data.textureExt });	
+				this.overlays.forEach(o => o.data.isOverlay = true);						
 			}			
-			resolve(this.tiles);
-		});
-	}
-
-	loadFromFile(options) {
-		return new Promise(async (resolve, reject) => {
-			this.clear();					
-			if (!('url' in options)) throw 'URL missing from options object';
-			const data = await getJSON(options.url);
-			try {
-				resolve(this.loadFromObject(data));
-			} catch (e) {
-				reject(e);
-			}
-		});
+		}			
+		*/
 	}
 
 	rescaleTextures(w, h) {
@@ -183,9 +142,48 @@ class TileMap {
 	clear() {
 		this.tiles.fill(0);
 		this.textures.length  = 0;
-		this.shift.length     = 0;
 		this.overlays.length  = 0;
 		this.colliders        = {};
+	}
+
+	static async Parse(data) {
+		return new Promise(async (resolve, reject) => {
+			let map = new TileMap();
+			try {
+				if ('tileSize' in data) map.tileSize = data.tileSize;
+				
+				if (data.tiles.length > 0) {					
+					let rowLen = 0;
+					map.resize(data.tiles.length, data.tiles[0].split(' ').length);						// create the buffer				
+					
+					for (const row of data.tiles) {															// parse map tiles
+						const cells = row.split(' ');
+						const r     = cells.map(e => +e);
+						map.tiles.set(r, rowLen);
+						rowLen += cells.length;						
+					}
+				}
+
+				map.textures = await map.loadTextures(data);												// load textures				
+			} catch (e) {
+				console.warn('Unable to parse tilemap!');				
+				reject(e);
+			}			
+			resolve(map);
+		});
+	}
+
+	static LoadFromFile(options) {
+		return new Promise(async (resolve, reject) => {
+			if (!('url' in options)) throw 'URL missing from options object';
+			const data = await getJSON(options.url);
+			try {
+				const map = await TileMap.Parse(data);
+				resolve({ map, data });
+			} catch (e) {
+				reject(e);
+			}
+		});
 	}
 }
 

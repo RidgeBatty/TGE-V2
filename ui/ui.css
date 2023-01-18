@@ -13,14 +13,26 @@ ui-panel {
 	position: relative;	
 	flex: 1;
 }
-.ui-panel.center {
+ui-panel.center {
 	align-items: center;
 }
-
+.panel-frame.column {
+	flex-direction: column;
+}
+.panel-frame.row {
+	flex-direction: row;
+}
 .panel-frame {
 	display: flex;
 	position: relative;
 	border:1px solid black;		
+}
+
+ui-radiobutton {
+	display: flex;
+}
+ui-radiobutton.radio-left {
+	flex-direction: row-reverse;
 }
 
 ui-edit {

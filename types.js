@@ -502,6 +502,10 @@ class Color extends BaseColor {
 	static FlipOrder(val) {
 		return ((val & 0xFF) << 24) | ((val & 0xFF00) << 8) | ((val >> 8) & 0xFF00) | ((val >> 24) & 0xFF);
 	}
+
+	static IsEqual(a, b) {
+		return (a.value[0] == b.value[0] && a.value[1] == b.value[1] && a.value[2] == b.value[2] && a.value[3] == b.value[3]);
+	}
 }
 
 /*
