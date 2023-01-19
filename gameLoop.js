@@ -378,9 +378,9 @@ class GameLoop {
 		this.frameDelta = timeStamp - this._frameStart;		
 		
 		if (this.clearColor) {			
-			const { width, height } = this.surface;			
+			const { width, height } = this.surface;					
 			if (this.clearColor == 'erase') this.surface.ctx.clearRect(0, 0, width, height); 				// clear
-				else this.surface.drawRectangle(0,0, width, height, { fill:this.clearColor });				// clear with color
+				else this.surface.drawRectangle(0, 0, width, height, { fill:this.clearColor });				// clear with color
 		}
 		if (this.onBeforeRender) this.onBeforeRender();		
 		

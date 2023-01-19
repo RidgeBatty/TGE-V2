@@ -59,15 +59,18 @@ class Texture extends Picture {
 
 	/**
 	 * Loads an image and returns a promise. Create a canvas and context for the image and copies the image on the canvas. Add the image in the global "textures" collection
-	 * @param {*} url 
+	 * @param {string} url 
+	 * @param {function} onBeforeDraw Optional. Callback function to be executed before the image is drawn on the canvas
 	 */
-	load(url) {
+	load(url, onBeforeDraw) {
 		return new Promise(async (resolve, reject) => {
 			let a = await this.loadFile(url);
 			
 			const img = this.image;		
 			this.createCanvas(img.naturalWidth, img.naturalHeight);		
-			this.ctx.drawImage(img, 0, 0);				
+
+			if (onBeforeDraw) onBeforeDraw(this.ctx, img);
+				else this.ctx.drawImage(img, 0, 0);				
 
 			if (this.cacheTextures) textures[this.name] = this;													// add to textures collection (TO-DO: a textureCollection object)			
 

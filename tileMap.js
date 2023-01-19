@@ -101,37 +101,32 @@ class TileMap {
 		const arr = [];
 				
 		for (const t of data.textures) {
-			const tex = new Texture(t.name);					// give it a name (image filename as it is in the hjson file, usually without extension)			
-			p.push(tex.load(data.texturePath + t.name + ext));			
+			const tex = new Texture(t.name, true);					// give it a name (image filename as it is in the hjson file, usually without extension)			
+
+			tex.load(data.texturePath + t.name + ext, (ctx, img) => { 
+				ctx.scale(1, 1);
+				if (tex.meta?.mirrorY) {
+					ctx.translate(0, tex.height);
+					ctx.scale(1, -1);					
+				}
+				if (tex.meta?.mirrorX) {
+					ctx.translate(tex.width, 0);
+					ctx.scale(-1, 1);					
+				}
+				ctx.drawImage(img, 0, 0);				
+			})
+
+			p.push(tex);
 
 			tex.meta = {};
 			for (const [k, v] of Object.entries(t)) {
-				if (k != 'name') tex.meta[k] = v;
+				if (k != 'name') tex.meta[k] = v;				
 			}
 
 			arr.push(tex);
 		}
 		await Promise.all(p);				
 		return arr;
-/*
-		if ('textureMetaData' in data) {															// if textures have metadata...
-			const meta = data.textureMetaData;
-			if ('colliders' in meta) {																// load static colliders attached to map tiles
-				let tileId = 0;
-				for (const tile of meta.colliders) {
-					this.colliders[tileId] = Collider.Parse(tile);						
-					tileId++;
-				}
-			}	
-			if ('shift' in meta) {																	// file contains 'shift' information for textures
-				this.shift = meta.shift.map(e => V2(e.x, e.y));					
-			}		
-			if ('overlays' in meta) {
-				this.overlays = await this.loadTextures({ textures:meta.overlays, texturePath:data.texturePath, textureExt:data.textureExt });	
-				this.overlays.forEach(o => o.data.isOverlay = true);						
-			}			
-		}			
-		*/
 	}
 
 	rescaleTextures(w, h) {

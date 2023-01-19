@@ -89,6 +89,7 @@ class TinyGameEngine {
 
 		this.gameLoop     = new GameLoop({ engine:this, name:'DefaultGameLoop' });		
 		this._zoom	      = 1;
+		this.maxZoom      = 2;
 		this.resolution   = new Vector2(1152, 648);
 		
 		/** 
@@ -399,9 +400,9 @@ class TinyGameEngine {
 		if (el instanceof HTMLElement) {
 			if (this._rootElem != el && this._rootElem instanceof HTMLElement) this._rootElem.style.zoom = '';
 			this._rootElem = el;
-			this.resolution.x = el.clientWidth;
-			this.resolution.y = el.clientHeight;
-			this.recalculateScreen();			
+			this.resolution.x = this._rootElem.clientWidth;
+			this.resolution.y = this._rootElem.clientHeight;
+			this.recalculateScreen();						
 			this.autoZoom();			
 		}
 			else die('Parameter must be an instance of HTMLElement or a valid element id.');		
@@ -409,8 +410,8 @@ class TinyGameEngine {
 
 	recalculateScreen() {	
 		const pos = AE.getPos(this._rootElem);
-		this.screen = new Rect(pos.left, pos.top, pos.left + pos.width, pos.top + pos.height);
-		this.edges  = new Rect(0, 0, Math.round(pos.width), Math.round(pos.height));
+		this.screen = new Rect(~~pos.left, ~~pos.top, ~~(pos.left + pos.width) + 1, ~~(pos.top + pos.height) + 1);
+		this.edges  = new Rect(0, 0, ~~pos.width, ~~pos.height);
 
 		const screen = this.edges;
 		this.viewportLineSegments = {
@@ -440,7 +441,7 @@ class TinyGameEngine {
 			let zoom = 1;
 			if (aspectRatio > resRatio) zoom = window.innerHeight / this.resolution.y;	// more landscape
 				else zoom = window.innerWidth / this.resolution.x;                   	// more portrait						
-			this.zoom = zoom; 									 					 	// simple scaling
+			this.zoom = Math.min(this.maxZoom, zoom);								 	// simple scaling
 		}
 	}
 				

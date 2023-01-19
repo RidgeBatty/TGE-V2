@@ -27,7 +27,7 @@ class UI {
         
         const mousedown = (e) => {
             if (this.flags.disablePointerEvents) return;                        
-            const f = this.components.filter(c => c.elem.contains(e.target));          
+            const f = this.components.filter(c => c.elem.contains(e.target));     
 
             const oldActive = this.active;
             this.active   = null;
@@ -41,7 +41,7 @@ class UI {
             }       
             
             // close menus on user click (basically a click anywhere in the UI should close a menu)
-            if (this.active == null && oldActive && oldActive.elem.tagName == 'UI-MENU') oldActive.close();                    
+            if (this.active == null && oldActive && oldActive.elem.tagName == 'UI-MENU') oldActive.close();                                
         }
 
         const mouseup = (e) => {
@@ -54,7 +54,7 @@ class UI {
                     this.active = c;
                     this.pointer.downComponentPos = c.position;                                        
                 }                   
-                if (c.enabled && ('events' in c) && c.events.names.includes('mouseup')) c.events.fire('mouseup', e);
+                if (c.enabled && ('events' in c) && c.events.names.includes('mouseup')) c.events.fire('mouseup', e);                
             }            
         }
 

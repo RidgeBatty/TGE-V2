@@ -248,7 +248,7 @@ class UMenu extends UBaseElement {
     }
 
     close() {        
-        this.ui.active = null;
+        if (this.ui.active == this) this.ui.active = null;      // if this menu is currently active, set UI activeElement to nothing        
         this.elem.style.display = 'none';
         this.events.fire('close');
     }
@@ -291,13 +291,13 @@ class UWindow extends UBaseElement {
     show() {
         this.events.fire('show');
         this.ui.active = this;
-        this.elem.style.display = '';
+        this.elem.style.display = '';        
     }
 
     close() {        
         this.elem.style.display = 'none';
         this.events.fire('close');        
-        this.ui.active = null;        
+        if (this.ui.active == this) this.ui.active = null;        
     }
 
     destroy() {

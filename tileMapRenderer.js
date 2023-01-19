@@ -25,7 +25,7 @@ import { TileMap } from './tileMap.js';
 import { Box, Circle, Poly } from './physics.js';
 import { Flipbook } from './flipbook.js';
 
-const { V2, Vector2 : Vec2 } = Types;
+const { V2, Vector2 : Vec2, LineSegment, Rect } = Types;
 
 const ImplementsEvents = 'beginoverlap endoverlap createprop resize';
 
@@ -116,6 +116,45 @@ class TileMapRenderer extends CustomLayer {
 
 	get canvas() {
 		return this.buffer.canvas;
+	}
+
+	/**
+	 * Get the buffer rectangle projected in tile space (viewing frustum) as an Array of 4 LineSegments.
+	 * @returns {[LineSegment]}
+	 */
+	get frustum() {
+		const a = this.unProject(V2(0, 0));
+		const b = this.unProject(V2(this.buffer.width, 0));
+		const c = this.unProject(V2(this.buffer.width, this.buffer.height));
+		const d = this.unProject(V2(0, this.buffer.height));
+		return [
+			new LineSegment(a, b),
+			new LineSegment(b, c),
+			new LineSegment(c, d),
+			new LineSegment(d, a),
+		]
+	}
+
+	/**
+	 * Returns true if given tile coodinates are inside the viewing frustum	 
+	 * @param {Vector2} t Point in tile space
+	 * @param {[LineSegment]=} f Optional. Custom viewing frustum rectangle. If not given, method uses the rendering buffer's dimensions
+	 */
+	isInsideFrustum(t, f = this.frustum) {		
+		return !(f[0].isLeft(t) || f[1].isLeft(t) || f[2].isLeft(t) || f[3].isLeft(t));
+	}
+
+	/**
+	 * Returns the bounding box for viewing frustum (which can be used to hugely optimize the rendering by limiting the need to traverse the map tiles)
+	 * @param {[LineSegment]=} f Optional. Custom viewing frustum rectangle. If not given, method uses the rendering buffer's dimensions
+	 * @returns 
+	 */
+	getFrustumBoundingBox(f = this.frustum) {
+		const top    = Math.min(f[0].p0.y, f[1].p0.y, f[2].p0.y, f[3].p0.y);
+		const bottom = Math.max(f[0].p0.y, f[1].p0.y, f[2].p0.y, f[3].p0.y);
+		const left   = Math.min(f[0].p0.x, f[1].p0.x, f[2].p0.x, f[3].p0.x);
+		const right  = Math.max(f[0].p0.x, f[1].p0.x, f[2].p0.x, f[3].p0.x);
+		return new Rect(left, top, right, bottom);
 	}
 
 	/**
@@ -221,7 +260,7 @@ class TileMapRenderer extends CustomLayer {
 		if (this.flags.clearBuffer) ctx.clearRect(0, 0, canvas.width, canvas.height);
 
 		this.events.fire('beforedraw', { renderer:this, ctx });
-		
+
 		for (let y = 0; y < map.height; y++) {			
 			const top  = y * size - ~~camPos.y;
 
@@ -293,35 +332,41 @@ class TileMapRenderer extends CustomLayer {
 		ctx.resetTransform();
 		if (this.flags.clearBuffer) ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-		this.events.fire('beforedraw', { renderer:this, ctx });		
-		const cW     = canvas.width;
-		const cH     = canvas.height;
+		const cW  = canvas.width;
+		const cH  = canvas.height;
 		
-		for (let y = 0; y < map.height; y++) {			
-			for (let x = 0; x < map.width; x++) {								
+		const fbb = this.getFrustumBoundingBox();
+		const eX  = Math.min(Math.round(fbb.right), map.width);
+		const eY  = Math.min(Math.round(fbb.bottom), map.height);		
+		const sX  = Math.max(Math.round(fbb.left), 0);
+		const sY  = Math.max(Math.round(fbb.top), 0);		
+		
+		this.events.fire('beforedraw', { renderer:this, ctx });		
+		
+		for (let y = sY; y < eY; y++) {			
+			for (let x = sX; x < eX; x++) {								
 				const p = this.project(V2(x, y));
 				
 				if ((p.y + size) < 0 || p.y > cH || (p.x + size) < 0 || p.x > cW) continue;
 
 				const id = map.tileAt(x, y);
-				const s  = map.textures[id].meta.shift || Vec2.Zero();
+				const s  = map.textures[id].meta.shift || Vec2.Zero();				
 				p.add(s);
 
 				const tileId     = id & 255;
 				const hasOverlay = id > 255;
 				const overlayId  = (id >> 8) - 1;
 				
-				if (this.flags.ownerDraw) {												
+				if (this.flags.ownerDraw) {		
 					ctx.drawImage(map.textures[tileId].canvas, p.x, p.y);							
 					if (hasOverlay) {							
 						ctx.drawImage(map.overlays[overlayId].canvas, p.x, p.y);
 					}
-				}
-
+				}				
 				this.events.fire('customdraw', { renderer:this, x, y, ctx, tileId, overlayId, drawPos:p });				
 			}
 		}
-		
+
 		this.events.fire('afterdraw', { renderer:this, ctx });
 	}
 
@@ -371,9 +416,15 @@ class TileMapRenderer extends CustomLayer {
 		const camPos = (world == null) ? position : world.camPos;
 		const cW     = canvas.width;
 		const cH     = canvas.height;
+
+		const fbb = this.getFrustumBoundingBox();
+		const eX  = Math.min(Math.round(fbb.right), map.width);
+		const eY  = Math.min(Math.round(fbb.bottom), map.height);		
+		const sX  = Math.max(Math.round(fbb.left), 0);
+		const sY  = Math.max(Math.round(fbb.top), 0);		
 				
-		for (let y = 0; y < map.height; y++) {			
-			for (let x = 0; x < map.width; x++) {				
+		for (let y = sY; y < eY; y++) {			
+			for (let x = sX; x < eX; x++) {
 				const p = this.project(V2(x, y));
 				
 				if ((p.y + size) < 0 || p.y > cH || (p.x + size) < 0 || p.x > cW) continue;

@@ -18,7 +18,7 @@ export class CustomTileMapEditor extends TileMapRenderer {
     }
     
 	addMouseControls() {
-		const ui = this.engine.ui;			
+		const ui = this.engine.ui;	
 
 		const mouseup = (e) => {    	
 			if (this._drag && (ui == null || ui.active == null)) {
@@ -39,7 +39,7 @@ export class CustomTileMapEditor extends TileMapRenderer {
             this._mouseDownButton = e.button;
 		}
         
-		const mousemove = (e) => {                                  // move mouse on map		
+		const mousemove = (e) => {                                  // move mouse on map		            
             if (ui != null && ui.active != null) return;
 
             const position = e.position;            
@@ -69,7 +69,6 @@ export class CustomTileMapEditor extends TileMapRenderer {
 			const arr    = [pos.x, pos.y, actor.scale, actor.rotation, mirror, actor.offset.x, actor.offset.y];
 			o.positions.push(arr);
 		}        
-        console.log(objects)
 		return objects;
 	}
 }
