@@ -1,12 +1,12 @@
 /**
  * 
- * CustomLayer is a template for rendering custom content on backbuffer canvas which can then be flipped on renderingSurface. 
+ * CustomLayer is a template for rendering custom content on backbuffer CanvasSurface which can then be flipped on (any) other CanvasSurface in update() method.
  * CustomLayer respects Engine.gameLoop.zLayers
  * 
  */
- import { CanvasSurface } from './canvasSurface.js';
+import { CanvasSurface } from './canvasSurface.js';
 import { Engine, Root } from './engine.js';
-import { V2, Vector2 as Vec2 } from './types.js';
+import { V2, Vector2 as Vec2, RECT } from './types.js';
 
 class CustomLayer extends Root {
     /**
@@ -18,16 +18,21 @@ class CustomLayer extends Root {
      */
 	constructor(o = {}) {		
         super(o);
+
         this.owner   = o.owner || Engine.gameLoop;       
         this.zIndex  = ('zIndex' in o) ? o.zIndex : 1;
 		this.engine  = o.engine;
 		this.surface = ('surface' in o) ? o.surface : Engine.renderingSurface;
-		this._buffer = null;
+		this._buffer = null;																// backbuffer reference (draw on this surface)
 		this._bufferSize = null;
         
         if ('addLayer' in o && o.addLayer == true) {
             this.owner.zLayers[this.zIndex].push(this);
         }
+	}
+
+	get viewport() {
+		return RECT(0, 0, this._buffer.width, this._buffer.height);
 	}
 
 	get buffer() {
@@ -51,6 +56,7 @@ class CustomLayer extends Root {
 		}
 	}
 
+	/** override */
 	tick() {  
         
 	}

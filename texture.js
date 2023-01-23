@@ -135,6 +135,26 @@ class Texture extends Picture {
 	}
 
 	/**
+	 * Draws the image on the internal canvas flipped across x-axis
+	 */
+	mirrorX() {
+		this.ctx.save();
+		this.ctx.scale(-1, 1);
+		this.ctx.drawImage(this.image, -this.width, 0);
+		this.ctx.restore();		
+	}
+
+	/**
+	 * Draws the image on the internal canvas flipped across y-axis
+	 */
+	mirrorY() {
+		this.ctx.save();
+		this.ctx.scale(1, -1);
+		this.ctx.drawImage(this.image, 0, -this.height);
+		this.ctx.restore();		
+	}
+
+	/**
 	 * Copies pixels from image to an internal read/write buffer. While buffered, individual pixels can be accessed using getPixel() and setPixel() functions.
 	 * To write pixels back to the image, use the savePixels() function.
 	 * Returns an array containing all pixels of the image.

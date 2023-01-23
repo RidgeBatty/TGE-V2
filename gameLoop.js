@@ -16,13 +16,14 @@ import { Events } from './events.js';
 import { Vector2 } from './types.js';
 import { Engine } from './engine.js';
 import { HitTestFlag, Enum_HitTestMode } from './root.js';
+import { CustomLayer } from './customLayer.js';
 
 const ImplementsEvents = 'addactor removeactor activate deactivate';
 
 class HitTestGroups { constructor() { Object.keys(HitTestFlag).forEach(e => this[e] = []); }; clear() { Object.keys(HitTestFlag).forEach(e => this[e].length = 0); } }
 
 class GameLoop {	
-	constructor(o = {}) {
+	constructor(o = {}) {		
 		this.engine         = 'engine' in o ? o.engine : null;
 		this.data           = {};	// user data
 		this._flags		    = { isRunning:false, showColliders:false, collisionsEnabled:false, showBoundingBoxes:false };
@@ -327,7 +328,7 @@ class GameLoop {
 		}
 
 		if (aType == 'layer') {
-			a = new Layer(o);
+			a = new CustomLayer(o);
 			a.objectType = aType;			
 			return a;			
 		}

@@ -4,7 +4,7 @@
 
 */
 import { Engine, Types } from './engine.js';	
-import { Layer } from './layer.js';
+import { CustomLayer } from './customLayer.js';
 import { Texture } from './texture.js';
 
 const { V2, Vector2:Vec2, LineSegment:Seg } = Types;
@@ -44,10 +44,11 @@ class Map {
 	}
 }
 
-class Raytracer extends Layer {
+class Raytracer extends CustomLayer {
 	constructor(params = {}) {
-		super({});
+		super(params);
 
+		this.scale     = 1;
 		this.params    = params;
 		this.map       = new Map(Engine);
 		this.culled    = [];
@@ -179,7 +180,7 @@ class Raytracer extends Layer {
 		if ('useActor' in this.params) {
 			this.position = this.params.useActor.position;
 			this.rotation = this.params.useActor.rotation;
-		}
+		}		
 	}
 }
 

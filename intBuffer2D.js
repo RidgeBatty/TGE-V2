@@ -30,6 +30,11 @@ export class IntBuffer2D {
 
     fill(i) { this.buffer.fill(i); };
 
+    walk(e) {
+        for (let y = 0; y < this.size.y; y++)
+            for (let x = 0; x < this.size.x; x++) e(x, y, this.getPixel(x, y));
+    }
+
     rect(p1, p2, fillColor) {
         const w    = Math.abs(p1.x - p2.x) + 1;
         const h    = Math.abs(p1.y - p2.y) + 1;

@@ -50,7 +50,7 @@ export class CustomTileMapEditor extends TileMapRenderer {
 		this.engine.events.register(this, { mousemove, mouseup, mousedown });
 	}
     
-	stringifyStaticActors() {
+	stringifyStaticActors(callback) {
 		const objects = [];
 		for (const actor of this.staticActors) {
             
@@ -67,7 +67,10 @@ export class CustomTileMapEditor extends TileMapRenderer {
 			const mirror = actor.renderHints.mirrorX + actor.renderHints.mirrorY * 2;            
             const pos    = this.unProject(actor.position.clone(), true).sub(V2(1, 1));      // subtract half a tile (adding a static actor does the opposite)
 			const arr    = [pos.x, pos.y, actor.scale, actor.rotation, mirror, actor.offset.x, actor.offset.y];
+
 			o.positions.push(arr);
+
+            if (callback) callback(o, actor);
 		}        
 		return objects;
 	}

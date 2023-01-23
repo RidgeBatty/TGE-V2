@@ -147,7 +147,7 @@ class TileMap {
 			try {
 				if ('tileSize' in data) map.tileSize = data.tileSize;
 				
-				if (data.tiles.length > 0) {					
+				if (data.tiles.length > 0) {		
 					let rowLen = 0;
 					map.resize(data.tiles.length, data.tiles[0].split(' ').length);						// create the buffer				
 					
@@ -156,14 +156,14 @@ class TileMap {
 						const r     = cells.map(e => +e);
 						map.tiles.set(r, rowLen);
 						rowLen += cells.length;						
-					}
+					}					
 				}
 
 				map.textures = await map.loadTextures(data);												// load textures				
 			} catch (e) {
 				console.warn('Unable to parse tilemap!');				
 				reject(e);
-			}			
+			}								
 			resolve(map);
 		});
 	}

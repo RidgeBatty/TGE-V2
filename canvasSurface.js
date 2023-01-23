@@ -503,11 +503,23 @@ class CanvasSurface {
 	 * @param {object} o Parameters object
 	 * @param {Vector2} o.pos Draw position on the target canvas
 	 * @param {Image} o.img HTMLImageElement or equivalent
-	 * @param {number=} o.scale Scale of the image, defaults to img.naturalWidth/Height
+	 * @param {number=} o.scale Scale of the image, defaults to 1
 	 * @param {Vector2=} o.size Optional
 	 * @param {Rect} o.clip Optional clip rectange
 	 */
 	drawImageScale(o) {		
+		let scaleX = 1, scaleY = 1;
+
+		if ('scale' in o) {
+			if (isNaN(o.scale)) {
+				scaleX = o.scale.x;
+				scaleY = o.scale.y;							
+			} else {
+				scaleX = o.scale;
+				scaleY = o.scale;
+			}
+		} 
+		
 		if ('width' in o.img && 'height' in o.img) var size = { x:o.img.width, y:o.img.height }
 			else var size = ('size' in o) ? o.size : { x:o.img.naturalWidth, y:o.img.naturalHeight };
 
@@ -519,8 +531,8 @@ class CanvasSurface {
 							   o.clip.left, o.clip.top, 
 							   cw, ch,
 							   o.pos.x, o.pos.y,
-					           cw * o.scale, ch * o.scale);					
-		} else this.ctx.drawImage(o.img, o.pos.x, o.pos.y, size.x * o.scale, size.y * o.scale);
+					           cw * scaleX, ch * scaleY);					
+		} else this.ctx.drawImage(o.img, o.pos.x, o.pos.y, size.x * scaleX, size.y * scaleY);
 	}		
 
 	/**
@@ -535,8 +547,8 @@ class CanvasSurface {
 		if ('width' in o.img && 'height' in o.img) var size = { x:o.img.width, y:o.img.height }
 			else var size = ('size' in o) ? o.size : { x:o.img.naturalWidth, y:o.img.naturalHeight };
 		
-		const cw = size.x - o.clip.right - o.clip.left;
-		const ch = size.y - o.clip.bottom - o.clip.top;
+		const cw = size.x - (o.clip.right - o.clip.left);
+		const ch = size.y - (o.clip.bottom - o.clip.top);
 		
 		this.ctx.drawImage(o.img, 
 							o.clip.left, o.clip.top, 

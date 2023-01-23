@@ -584,6 +584,13 @@ class Rect {
 		if (includeEdges) return !(v.x <= this.left || v.y <= this.top || v.x >= this.right || v.y >= this.bottom);
 		return !(v.x < this.left || v.y < this.top || v.x > this.right || v.y > this.bottom);
 	}
+
+	overlapsWith(r) {
+		if (this.left == this.right || this.top == this.bottom || r.left == r.right || r.top == r.bottom) return false; 
+		if (this.left > r.right || r.left > this.right) return false;		// On the left side				
+		if (this.bottom < r.top || r.bottom < this.top) return false;		// Above		
+		return true;	
+	}
 }
 
 /*

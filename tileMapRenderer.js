@@ -99,6 +99,15 @@ class TileMapRenderer extends CustomLayer {
 		});
 	}
 
+	/**
+	 * Clears actors and the tilemap
+	 */
+	clear() {
+		this.map.clear();
+		for (let i = this.staticActors.length; i--;) this.staticActors[i].destroy();
+		this.staticActors.length = 0;
+	}
+
 	update() {		
 		if (this.flags.isometric) this.renderIsometric(); else this.renderAxisAligned();
 	}
@@ -162,7 +171,7 @@ class TileMapRenderer extends CustomLayer {
 	 * It then proceeds to parse static objects (and potentially other non-tilemap/texture data from the same file)
 	 */
 	async loadMap(options) {																					
-		const o = await TileMap.LoadFromFile(options);														// load tilemap/texture data
+		const o = await TileMap.LoadFromFile(options);														// load tilemap/texture data			
 		if (o.data.objects) this.parseStaticActorsFromObject(o.data.objects);								// load static actors from map file "objects" collection
 
 		this.map = o.map;
@@ -171,6 +180,7 @@ class TileMapRenderer extends CustomLayer {
 	}	
 
 	async parseStaticActorsFromObject(objects) {
+		console.warn('Parsing actors...');
 		for (const o of objects) {
 			const texture  = this.map.textures[o.texture];	
 			
@@ -227,11 +237,39 @@ class TileMapRenderer extends CustomLayer {
 		const actor = this.engine.gameLoop.createTypedActor('obstacle', params);							// create the actor		
 		if (onAfterCreate) onAfterCreate(actor);
 
+		if (params.mirrorX) actor.renderHints.mirrorX = true;
+		if (params.mirrorY) actor.renderHints.mirrorY = true;											
+
 		await this.engine.gameLoop._addActor(actor);														// add the actor in the gameloop		
 		if (o.flipbooks) actor.flipbooks = await Flipbook.Parse(o.flipbooks, actor);						// load flipbooks
 
-		this.staticActors.push(actor);
+		this.staticActors.push(actor);																		// add to staticActors array
+
 		this.events.fire('createprop', { prop:actor });
+
+		return actor;
+	}
+
+	/**
+	 * Warning! Crude, inefficient and inccurate! 
+	 * TO-DO: Add support for rotation, optimize by subdividing map and placing static actors in their respective quadrants instead of a single array
+	 * @returns 
+	 */
+	getViewportStaticActors() {
+		const r = [];
+		const v = this.viewport;
+
+		for (const a of this.staticActors) {			
+			const size = a.size.clone().mulScalar(a.scale);
+			
+			const p0 = a.renderPosition.add(Vec2.Mul(V2(0, 0).add(a.origin), size));
+			//const p1 = a.renderPosition.add(Vec2.Mul(V2(1, 0).add(a.origin), size));
+			const p2 = a.renderPosition.add(Vec2.Mul(V2(1, 1).add(a.origin), size));
+			//const p3 = a.renderPosition.add(Vec2.Mul(V2(0, 1).add(a.origin), size));
+			
+			if (Rect.FromVectors(p0, p2).overlapsWith(v)) r.push(a);
+		}
+		return r;
 	}
 
 	getTileAtCoords(p) {
@@ -342,7 +380,9 @@ class TileMapRenderer extends CustomLayer {
 		const sY  = Math.max(Math.round(fbb.top), 0);		
 		
 		this.events.fire('beforedraw', { renderer:this, ctx });		
-		
+
+		let imageDataPending = 0;
+
 		for (let y = sY; y < eY; y++) {			
 			for (let x = sX; x < eX; x++) {								
 				const p = this.project(V2(x, y));
@@ -350,22 +390,28 @@ class TileMapRenderer extends CustomLayer {
 				if ((p.y + size) < 0 || p.y > cH || (p.x + size) < 0 || p.x > cW) continue;
 
 				const id = map.tileAt(x, y);
-				const s  = map.textures[id].meta.shift || Vec2.Zero();				
+				const s  = map.textures[id]?.meta.shift || Vec2.Zero();				
 				p.add(s);
 
 				const tileId     = id & 255;
 				const hasOverlay = id > 255;
 				const overlayId  = (id >> 8) - 1;
+				const tex        = map.textures[tileId];
 				
-				if (this.flags.ownerDraw) {		
-					ctx.drawImage(map.textures[tileId].canvas, p.x, p.y);							
-					if (hasOverlay) {							
+				if (this.flags.ownerDraw && tex) {		
+					if (tex.canvas.width == 0 || tex.canvas.height == 0) imageDataPending++;
+						else
+					ctx.drawImage(tex.canvas, p.x, p.y);												
+
+					if (hasOverlay && map.overlays[overlayId]) {							
 						ctx.drawImage(map.overlays[overlayId].canvas, p.x, p.y);
 					}
 				}				
 				this.events.fire('customdraw', { renderer:this, x, y, ctx, tileId, overlayId, drawPos:p });				
 			}
 		}
+
+		if (imageDataPending > 0) console.log(imageDataPending + ' images pending!'); // this happens when tiles are not yet loaded (flipped tiles are reloaded, flipped but not awaited!)
 
 		this.events.fire('afterdraw', { renderer:this, ctx });
 	}
@@ -430,8 +476,8 @@ class TileMapRenderer extends CustomLayer {
 				if ((p.y + size) < 0 || p.y > cH || (p.x + size) < 0 || p.x > cW) continue;
 				
 				const tileId = map.tileAt(x, y);					
-				const tex    = map.textures[tileId];
-				const shift  = tex.meta.shift;														// texture shift not re-implemented yet
+				const tex    = map.textures[tileId];				
+				const shift  = tex?.meta.shift || Vec2.Zero();							// texture shift (not fully implemented)
 				const cList  = map.colliders[tileId];
 
 				if (cList) for (const c of cList) {					

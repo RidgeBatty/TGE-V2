@@ -99,7 +99,7 @@ class Player extends Actor {
 			this.movement.strafe       = 0.001;		
 			this.movement.acceleration = 0.001;		
 			this.movement.turnRate     = 0.002;
-			this.movement.friction     = 0.07;
+			this.movement.friction     = 0.1;
 			this._movementType         = value;
 
 			this.flags.isPhysicsEnabled = true;
@@ -180,6 +180,8 @@ class Player extends Actor {
 				
 			if (ks.up)    	  p.addImpulse(Vec2.Up().rotate(p.rotation).mulScalar(acc));
 			if (ks.down)  	  p.addImpulse(Vec2.Down().rotate(p.rotation).mulScalar(acc));
+
+			this.velocity.mulScalar(1 - this.movement.friction);
 			
 			break; }
 		case Enum_PlayerMovement.SpaceShip: {

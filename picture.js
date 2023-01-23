@@ -28,8 +28,8 @@ export class Picture {
 			}
 
 			this.image = new Image();									
-			this.image.onerror = _ => { console.error('Rejected'); reject(this.image); }
-			this.image.addEventListener('load', _ => {  resolve(this.image); });
+			this.image.addEventListener('error', _ => { console.error('Rejected'); reject(this.image); });
+			this.image.addEventListener('load', _ => { resolve(this.image); });
 
 			this.image.src = url;
 		});

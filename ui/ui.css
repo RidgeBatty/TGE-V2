@@ -74,13 +74,24 @@ ui-menu .body {
 	flex-direction: column;
 }
 ui-menu .body > ui-menuitem {
-	display: block;
+	display: flex;
 	padding-left:1em;
 	padding-right:1em;
 	padding-top:1px;
 	padding-bottom:1px;
 	margin:1px;
+	align-content: space-between;
 }
+ui-menu .body > ui-menuitem > div:first-child {
+	text-align: left;
+	margin-right: auto;
+	pointer-events: none;
+}	
+ui-menu .body > ui-menuitem > div:nth-child(2) {
+	text-align: right;
+	margin-left: auto;
+	pointer-events: none;
+}	
 ui-menu .body > ui-menuitem:hover {
 	background-color: rgba(160,0,0,1);
 }

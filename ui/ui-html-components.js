@@ -227,7 +227,7 @@ class UMenu extends UBaseElement {
         const mouseup = e => {
             const target = e.event.target;
             if (target.tagName == 'UI-MENUITEM') {
-                this.events.fire('selectitem', { target, caption:target.textContent });                
+                this.events.fire('selectitem', { target, caption:target.children[0].textContent });                
             }
             this.close();
         }
@@ -253,11 +253,29 @@ class UMenu extends UBaseElement {
         this.events.fire('close');
     }
 
-    addItems(items) {
+    /**
+     * Adds a list of items in the menu. If the string contains only '-', a divider will be added. If the string contains '|', the string will be split to menuitem and a shortcut.
+     * @param {[string]} items 
+     */
+    addItems(items) {        
         for (const i of items) {
             const menu = { parent:this.body };
-            Object.assign(menu, (i == '-') ? { type:'ui-menudivider' } : { text:i, type:'ui-menuitem' });
-            const e = addElem(menu);
+            let e;
+            if (i == '-') {
+                Object.assign(menu, { type:'ui-menudivider' });                    
+                e = addElem(menu);
+            } else {
+                Object.assign(menu, { type:'ui-menuitem' });
+                e = addElem(menu);
+
+                const text = i.split('|');
+
+                addElem({ parent:e, text:text[0] });
+                if (text.length == 2) {
+                    addElem({ parent:e, text:text[1] });
+                }
+            }
+            
             this.items.push(e);
         }
     }
@@ -343,8 +361,9 @@ class UCustomList extends UBaseElement {
                 const listElem = r.listElem;
                 e.index    = [...listElem.parentElement.children].indexOf(listElem);         // get the element index for convenience and return it to the event handler                
                 e.name     = 'selectitem';
-                e.listElem = listElem.parentElement.children[e.index];
                 e.data     = 'data' in r ? r.data : null;
+                e.item     = r;
+                e.instigator = this;
 
                 // change listElem attribute to selected if it's not already                
                 if (this.maxSelectedItems > 0) {
@@ -392,6 +411,11 @@ class UCustomList extends UBaseElement {
         return this.selection.length > 0 ? this.selection[this.selection.length - 1] : null;
     }
 
+    /**
+     * 
+     * @param {HTMLImageElement|string|[HTMLImageElement|string]} o Image or string (or an array of either one)
+     * @returns {[ListItem]} Array of added list items
+     */
     add(o) {
         if (!Array.isArray(o)) o = [o];                                         // force array
         const type   = this._listType.string;
@@ -413,7 +437,7 @@ class UCustomList extends UBaseElement {
             if (typeof e == 'object' && 'data' in e) item.data = e.data;
 
             this.items.push(item);
-            result.push(wrapper);
+            result.push(item);
         }                    
         
         return result;

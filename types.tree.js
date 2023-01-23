@@ -3,15 +3,16 @@
  * Written by Ridge Batty (c) 2021-2022
  * License: https://creativecommons.org/licenses/by/4.0/
  */
-let id = 0;
 
 class TreeNode {
-    constructor(value) {        
+    #id = 0;
+    constructor(value, root) {        
         this.value    = value;
         this.children = [];   
         this.parent   = null;        
         this.level    = 0;     
-        this.root     = null;         
+        this.root     = root;         
+        this.id       = this.#id++;
     }
 
     get length() {
@@ -19,15 +20,17 @@ class TreeNode {
     }
 
     addChild(v) {
-        const ch = new TreeNode(v);
-        if (this.root && this.root.flags && this.root.flags.useIds) ch.id = id++;
-        Object.seal(ch);
-
-        this.children.push(ch);
+        const ch = new TreeNode(v, this.root);                
         ch.parent = this;     
         ch.level  = this.level + 1;
-        if ('root' in this) ch.root = this.root;
+
+        this.children.push(ch);
+
         return ch;
+    }
+
+    removeChildren() {
+        this.children.length = 0;
     }
 
     async findByField(f, v) {
@@ -51,14 +54,14 @@ class TreeNode {
         return a;
     }
 
-    walk(callback, onlyImmediateChildren) {
+    walk(callback, onlyImmediateChildren = false) {
         function go(n) {
             callback(n);            
             for (const i of n.children) go(i);
         }
         if (onlyImmediateChildren) {
-            callback(n);            
-            for (const i of n.children) callback(i);
+            callback(this);            
+            for (const i of this.children) callback(i);
             return;
         }
         go(this);
@@ -115,17 +118,20 @@ class TreeNode {
         }
         return result.reverse();
     }
-}
 
-class Tree extends TreeNode {
-    constructor(value, flags= { useIds : false }) {
-        super(value);        
-        this.root  = this;
-        this.flags = flags;        
-        if (flags && flags.useIds) this.id = id++;
-
-        Object.seal(this);
+    static BreadthFirstSearch(root) {
+        const result = [];
+        const queue  = [root];
+        while (queue.length > 0) {
+            const current = queue.shift();
+            if (current == null) continue;
+            result.push(current.value);
+            for (const child of current.children) {
+                queue.push(child);
+            }
+        }
+        return result;
     }
 }
 
-export { TreeNode, Tree }
+export { TreeNode }
