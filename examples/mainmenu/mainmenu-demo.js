@@ -18,10 +18,10 @@ import { MainMenu } from '../../mainmenu.js';
 const { Vector2:Vec2, V2 } = Types;
 
 const main = async () => {                    
-    Engine.setup({ rootElem:'game', flags: { hasRenderingSurface:true } });
+    await Engine.setup('../../settings.hjson');
 
     Engine.addLayer({                                                       // create a background layer for the "game"
-        imgUrl:'/assets/img/level1.jpg', 
+        imgUrl:'../../assets/img/level1.jpg', 
         scale:1.15, 
         position:Engine.dims.mulScalar(0.5), 
         increment:V2(-0.15, 0),
@@ -38,6 +38,7 @@ const main = async () => {
     menu.events.add('select', e => console.log(e));
     menu.events.add('change', e => console.log(e));
 
+    console.log(Engine);
     Engine.start();                                                         // start the engine
 }
 

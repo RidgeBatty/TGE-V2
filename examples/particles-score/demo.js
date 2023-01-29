@@ -28,11 +28,8 @@ const onClickActor = (e) => {
 }
 
 const main = async () => {    
+    await Engine.setup('../../settings.hjson');
     
-    // First let's set up the engine    
-    Engine.setRootElement('game');
-    Engine.flags.setFlag('hasRenderingSurface');    
-
     try {        
         const layer = Engine.addLayer({ imgUrl:'img/level1.jpg' });        
 
@@ -53,8 +50,8 @@ const main = async () => {
         const particleSystem = new ParticleSystem(Engine);                                                                                       // create a particle system        
         const params = await getJSON('score-emitter.hjson');                                                                                // load emitter parameters from a HJSON file        
 
-        const emitter = particleSystem.addEmitter(params);                                                                                       // create an emitter
-        emitter.analyze(params);        
+        const emitter = await particleSystem.addEmitter(params);                                                                                       // create an emitter
+        //emitter.analyze(params);        
         emitter.start();                                                                                                                         // start the emitter and set initial position (to center of the screen)
         emitter.position = Engine.dims.mulScalar(0.5);                                                                                        // place the emitter in the middle of the screen
     } catch (e) {

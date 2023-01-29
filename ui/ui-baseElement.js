@@ -19,7 +19,7 @@ class UBaseElement {
 
         this.#owner    = o.owner;
         this.#ui       = o.ui || o.owner.ui || o.owner;
-        this.events    = new Events(this, 'mousedown mouseup');
+        this.events    = new Events(this, 'mousedown mousemove mouseup');
         this.children  = [];
         this.enabled   = true;
         this.modal     = ('modal' in o);                
@@ -70,7 +70,7 @@ class UBaseElement {
         return this.#ui;
     }
 
-    set align(v) {
+    set align(v) {        
         const sp = v.split(' ');
         if (sp.length > 0) {
             let a = 'center';
@@ -81,7 +81,7 @@ class UBaseElement {
             if (sp[0] == 'right')  a = 'end';
 
             AE.style(this.elem, 'justify-content:' + a);
-        }
+        } 
         if (sp.length > 1) {
             let a = 'center';
             

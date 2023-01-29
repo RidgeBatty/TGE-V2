@@ -5,7 +5,6 @@
 	
 
 */
-import { Hitpoints } from './hitpoints.js';
 import { Player } from './player.js';
 import { Enemy } from './enemy.js';
 import { Projectile } from './projectile.js';
@@ -14,9 +13,7 @@ import { Layer } from './layer.js';
 import { Events } from './events.js';
 
 import { Vector2 } from './types.js';
-import { Engine } from './engine.js';
 import { HitTestFlag, Enum_HitTestMode } from './root.js';
-import { CustomLayer } from './customLayer.js';
 
 const ImplementsEvents = 'addactor removeactor activate deactivate';
 
@@ -323,12 +320,14 @@ class GameLoop {
 		if (aType == 'custom') { 
 			if (!('zIndex' in o)) throw 'Custom GameLoop object must have zIndex property defined.';
 			if (!AE.isFunction(o.update)) throw 'Custom GameLoop object must have update() method defined.';
+			AE.sealProp(o, 'objectType', 'custom');
+			AE.sealProp(o, '_type', Enum_ActorTypes.Custom);
 			this.zLayers[o.zIndex].push(o); 
-			a = o;		
+			return o;
 		}
 
 		if (aType == 'layer') {
-			a = new CustomLayer(o);
+			a = new Layer(o);
 			a.objectType = aType;			
 			return a;			
 		}
@@ -434,7 +433,7 @@ class GameLoop {
 		if (this.engine.audio) this.engine.audio.tick();
 		if (this.engine.world) this.engine.world.tick();			
 		for (const t of this.tickables) t.tick();
-		for (const t of this.zLayers) for (const o of t) if (o.tick) o.tick();		
+		for (const t of this.zLayers) for (const o of t) if (o.tick) o.tick();	
 		
 		// temp constants
 		const actorsArray = this.actors;				
@@ -482,7 +481,13 @@ class GameLoop {
 		// but the dev might have set the flag too.
 		for (const a of destroyed) this.removeActor(a);
 
-		// tick timers:
+		if (this.timers.length > 0) this._tickTimers();
+
+		this.tickCount++;
+		this._lastTick = performance.now() - tickStart;				
+	}
+
+	_tickTimers() {				// tick timers		
 		for (let i = this.timers.length; i--;) {
 			const evt = this.timers[i];
 
@@ -506,10 +511,7 @@ class GameLoop {
 						if ('onRepeat' in evt) evt.onRepeat(evt);					
 				}
 			}
-		}
-
-		this.tickCount++;
-		this._lastTick = performance.now() - tickStart;				
+		}		
 	}
 
 	/**

@@ -1,0 +1,39 @@
+/*
+	Written by Ridge Batty (c) 2020-2021
+	Default stylesheet for engine v2
+	
+	Many arcade style games do not respond well to pixel resolution changes.
+	You should define a fixed resolution for your game, especially if it differs from PPG frame size (1152 x 648 pixels).
+*/
+
+html, body {					/* Makes sure the parent frame is fully utilized and the game will float inside it */
+	display:flex;
+	position:absolute;
+	margin:0;
+	top:0;
+	left:0;
+	right:0;
+	bottom:0;	
+	background:black;
+	justify-content:center;
+	align-items:center;
+	overflow:hidden;
+	user-select:none;
+}
+.cover {
+	position:absolute;
+	left:0;
+	top:0;
+	right:0;
+	bottom:0;
+}
+#game {					
+	position:relative;
+	width:1920px;				/* Change width/height to match your game resolution. PPG frame size is 1152 x 648 pixels (16:9) */
+	min-width:1920px;
+	height:1080px;
+	min-height:1080px;	
+	overflow:hidden;
+	background-color: gray;
+	zoom:1;
+}

@@ -3,10 +3,10 @@
 		desc : "TGE Main Menu component demo"
 	}
 	effects : { 
-		over   : { sfx : "/assets/audio/over.wav" }			# play when mouse is moved over a menu item
-		click  : { sfx : "/assets/audio/click.wav" }		# play when mouse is clicked on menu item
-		slide  : { sfx : "/assets/audio/over.wav" }			# play when slider value is changed 
-		switch : { sfx : "/assets/audio/over.wav" }			# play when switch option is changed
+		over   : { sfx : "../../assets/audio/over.wav" }			# play when mouse is moved over a menu item
+		click  : { sfx : "../../assets/audio/click.wav" }		# play when mouse is clicked on menu item
+		slide  : { sfx : "../../assets/audio/over.wav" }			# play when slider value is changed 
+		switch : { sfx : "../../assets/audio/over.wav" }			# play when switch option is changed
 	}
 	items : [
 		{

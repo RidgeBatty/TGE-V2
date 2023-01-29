@@ -12,7 +12,7 @@ const main = async () => {
     Engine.setup({ rootElem:'game', clearColor:'erase', flags:{ hasEdges:false, hasRenderingSurface:true } });    
 
     const player    = Engine.gameLoop.add('player', { controls:['keyboard'], movement:'FirstPersonShooter' });    
-    console.log(player);
+
     const raytracer = new Raytracer({ useActor:player, addLayer:true }); 
     raytracer.createMap([
         { x:-6,  y:6, w:20, h:-20, flip:true },
@@ -21,7 +21,7 @@ const main = async () => {
         { x:-3, y:-6, w:2, h:-2 },
         { x:1,  y:-6, w:2, h:-2, textures:[1,1,1,1] }]);
     await raytracer.addTextures([{ url:'img/bricks1.jpg' }, { url:'img/bricks2.jpg' }]);
-
+        
     Engine.start();
 }
 

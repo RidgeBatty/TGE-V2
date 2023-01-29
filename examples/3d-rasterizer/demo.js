@@ -14,15 +14,16 @@ const update = (r) => {
 }
 
 const main = async () => {    
-    Engine.setup({ rootElem:'game', flags:{ hasEdges:false, hasRenderingSurface:true } })
+    await Engine.setup('../../settings.hjson');
 
     Engine.gameLoop.clearColor = '#222';
     Engine.gameLoop.tickRate = 60;
 
     const rasterizer = new Rasterizer();
     rasterizer.meshes.push(new MeshCube());
-
-    Engine.addLayer(rasterizer);    
+    
+    Engine.gameLoop.zLayers[0].push(rasterizer);
+    
     Engine.start(_ => update(rasterizer));
 }
 

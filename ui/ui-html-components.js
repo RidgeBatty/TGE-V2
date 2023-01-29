@@ -335,11 +335,12 @@ class UCustomList extends UBaseElement {
         if (!('tagName' in o)) o.tagName = 'ui-customlist';        
         super(o);        
         
-        this.events.create('selectitem clickitem');
+        this.events.create('selectitem clickitem hoveritem');
         this._listType        = new Enum('row column grid');
         this.items            = [];        
         this.selection        = [];
         this.maxSelectedItems = 1;                                  // set to zero if you don't want selection behavior
+        this.hoverItem        = null;
 
         if ('type' in o) this._setListType(o.type, o.tagNames); else throw 'Type must be specified';
         
@@ -384,7 +385,19 @@ class UCustomList extends UBaseElement {
                 return e;
             }
         }
+        const mousemove = (e) => {
+            const r = this.items.find(i => i.listElem.contains(e.target));
+            if (r) {
+                if (this.hoverItem == r) return;
+                this.hoverItem = r;
+                this.events.fire('hoveritem', { event:e, item:this.hoverItem });
+                return;
+            } 
+            this.hoverItem = null;
+        }
+
         this.events.add('mouseup', mouseup);
+        this.events.add('mousemove', mousemove);
     }
 
     get listType() {

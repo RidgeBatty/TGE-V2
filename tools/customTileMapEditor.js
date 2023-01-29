@@ -3,7 +3,7 @@ import { Types } from "../engine.js";
 
 const { Vector2:Vec2, V2 } = Types;
 
-const ImplementsEvents = 'beforedraw customdraw afterdraw mousedown mousemove';
+const ImplementsEvents = 'beforedraw customdraw afterdraw mousedown mouseup mousemove';
 
 export class CustomTileMapEditor extends TileMapRenderer {
     constructor(o) {
@@ -24,8 +24,9 @@ export class CustomTileMapEditor extends TileMapRenderer {
 			if (this._drag && (ui == null || ui.active == null)) {
                 const position = e.position;
 				this._dragStartPos = e.position.clone();
+                this.events.fire('mouseup', { renderer:this, position, dragStartPosition:this._dragStartPos.clone(), tileCoords:this.unProject(position), button:e.button, event:e.event });
 			}
-			this._drag = false;
+			this._drag = false;            
 		}
 
 		const mousedown = (e) => {	            

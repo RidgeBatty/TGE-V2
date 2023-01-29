@@ -14,10 +14,15 @@ const { Vector2 : Vec2, V2, Color, Rect, RECT } = Types;
 export class IntBuffer2D {
     /**
      * 
-     * @param {Vector2|number} w Dimensions in Vector2 | Width 
-     * @param {number=} h Height
+     * @param {Uint32Array|Vector2|number} w Buffer | Dimensions in Vector2 | Width 
+     * @param {number=} h Height | Dimensions in Vector2 if first argument is Uint32Array
      */
     constructor(w, h) {
+        if (w instanceof Uint32Array) {
+            this.buffer = w;
+            this.size   = h;
+            return this;
+        }
         this.size   = Vec2.IsVector2(w) ? V2(w.x, w.y) : V2(w, h);
         this.buffer = new Uint32Array(this.size.x * this.size.y);                
     }
@@ -53,7 +58,7 @@ export class IntBuffer2D {
     }
     
     /**
-     * Stack based floofill algorithm. Relatively optimized compared to naive recursive solution.
+     * Stack based floodfill algorithm. Relatively optimized compared to naive recursive solution.
      * @param {number} x Integer
      * @param {number} y Integer
      * @param {number} targetColor Integer

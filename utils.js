@@ -218,6 +218,10 @@ const getJSON = (url, getText) => {
 	});
 }
 
+const makeHJSON = (data) => {	
+	return Hjson.stringify(data);
+}
+
 /**
  * Creates a file drop zone on given HTMLElement
  * @param {string} HTMLElementOrID 
@@ -367,6 +371,7 @@ export {
 	imageFromBlob,
 	downloadFile,
 	imgDims,
+	makeHJSON,
 
 	delay, 
 	shuffle, 
@@ -386,5 +391,5 @@ export {
 	waitClick, 
 
 	Mixin,
-	addPropertyListener
+	addPropertyListener,
 }

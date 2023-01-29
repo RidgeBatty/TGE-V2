@@ -91,19 +91,18 @@ class TileMap {
 
 	/**
 	 * Appends more textures in TileMap.textures array by loading them from image files. This async function returns when all images are loaded.
-	 * @param {object} data Params object
-	 * @param {array} data.textures Array of texture filenames
-	 * @param {string} data.texturePath Path to texture files
+	 * @param {array}  list Array of texture filenames
+	 * @param {string=} path Path to texture files
+	 * @param {string=} ext Append file extension
 	 */
-	async loadTextures(data) {
+	async loadTextures(list, path = '', ext = '') {
 		const p   = [];																				// load textures
-		const ext = ('textureExt' in data) ? data.textureExt : '';
 		const arr = [];
 				
-		for (const t of data.textures) {
+		for (const t of list) {
 			const tex = new Texture(t.name, true);					// give it a name (image filename as it is in the hjson file, usually without extension)			
 
-			tex.load(data.texturePath + t.name + ext, (ctx, img) => { 
+			tex.load(path + t.name + ext, (ctx, img) => { 
 				ctx.scale(1, 1);
 				if (tex.meta?.mirrorY) {
 					ctx.translate(0, tex.height);
@@ -149,7 +148,7 @@ class TileMap {
 				
 				if (data.tiles.length > 0) {		
 					let rowLen = 0;
-					map.resize(data.tiles.length, data.tiles[0].split(' ').length);						// create the buffer				
+					map.resize(data.tiles.length, data.tiles[0].split(' ').length);							// create the buffer				
 					
 					for (const row of data.tiles) {															// parse map tiles
 						const cells = row.split(' ');
@@ -159,7 +158,8 @@ class TileMap {
 					}					
 				}
 
-				map.textures = await map.loadTextures(data);												// load textures				
+				map.textures = await map.loadTextures(data.textures, data.texturePath, data.textureExt);	//  load textures				
+				map.overlays = await map.loadTextures(data.overlays, data.texturePath, data.textureExt);	//  load overlays
 			} catch (e) {
 				console.warn('Unable to parse tilemap!');				
 				reject(e);

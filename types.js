@@ -553,6 +553,14 @@ class Rect {
     clone() {
         return new Rect(this.left, this.top, this.right, this.bottom);
     }
+
+	get x() {
+		return Math.min(this.left, this.right);
+	}
+
+	get y() {
+		return Math.min(this.top, this.bottom);
+	}
 	
     get width() {
         return this.right - this.left;
@@ -564,6 +572,10 @@ class Rect {
 	
 	get center() {
 		return new Vector2(this.left + (this.right - this.left) / 2, this.top + (this.bottom - this.top) / 2);
+	}
+
+	get size() {
+		return V2(this.width, this.height);
 	}
 	
 	toString() {
@@ -590,7 +602,7 @@ class Rect {
 		if (this.left > r.right || r.left > this.right) return false;		// On the left side				
 		if (this.bottom < r.top || r.bottom < this.top) return false;		// Above		
 		return true;	
-	}
+	}	
 }
 
 /*
