@@ -499,7 +499,7 @@ class CanvasSurface {
 	/**	 
 	 *	Draws image on canvas. Supports scaling and clipping. 
 	 *	Note! All coordinates "pos", "size", "clip" are in source image space!
-	 *	Optional "clip" rectangle defines how many pixels to clip from each direction: top, left, right, bottom
+	 *	Optional "clip" rectangle defines how many pixels to clip away from the "img" in each direction: top, left, right, bottom
 	 * @param {object} o Parameters object
 	 * @param {Vector2} o.pos Draw position on the target canvas
 	 * @param {Image} o.img HTMLImageElement or equivalent

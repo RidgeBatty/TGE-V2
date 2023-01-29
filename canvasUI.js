@@ -31,10 +31,10 @@ class CanvasUI {
         this.engine     = engine;                   // used to determine the viewport dimensions and attach event handlers
         this.components = [];
 
-        this.createEvents();
+        this.installEventHandlers();
     }
 
-    createEvents() {
+    installEventHandlers() {
         const mousemove = e => {}
         const mouseup   = e => {}
         const mousedown = e => {}

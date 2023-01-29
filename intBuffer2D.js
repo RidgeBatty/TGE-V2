@@ -139,6 +139,12 @@ export class IntBuffer2D {
         });
         return t;
     }
+
+    copyToSurface(canvasSurface) {
+        canvasSurface.width  = this.width;
+        canvasSurface.height = this.height;
+        canvasSurface.ctx.putImageData(this.buffer, 0, 0);
+    }
     
     /**
      * Creates a new IntBuffer by copying elements from a rectanglular area in another IntBuffer (naive, unoptimized)
