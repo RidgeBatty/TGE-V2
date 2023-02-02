@@ -226,14 +226,20 @@ class UMenu extends UBaseElement {
 
         const mouseup = e => {
             const target = e.event.target;
-            if (target.tagName == 'UI-MENUITEM') {
-                this.events.fire('selectitem', { target, caption:target.children[0].textContent });                
+            if (target.tagName == 'UI-MENUITEM') {                
+                const selected = { target, caption:target.children[0].textContent }
+                this.events.fire('selectitem', selected);
+                this.onSelectItem(selected)
             }
             this.close();
         }
         this.events.add('mouseup', mouseup);
 
         if ('createHidden' in o && o.createHidden == true) return this.close();
+    }
+
+    onSelectItem(selected) {
+        // override me in descendant class!
     }
 
     popup(v) {
@@ -310,6 +316,7 @@ class UWindow extends UBaseElement {
         this.events.fire('show');
         this.ui.active = this;
         this.elem.style.display = '';        
+        this.children.forEach(e => { if (e.onShow) e.onShow() });
     }
 
     close() {        
@@ -347,7 +354,7 @@ class UCustomList extends UBaseElement {
         AE.sealProp(this, 'items');
         AE.sealProp(this, 'events');
 
-        const mouseup = e => {            
+        const mouseup = e => {  
             const r = this.items.find(i => i.listElem.contains(e.target));
             if (r) {
                 let found;

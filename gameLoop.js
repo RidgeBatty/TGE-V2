@@ -21,7 +21,7 @@ class HitTestGroups { constructor() { Object.keys(HitTestFlag).forEach(e => this
 
 class GameLoop {	
 	constructor(o = {}) {		
-		this.engine         = 'engine' in o ? o.engine : null;
+		this.engine         = ('engine' in o) ? o.engine : null;
 		this.data           = {};	// user data
 		this._flags		    = { isRunning:false, showColliders:false, collisionsEnabled:false, showBoundingBoxes:false };
 		this.flags          = Object.seal(this._flags);  // flags
@@ -33,7 +33,7 @@ class GameLoop {
 		this.actors         = [];
 		this.tickables      = [];
 		this.zLayers        = [...Array(16).keys()].map(e => []);
-		this.clearColor     = 'clearColor' in o ? o.clearColor : null;
+		this.clearColor     = ('clearColor' in o) ? o.clearColor : null;
 		
 		this.overlaps       = [];			// list of overlapping objects during the current frame, after overlap calculations
 		this.hitTestGroups  = new HitTestGroups();
@@ -49,7 +49,7 @@ class GameLoop {
 		// other:
 		this._lastTick		= 0;
 		this._lastTickLen   = 0;
-		this._tickRate      = 1000 / 60;	// ms
+		this._tickRate      = ('tickRate' in o) ? 1000 / AE.clamp(o.tickRate, 1, 1000) : 1000 / 60;	// ms
 		this._tickQueue	    = 0;
 		this.tickCount      = 0;
 		

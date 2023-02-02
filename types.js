@@ -192,7 +192,7 @@ class LineSegment {
 	/*
 		Returns the midpoint of this line segment
 	*/
-	midPoint() {
+	get midPoint() {
 		 return new Vector2((this.p0.x + this.p1.x) / 2, (this.p0.y + this.p1.y) / 2);
 	}
 	

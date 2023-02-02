@@ -40,8 +40,8 @@ class UI {
                 if (c.enabled && ('events' in c) && c.events.names.includes('mousedown')) c.events.fire('mousedown', e);
             }       
             
-            // close menus on user click (basically a click anywhere in the UI should close a menu)
-            if (this.active == null && oldActive && oldActive.elem.tagName == 'UI-MENU') oldActive.close();                                
+            // close menus on user click (basically a click anywhere in the UI should close a menu)                        
+            if (oldActive && oldActive != this.active && oldActive.elem.tagName == 'UI-MENU') oldActive.close();                                
         }
 
         const mouseup = (e) => {

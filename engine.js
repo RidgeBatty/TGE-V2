@@ -613,6 +613,7 @@ class TinyGameEngine {
 					this.gameLoop.flags[k] = v;
 				}
 			}			
+			if ('tickRate' in gls && !isNaN(gls.tickRate)) this.gameLoop.tickRate = gls.tickRate;			
 		}
 		if ('edgeAction' in o)    this.edgeAction = o.edgeAction;
 

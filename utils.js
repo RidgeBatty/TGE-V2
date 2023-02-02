@@ -314,6 +314,15 @@ const Mixin = (target, source, createParams) => {
 	if ('create' in newObject) newObject.create.call(target, createParams);
 }
 
+/**
+ * Attaches a bunch of methods into the mainClasses prototype
+ * @param {Class} mainClass The class that is about to get new methods attached
+ * @param {Module|Object} methods Object which containe the methods that need to be attached to the mainClass
+ */
+const addMethods = (mainClass, methods) => {
+	for (const [name, method] of Object.entries(methods)) mainClass.prototype[name] = method;            
+}
+
 const addElem = (o) => {
     const el = document.createElement('type' in o ? o.type : 'div');
     if ('text' in o)  el.textContent = o.text;
@@ -391,5 +400,6 @@ export {
 	waitClick, 
 
 	Mixin,
+	addMethods,
 	addPropertyListener,
 }

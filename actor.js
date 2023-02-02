@@ -159,7 +159,7 @@ class Actor extends Root {
 	 */
 	get renderPosition() {
 		const pos = this.position.clone();			
-		if (this?.owner?.engine?.world) pos.sub(this.owner.engine.world.camPos);		
+		if (this?.world) pos.sub(this.world.camPos);		
 		return pos;
 	}
 	
