@@ -550,6 +550,18 @@ class Rect {
 		return this;
 	}
 	
+	/**
+	 * Offset rectange by 'v'
+	 * @param {Vector2} v 
+	 */
+	offset(v) {
+		this.left   += v.x;
+        this.top    += v.y;
+        this.right  += v.x;
+        this.bottom += v.y;
+		return this;
+	}
+	
     clone() {
         return new Rect(this.left, this.top, this.right, this.bottom);
     }

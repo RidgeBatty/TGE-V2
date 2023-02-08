@@ -317,7 +317,7 @@ const Mixin = (target, source, createParams) => {
 /**
  * Attaches a bunch of methods into the mainClasses prototype
  * @param {Class} mainClass The class that is about to get new methods attached
- * @param {Module|Object} methods Object which containe the methods that need to be attached to the mainClass
+ * @param {Module|Object} methods Object which contains the methods that need to be attached to the mainClass
  */
 const addMethods = (mainClass, methods) => {
 	for (const [name, method] of Object.entries(methods)) mainClass.prototype[name] = method;            
@@ -333,19 +333,27 @@ const addElem = (o) => {
     return el;
 }
 
+const listeners = {};
 const addPropertyListener = (object, prop, handler) => {
 	if (!(prop in object)) throw `Property ${prop} does not exist in object ${object}`;
 
-	var temp = object[prop];
-	Object.defineProperty(object, prop, {
+	let oldValue = object[prop];
+	const n = Object.defineProperty(object, prop, {
 		set(x) {
-			handler(x, temp);
-			temp = x;
+			handler(x, oldValue);
+			oldValue = x;						
+			if (listeners[object]) {
+				const otherHandlers = listeners[object].filter(e => e.prop == prop && e.handler != handler);
+				otherHandlers.forEach(e => e.handler(x));
+			}
 		},
 		get() {
-			return temp;
+			return oldValue;
 		}
-	});
+	});	
+
+	if (listeners[object] == null) listeners[object] = [];
+	listeners[object].push({ prop, handler });
 }
 
 /**

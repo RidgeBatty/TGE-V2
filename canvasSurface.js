@@ -8,7 +8,7 @@
 import * as Engine from "./engine.js";
 import { Types } from "./physics.js";
 
-const { Rect, Vector2, Color } = Engine.Types;
+const { Rect, RECT, Vector2, Color } = Engine.Types;
 
 class CanvasSurface {
 	/**
@@ -76,6 +76,7 @@ class CanvasSurface {
 	get width()  { return this.canvas.width; }
 	get height() { return this.canvas.height; }
 	get size()	 { return new Vector2(this.canvas.width, this.canvas.height); }	
+	get rect()   { return RECT(0, 0, this.width, this.height) } 
 
 	set width(v)  { this.canvas.width = v; }
 	set height(v) { this.canvas.height = v; }
@@ -361,7 +362,7 @@ class CanvasSurface {
 	drawRectangle(x, y, w, h, p = { stroke:'black' }) {
 		if (p.fill) { 
 			this.ctx.fillStyle = p.fill; 			
-			this.ctx.fillRect(~~x, ~~y, ~~w, ~~h); 
+			this.ctx.fillRect(~~x + 0.5, ~~y + 0.5, ~~w, ~~h); 
 		}
 		if (p.stroke) {			
 			this.ctx.strokeStyle = p.stroke; 
@@ -379,11 +380,11 @@ class CanvasSurface {
 	drawRect(r, p = {}) {
 		if (p.fill) { 
 			this.ctx.fillStyle = p.fill; 			
-			this.ctx.fillRect(~~r.left, ~~r.top, ~~r.width, ~~r.height); 
+			this.ctx.fillRect(~~r.left + 0.5, ~~r.top + 0.5, ~~r.width, ~~r.height); 			
 		}
 		if (p.stroke) {			
 			this.ctx.strokeStyle = p.stroke; 
-			this.ctx.strokeRect(~~r.left, ~~r.top, ~~r.width, ~~r.height);
+			this.ctx.strokeRect(~~r.left + 0.5, ~~r.top + 0.5, ~~r.width, ~~r.height);
 		}
 	}
 	

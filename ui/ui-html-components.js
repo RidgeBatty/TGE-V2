@@ -331,6 +331,74 @@ class UWindow extends UBaseElement {
     }
 }
 
+class UTable extends UBaseElement {
+    constructor(o) {
+        if (!('tagName' in o)) o.tagName = 'ui-table';        
+        super(o);        
+
+        this.title   = new UCaption({ owner:this, caption:o.caption });
+        this.table   = addElem({ parent:this.elem, type:'table' });
+        this.headers = [];
+        this.rows    = [];
+        this.type    = 'table';             // 'table' | 'keyvalue'
+    }
+
+    clear() {
+        this.table.replaceChildren();
+        this.headers = [];
+        this.rows    = [];
+    }
+
+    set caption(c) {
+        this.title.caption = c;
+    }
+
+    get caption() {
+        return this.title.caption;
+    }
+
+    updateHeader(obj) {
+        this.headers = Object.keys(obj);
+        const tr = addElem({ parent:this.table, type:'tr' });
+        for (const text of this.headers) {
+            const th = addElem({ parent:tr, type:'th', text });
+        }
+    }
+
+    /**
+     * Adds new content into the table.
+     * @param {object[]|object} o If "o" is an array of objects, the keys become the headers and values become rows. 
+     * If "o" is a single object, a key-value list is created where first column contains keys and second column contains values.
+     * @returns 
+     */
+    addContent(o) {        
+        // "o" is an object:
+        if (!Array.isArray(o)) {
+            if (typeof o != 'object') throw 'Parameter must be an array of objects, or a single object';
+            for (const [k, v] of Object.entries(o)) {
+                const tr = addElem({ parent:this.table, type:'tr' });
+                const th = addElem({ parent:tr, type:'th', text:k });
+                const td = addElem({ parent:tr, type:'td', text:v });
+                this.rows.push([k, v]);
+            }
+            this.type = 'keyvalue';
+            return;
+        }
+
+        // "o" is an array:
+        if (o.length == 0) return;      
+        this.updateHeader(o[0]);
+        for (const row of o) {
+            const tr = addElem({ parent:this.table, type:'tr' });
+            for (const [k, v] of Object.entries(row)) {
+                const td = addElem({ parent:tr, type:'td', text:v });
+            }
+        }
+        this.rows.push(...o);
+        this.type = 'table';
+    }
+}
+
 class UCustomList extends UBaseElement {
     /**
      * CustomList component has 3 different types: row, column or grid. Every type has a ".head" and ".body" element.
@@ -367,10 +435,11 @@ class UCustomList extends UBaseElement {
                 }
 
                 const listElem = r.listElem;
-                e.index    = [...listElem.parentElement.children].indexOf(listElem);         // get the element index for convenience and return it to the event handler                
-                e.name     = 'selectitem';
-                e.data     = 'data' in r ? r.data : null;
-                e.item     = r;
+                e.selection  = [...this.selection];
+                e.index      = [...listElem.parentElement.children].indexOf(listElem);         // get the element index for convenience and return it to the event handler                
+                e.name       = 'selectitem';
+                e.data       = 'data' in r ? r.data : null;
+                e.item       = r;
                 e.instigator = this;
 
                 // change listElem attribute to selected if it's not already                
@@ -433,8 +502,8 @@ class UCustomList extends UBaseElement {
 
     /**
      * 
-     * @param {HTMLImageElement|string|[HTMLImageElement|string]} o Image or string (or an array of either one)
-     * @returns {[ListItem]} Array of added list items
+     * @param {HTMLImageElement|string|HTMLImageElement[]|string[]} o Image or string (or an array of either one)
+     * @returns {ListItem[]} Array of added list items
      */
     add(o) {
         if (!Array.isArray(o)) o = [o];                                         // force array
@@ -613,4 +682,4 @@ const Confirmation = async(o) => {
     })
 }
 
-export { UBaseElement, UWindow, UPanel, UButton, UEdit, UCaption, USwitch, UCustomList, UCustomFileList, UFileList, UDialog, UMenu, USlider, UColorPicker, URadioButton, URadioGroup, Confirmation }
+export { UBaseElement, UWindow, UPanel, UButton, UEdit, UCaption, USwitch, UCustomList, UCustomFileList, UFileList, UDialog, UMenu, USlider, UColorPicker, URadioButton, URadioGroup, UTable, Confirmation }

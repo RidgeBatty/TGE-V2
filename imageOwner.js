@@ -93,6 +93,21 @@ class ImageOwner {
             img.src = u;
         });
     }
+
+    getPixelColor(x, y) {
+        let canvas;
+        try {			
+			canvas = new OffscreenCanvas(1, 1);					
+		} catch(e) {
+			canvas = document.createElement('canvas');
+			canvas.width  = 1;
+			canvas.height = 1;
+		}		
+		const ctx = canvas.getContext('2d');		    
+        ctx.drawImage(this.img, x, y, 1, 1, 0, 0, 1, 1);;
+        const pixelData = ctx.getImageData(0, 0, 1, 1).data;
+        return { r:pixelData[0], g:pixelData[1], b:pixelData[2], a:pixelData[3] }; 
+    }
 }
 
 export { ImageOwner, Mixin }

@@ -19,7 +19,7 @@
 * For example a space invaders, tetris, pong, asteroids, etc. might have no use of container for static World but a platformer game definitely has.
 *
 */
-const VersionNumber = '2.6';
+const VersionNumber = '2.7';
 
 import * as Types from "./types.js";
 import { Root, Enum_HitTestMode } from "./root.js";
@@ -31,7 +31,6 @@ import { CanvasRenderer as Renderer } from './canvasRenderer.js';
 import * as Utils from "./utils.js";
 import { Flags } from "./flags.js";
 import { Events } from "./events.js";
-import { UI } from "./ui/ui-html.js";
 import { CustomLayer } from "./customLayer.js";
     
 const { Rect, Vector2, V2, LineSegment } = Types;
@@ -71,6 +70,7 @@ class TinyGameEngine {
 	/**
 	@param {Object=} o - Not used in current version.
 	*/	
+	#GUI
 	constructor (o) {		
 		AE.sealProp(this, 'flags', new Flags(DefaultFlags, (a, b) => this.onFlagChange(a, b))); 				// create default flags and make 'this.flags' immutable
 		AE.sealProp(this, 'url', import.meta ? new URL('./', import.meta.url).pathname : null);
@@ -124,6 +124,7 @@ class TinyGameEngine {
 		this.allowedKeys   = {};
 
 		this.initCompleted = false;
+		this.setupParams   = {};
 				
 		this.#installEventHandlers();				
 	}
@@ -228,7 +229,7 @@ class TinyGameEngine {
 			if (!this._keys.status[e.code]) this.events.fire('keypress', evt);					// keypress is fired exactly ONCE on keydown, but if key is held down for a longer time "keydown" event will fire repeatedly
 			this._keys.status[e.code] = true;	
 
-			if (this.flags.getFlag('hasUI') && this.ui.isInputElement(e.target)) return;
+			if (this.flags.getFlag('hasUI') && 'isInputElement' in this.ui && this.ui.isInputElement(e.target)) return;
 			if (this.allowedKeys[e.code] == null && (this.flags.getFlag('preventKeyDefaults') || this.preventedKeys[e.code])) e.preventDefault();			
 		}
 
@@ -238,7 +239,7 @@ class TinyGameEngine {
 			this._keys.status[e.code] = false;
 			this.events.fire('keyup', evt);
 
-			if (this.flags.getFlag('hasUI') && this.ui.isInputElement(e.target)) return;
+			if (this.flags.getFlag('hasUI') && 'isInputElement' in this.ui && this.ui.isInputElement(e.target)) return;
 			if (this.allowedKeys[e.code] == null && (this.flags.getFlag('preventKeyDefaults') || this.preventedKeys[e.code])) e.preventDefault();
 		}	
 
@@ -552,9 +553,14 @@ class TinyGameEngine {
 		this.flags.setFlag('hasRenderingSurface');
 	}
 
-	createUI(parentElem) {
+	async createUI(parentElem) {		
 		if (this.ui == null) {
-			this.ui = new UI(this, parentElem); 
+			if (this.setupParams?.GUI == 'canvas') {
+				this.ui = new this.#GUI.TUI(this);				
+				console.log('GUI loaded');				
+			} else {
+				this.ui = new this.#GUI.UI(this, parentElem); 
+			}
 			this.flags.setFlag('hasUI');
 		}
 	}
@@ -595,8 +601,10 @@ class TinyGameEngine {
 
 	async setup(o) {
 		if (typeof o == 'string') {													// load params from file						
-			o = await Utils.getJSON(o);						
+			o = await Utils.getJSON(o);									
 		}
+
+		this.setupParams = o;		
 				
 		if ('rootElem' in o) this.setRootElement(o.rootElem);				
 		if ('zoom' in o) {			
@@ -604,7 +612,16 @@ class TinyGameEngine {
 			this.zoom = o.zoom;		
 		}
 		if ('clearColor' in o) this.gameLoop.clearColor = o.clearColor;
-		if ('flags' in o) this.flags.some(o.flags);		
+		if ('flags' in o) {
+			if (o.flags.hasUI) {
+				if (o.GUI) {
+					this.#GUI = await import('./canvas-ui/tui.js');					
+				} else {
+					this.#GUI = await import('./ui/ui-html.js');				
+				}
+			}		
+			this.flags.some(o.flags);		
+		}
 		if ('gameLoop' in o) {
 			const gls = o.gameLoop;
 			if ('zLayers' in gls && gls.zLayers < 17 && gls.zLayers > 1) this.gameLoop.zLayers.length = gls.zLayers;

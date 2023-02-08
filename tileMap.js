@@ -7,7 +7,6 @@ class TileMap {
 		this.textures  = [];
 		this.overlays  = [];
 		this.colliders = {};
-		this.tileSize  = 0;	
 		this.origin    = '';
 
 		this._size     = V2(0, 0);
@@ -31,13 +30,6 @@ class TileMap {
 
 		this.tiles = newArray;		
 		this._size = V2(sx, sy);
-	}
-
-	/**
-	 * Returns the size (in pixels) of tile map as a Vector2.
-	 */
-	get pixelSize() {
-		return V2(this.width * this.tileSize, this.height * this.tileSize);
 	}
 
 	get size() {
@@ -76,18 +68,6 @@ class TileMap {
 		if (y < 0 || y >= this.height || x < 0 || x >= this.width) throw 'Tile coordinates out of range';
 		this.tiles[y * this.size.x + x] = v;
 	}
-
-	/**
-	 * Converts given screen space coordinates into texture space
-	 * @param {number} id Texture ID 
-	 * @param {Vector2} p Point in screen space	 
-	 * @returns 
-	 */
-	toTextureSpace = (id, p) => {
-		const px = p.x / this.textures[id].width;
-		const py = p.y / this.textures[id].height - 0.5;
-		return V2(px - py, py + px);
-	}	
 
 	/**
 	 * Appends more textures in TileMap.textures array by loading them from image files. This async function returns when all images are loaded.
@@ -130,7 +110,6 @@ class TileMap {
 
 	rescaleTextures(w, h) {
 		for (const t of this.textures) t.rescale(w, h);
-		this.tileSize = w;
 	}
 
 	clear() {
@@ -143,9 +122,7 @@ class TileMap {
 	static async Parse(data) {
 		return new Promise(async (resolve, reject) => {
 			let map = new TileMap();
-			try {
-				if ('tileSize' in data) map.tileSize = data.tileSize;
-				
+			try {				
 				if (data.tiles.length > 0) {		
 					let rowLen = 0;
 					map.resize(data.tiles.length, data.tiles[0].split(' ').length);							// create the buffer				

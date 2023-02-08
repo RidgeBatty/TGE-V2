@@ -482,14 +482,28 @@ class Flipbook {
 		if (seq == null || seq._cycle == 'ended') return;
 						
 		const frame = seq.next();
-		const img   = this.isAtlas ? this.images[0] : this.images[frame];
-		
+		const image = this.getFrame(frame);
+		if (this.customRender == null) return;
 
+		this.customRender = image;		
+		if (!this.actor.img) { this.actor.size = V2(image.w, image.h); }
+		
+		this._lastFrame = frame;
+	}
+
+	/**
+	 * Returns the image information (either a position from atlas or a frame from image array)
+	 * @param {number} index 
+	 * @returns 
+	 */
+	getFrame(index) {																								
+		const img = this.isAtlas ? this.images[0] : this.images[index];		
+		
 		if (img == null) return;
 
 		const iwidth  = img instanceof HTMLCanvasElement ? img.width  : img.naturalWidth;
 		const iheight = img instanceof HTMLCanvasElement ? img.height : img.naturalHeight;
-					
+
 		if (this.isAtlas) {			
 			if (this._atlasOrder == 'left-to-right') {
 				var a = Math.floor(frame % this.dims.x);
@@ -503,12 +517,8 @@ class Flipbook {
 		} else {
 			var w = iwidth;
 			var h = iheight;			
-		}
-		
-		if (!this.actor.img) { this.actor.size = V2(w, h); }
-		this.customRender = { img, a, b, w, h };
-		
-		this._lastFrame = frame;
+		}		
+		return { img, a, b, w, h };		
 	}
 }
 

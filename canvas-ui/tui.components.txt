@@ -1,0 +1,32 @@
+
+  Canvas based UI components
+  
+  Non-focusable
+  -------------
+ * Label
+ * Panel
+ * Image
+ * Group box
+  
+  Focusable
+  ---------
+ * Scrollbar
+ * Edit
+ * Combobox
+ * Listbox
+ * Checkbox
+ * Radiobutton
+ * Button
+ * Memo
+ * PopupMenu
+ * Menu
+ * Treeview
+ * Window
+ * Dialog
+
+  Main classes
+  ------------- 
+ * TComponent    - base class
+ * TControl      - visual at run-time
+ * TFocusControl - can receive focus
+ 

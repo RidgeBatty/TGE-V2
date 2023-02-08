@@ -52,7 +52,8 @@ class AssetManager {
      * @param {boolean} assignAsDefault Assign this assetManager as Engine's default asset manager
      */
     constructor(engine, assignAsDefault = true) {
-        this.engine = engine;        
+        this.engine        = engine;        
+        this.onDeserialize = null;
 
         AE.sealProp(this, 'flags', {
             addActorsToGameLoop : false,            
@@ -98,6 +99,8 @@ class AssetManager {
             var actor = new o.constructors[data.class](params);                           
         } else 
             var actor = Engine.gameLoop.createTypedActor(params.type, params);
+
+        if (this.onDeserialize) this.onDeserialize(actor, data, o);
         
         if (data.data) actor.data = data.data;                                                      // user data        
         if (data.flipbooks) actor.flipbooks = await Flipbook.Parse(data.flipbooks, actor);          // create flipbooks

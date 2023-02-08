@@ -69,7 +69,7 @@ class TileMapRenderer extends CustomLayer {
 	constructor(params = {}) {		
 		super(Object.assign(params, { addLayer:true }));
 
-		this.engine    = ('engine' in params) ? params.engine : Engine;                    			// implementing it this way makes it easier to change the Engine reference if needed 		
+		this.engine    		= ('engine' in params) ? params.engine : Engine;                    			// implementing it this way makes it easier to change the Engine reference if needed 		
 		this.world.offset   = ('offset' in params) ? params.offset : this.engine.dims.mulScalar(0.5);
 		this.world.renderer = this;
 		
@@ -90,6 +90,8 @@ class TileMapRenderer extends CustomLayer {
 		this.objectZLayer       = ('objectZLayer' in params) ? params.objectZLayer : this.zIndex;	// on which layer the objects should be rendered on?
 		this.staticActors       = [];		
 		this.projectionMode     = 'angle';															// "zigzag", "angle"
+		this._aspectRatio       = 0.5;
+		this.tileSize           = 256;
 				
 		this.updateViewport();																		// acquire canvasSurface
 		this.buffer.name        = 'TileMapRenderingBuffer';
@@ -98,6 +100,26 @@ class TileMapRenderer extends CustomLayer {
 			this.buffer.setCanvasSize(this.engine.screen.width, this.engine.screen.height);
 		});
 	}
+
+	/**
+	 * Tile size Y / X
+	 */
+	get aspectRatio() {
+		return this._aspectRatio;
+	}
+	
+	/**
+	 * Converts given screen space coordinates into texture space
+	 * @param {number} id Texture ID 
+	 * @param {Vector2} p Point in screen space	 
+	 * @returns 
+	 */
+	toTextureSpace(id, p) {
+		const tex = this.tileMap.textures[id];
+		const px = p.x / tex.width;
+		const py = p.y / tex.height - 0.5;
+		return V2(px - py, py + px);
+	}	
 
 	/**
 	 * Clears actors and the tilemap
@@ -173,6 +195,7 @@ class TileMapRenderer extends CustomLayer {
 	async loadMap(options) {																					
 		const o = await TileMap.LoadFromFile(options);														// load tilemap/texture data			
 		if (o.data.objects) this.parseStaticActorsFromObject(o.data.objects);								// load static actors from map file "objects" collection
+		if (o.data.tileSize) this.tileSize = o.data.tileSize;
 
 		this.map = o.map;
 
@@ -229,7 +252,7 @@ class TileMapRenderer extends CustomLayer {
 		const { map } = this;	
 
 		const params = {
-			position : (this.flags.isometric) ? this.project(position, true).add(V2(map.tileSize * 0.5, map.tileSize * 0.5)) : position.mul(map.tileSize).toInt(),
+			position : (this.flags.isometric) ? this.project(position, true).add(V2(this.tileSize * 0.5, this.tileSize * 0.5)) : position.mul(this.tileSize).toInt(),
 			surface  : this.buffer,	
 		}
 		Object.assign(params, o);
@@ -248,6 +271,19 @@ class TileMapRenderer extends CustomLayer {
 		this.events.fire('createprop', { prop:actor });
 
 		return actor;
+	}
+
+	destroyStaticActors(actors) {
+		for (const a of actors) a.destroy();
+
+		const sa = this.staticActors;
+		for (let i = sa.length; i--;) {
+			const index = actors.indexOf(sa[i]);
+			if (index > -1) {
+				sa.splice(i, 1);
+				actors.splice(index, 1);
+			}
+		}
 	}
 
 	/**
@@ -275,7 +311,7 @@ class TileMapRenderer extends CustomLayer {
 	getTileAtCoords(p) {
 		const { map, position, world } = this;
 
-		const size = map.tileSize;
+		const size = this.tileSize;
 
 		if (this.flags.isometric) var p = this.unProject(p);		
 		var x = ~~(p.x / size);
@@ -291,7 +327,7 @@ class TileMapRenderer extends CustomLayer {
 		const { map, canvas, position, world } = this;
 		
 		const ctx    = this.buffer.ctx;		
-		const size   = map.tileSize;
+		const size   = this.tileSize;
 		const camPos = (world == null) ? position : world.camPos;
 
 		ctx.resetTransform();
@@ -328,7 +364,7 @@ class TileMapRenderer extends CustomLayer {
 		if (!ignoreCamPos) var camPos = (this.world == null) ? this.position : this.world.camPos;
 			else var camPos = Vec2.Zero();
 
-		const size   = this.map.tileSize;
+		const size   = this.tileSize;
 		if (this.projectionMode == 'zigzag') {
 			const top    = (y * size * 0.25)                       - ~~camPos.y - size * 0.5;
 			const left   = (x * size * 1) + ((y % 2) * size * 0.5) - ~~camPos.x - size;
@@ -352,7 +388,7 @@ class TileMapRenderer extends CustomLayer {
 		if (!ignoreCamPos) var camPos = (this.world == null) ? this.position : this.world.camPos;
 		else var camPos = Vec2.Zero();
 
-		const size   = this.map.tileSize;
+		const size   = this.tileSize;
 		if (this.projectionMode == 'angle') {			
 			const top    = y / size * 2 - x / size + 0.5 + camPos.y / size * 2 - camPos.x / size;
 			const left   = x / size + y / size * 2 + 0.5 + camPos.y / size * 2 + camPos.x / size;
@@ -364,7 +400,7 @@ class TileMapRenderer extends CustomLayer {
 		const { map, canvas, position, world } = this;
 		
 		const ctx    = this.buffer.ctx;		
-		const size   = map.tileSize;
+		const size   = this.tileSize;
 		const camPos = (world == null) ? position : world.camPos;
 		
 		ctx.resetTransform();
@@ -421,7 +457,7 @@ class TileMapRenderer extends CustomLayer {
 	 */
 	_generateAxisAlignedColliders() {
 		const { map, engine, canvas } = this;
-		const size   = map.tileSize;
+		const size   = this.tileSize;
 		const camPos = 'world' in engine ? engine.world.camPos : this.position;		
 		const cw     = canvas.width;
 		const ch     = canvas.height;
@@ -458,7 +494,7 @@ class TileMapRenderer extends CustomLayer {
 	_generateIsometricColliders() {
 		const { map, canvas, position, world } = this;
 		
-		const size   = map.tileSize;
+		const size   = this.tileSize;
 		const camPos = (world == null) ? position : world.camPos;
 		const cW     = canvas.width;
 		const cH     = canvas.height;

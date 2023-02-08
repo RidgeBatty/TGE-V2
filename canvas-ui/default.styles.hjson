@@ -1,0 +1,50 @@
+color : {
+    cl3DDkShadow                : 'gray'                # Represents the dark shadow of 3D components.
+    cl3DLight	                : 'white'               # Represents the light part of 3D components.
+    clAppWorkSpace	            : 'transparent'         # Represents the default Application WorkSpace color.
+    
+    clBtnFace	                : 'red'                 # Represents the color of the face of a button.
+    clBtnActive                 : 'white',              # Represents the color of the face of a button when it's activate.
+    clBtnHighlight	            : 'white'               # Represents the color of the highlighting on a button.
+    clBtnShadow	                : 'white'               # Represents the color of the shadow cast by a button.
+    clBtnText	                : 'white'               # Represents the default color of the text on a button.
+    clGrayText	                : 'silver'              # Represents the color of text that is dimmed.
+
+    clHighlight	                : 'maroon'              # Represents the color of the background of a block of selected text.
+    clHighlightText	            : 'white'               # Represents the color of selected text.
+    
+    clInfoBk	                : 'orange'              # Represents the color of the background of a tool tip.
+    clInfoText	                : 'black'               # Represents the color of tool tip text.
+
+    clMenu	                    : 'transparent'         # Represents the color of the background of an unselected menu subitem.
+    clMenuBar	                : 'maroon'              # Represents the color of the background of an unselected main menu item.
+    clMenuHighlight	            : 'red'                 # Represents the color of the background of a selected menu item.
+    clMenuText	                : 'white'               # Represents the default menu text color.
+
+    clCaptionText	            : 'white'               # Represents the default color of the text on the title bar of an active window.    
+    clActiveCaption	            : 'red'                 # Represents the default color of the title bar of an active window.
+    clActiveBorder	            : 'transparent'         # Represents the default border color of an active window.
+
+    clWindow	                : 'rgba(0,0,0,0.8)'     # Represents the default Window background color.
+    clWindowFrame	            : 'black'               # Represents the default Window frame color.
+    clWindowText	            : 'white'               # Represents the default Window text color.    
+    
+    clInactiveBorder	        : '#333'                # Represents the default border color of an inactive window.
+    clInactiveCaption	        : '#333'                # Represents the default color of the title bar of an inactive window.
+    clInactiveCaptionText	    : 'gray'               # Represents the default color of the title text in an inactive window.
+
+    clCheckboxMark              : 'lime'
+
+    # clGradientActiveCaption	    : Right side color in the color gradient of an active window's title bar.
+    # clGradientInactiveCaption	: Right side color in the color gradient of an inactive window's title bar.
+}
+background : {
+    window : {
+        url : '../../assets/ui/Stone-Tile-3x3-128x128.jpg'
+        frame : {
+            path  : '../../assets/ui/'
+            ext   : 'png'
+            urls  : ['ivy_top_left', 'ivy_top', 'ivy_top_right', 'ivy_right', 'ivy_bottom_right', 'ivy_bottom', 'ivy_bottom_left', 'ivy_left']
+        }
+    }
+}

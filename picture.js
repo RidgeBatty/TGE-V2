@@ -2,7 +2,6 @@
  *  Lightweight wrapper for managing loaded images and metadata
  */
 import { V2 } from "./types.js";
-
 export class Picture {
 	constructor(name) {
 		this.data      = {};				// reserved for user data		
@@ -28,7 +27,7 @@ export class Picture {
 			}
 
 			this.image = new Image();									
-			this.image.addEventListener('error', _ => { console.error('Rejected'); reject(this.image); });
+			this.image.addEventListener('error', _ => { reject(this.image); });
 			this.image.addEventListener('load', _ => { resolve(this.image); });
 
 			this.image.src = url;
@@ -42,4 +41,10 @@ export class Picture {
 	unload() {
 		this.image = null;
 	}		
+
+	static async LoadFromFile(url) {
+		const r = new Picture();
+		await r.loadFile(url);
+		return r;
+	}
  }

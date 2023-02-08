@@ -390,6 +390,10 @@ class GameLoop {
 			}			
 		}
 
+		if (this.engine.ui) {
+			if (this.engine.ui.isCanvasUI) this.engine.ui.draw();											// GUI overlay
+		}
+
 		if (this.onAfterRender) this.onAfterRender();		
 		
 		// time delta and average fps calculations		
