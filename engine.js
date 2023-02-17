@@ -593,7 +593,7 @@ class TinyGameEngine {
 						await mainFunction();				
 						resolve(true);
 					} catch (e) {
-						console.error(e);						
+						console.error(e);
 					}
 				});
 			}

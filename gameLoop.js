@@ -29,7 +29,6 @@ class GameLoop {
 		this.surface        = this.engine.renderingSurface;
 		this.name			= 'name' in o ? o.name : null;
 		
-		this.levels         = [];
 		this.actors         = [];
 		this.tickables      = [];
 		this.zLayers        = [...Array(16).keys()].map(e => []);
@@ -61,8 +60,6 @@ class GameLoop {
 		this.requestID      = null;	
 
 		this.collisionCheckTime = 0;		// time spent checking for collisions/overlaps
-
-		this.container      = null;			// if defined, actors are created inside this container (overriding engine.rootElem)
 		
 		// handle browser throttling
 		let wasRunningBeforeVisibilityChange = false;
@@ -308,15 +305,7 @@ class GameLoop {
 			this._addActor(aType);			
 			return aType;
 		}
-			
-		var a;
-		if (aType == 'level')  { 															// Levels are a different beast. Add them in their own container and exit.
-			a = new Level(o); 
-			this.levels.push(a); 
-			this.events.fire('addactor', { actor:a });
-			return a; 
-		}
-						
+									
 		if (aType == 'custom') { 
 			if (!('zIndex' in o)) throw 'Custom GameLoop object must have zIndex property defined.';
 			if (!AE.isFunction(o.update)) throw 'Custom GameLoop object must have update() method defined.';
@@ -572,6 +561,34 @@ class GameLoop {
 
 	toString() {
 		return '[GameLoop]';
+	}
+	
+	cloneZLayers() {
+		const result = [];
+		for (let layer of this.zLayers) {
+			const copyOfLayer = [...layer]
+			result.push(copyOfLayer);
+		}
+		return result;
+	}
+
+	/**
+	 * Returns all Actors, Tickables, Z-layers and all content that may be considered as being on the "stage" while the gameloop is running
+	 */
+	getStage() {		
+		return {
+			actors    : [...this.actors],
+			zLayers   : this.cloneZLayers(),
+			tickables : [...this.tickables],
+			surface   : this.surface,
+		}
+	}
+
+	setStage(stage) {
+		this.actors    = stage.actors;
+		this.zLayers   = stage.zLayers;
+		this.tickables = stage.tickables;
+		this.surface   = stage.surface;
 	}
 
 } // class end

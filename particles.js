@@ -20,7 +20,7 @@ import { CanvasSurface } from './canvasSurface.js';
 import { Engine, Types } from './engine.js';
 import { EventBroadcaster } from './eventBroadcaster.js';
 import { wrapBounds, preloadImages, imgDims } from './utils.js';
-import { Polygon } from './shapes.js';
+import { Polygon } from './particleShapes.js';
 import { getJSON } from './utils.js';
 
 const { Vector2:Vec2, Color } = Types;

@@ -9,6 +9,7 @@ class Events {
         if (typeof o == 'string') var o = o.split(' ');
         for (const e of o) this.#list[e] = [];
 
+        this.isActive = true;
         this.owner = owner;
         this._stopPropagation = '';
     }
@@ -114,9 +115,9 @@ class Events {
 
     fire(name, args) {        
         const e = this.#list[name];        
-        if (!e) return;
+        if (!e || !this.isActive) return;
         const o = Object.assign({ instigator:this.owner, name }, args);
-        for (const evt of e) {                  
+        for (const evt of e) {             
             if (evt.dispatcher && evt.dispatcher.active === false) continue;
             if (evt.isActive && name != this._stopPropagation) evt.handler(o);
         }

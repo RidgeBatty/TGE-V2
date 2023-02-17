@@ -127,7 +127,7 @@ class TileMapRenderer extends CustomLayer {
 	clear() {
 		this.map.clear();
 		for (let i = this.staticActors.length; i--;) this.staticActors[i].destroy();
-		this.staticActors.length = 0;
+		this.staticActors.length = 0;		
 	}
 
 	update() {		

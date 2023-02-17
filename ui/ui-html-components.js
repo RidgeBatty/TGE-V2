@@ -227,7 +227,7 @@ class UMenu extends UBaseElement {
         const mouseup = e => {
             const target = e.event.target;
             if (target.tagName == 'UI-MENUITEM') {                
-                const selected = { target, caption:target.children[0].textContent }
+                const selected = { target, caption:target.children[1].textContent, checked:target.children[0].textContent == '✓' }
                 this.events.fire('selectitem', selected);
                 this.onSelectItem(selected)
             }
@@ -276,6 +276,7 @@ class UMenu extends UBaseElement {
 
                 const text = i.split('|');
 
+                addElem({ parent:e });                                                          // reserved for check mark
                 addElem({ parent:e, text:text[0] });
                 if (text.length == 2) {
                     addElem({ parent:e, text:text[1] });
@@ -289,6 +290,12 @@ class UMenu extends UBaseElement {
     clear() {
         for (const i of this.items) i.remove();
         this.items.length = 0;
+    }
+    
+    toggleChecked(item) {
+        if (item.children[0].textContent == '✓') item.children[0].textContent = '';
+            else item.children[0].textContent = '✓';
+        return item.children[0].textContent == '✓';
     }
 }
 
@@ -416,8 +423,9 @@ class UCustomList extends UBaseElement {
         this.selection        = [];
         this.maxSelectedItems = 1;                                  // set to zero if you don't want selection behavior
         this.hoverItem        = null;
-
-        if ('type' in o) this._setListType(o.type, o.tagNames); else throw 'Type must be specified';
+        
+        if ('caption' in o) this._caption = o.caption; else this._caption = null;
+        if ('type' in o)    this._setListType(o.type, o.tagNames); else throw 'Type must be specified';
         
         AE.sealProp(this, 'items');
         AE.sealProp(this, 'events');
@@ -476,8 +484,18 @@ class UCustomList extends UBaseElement {
         this.events.add('mousemove', mousemove);
     }
 
-    get listType() {
+    get listType() {        
         return this._listType.string;
+    }
+
+    get caption() {
+        return this._caption;
+    }
+
+    set caption(v) {
+        this._caption = v;
+        if (v == null) this.head.textContent = '';    
+            else this.head.textContent = v;
     }
     
     /**
@@ -494,6 +512,8 @@ class UCustomList extends UBaseElement {
 
         this.body = addElem({ parent:this.frame, type:tagNames ? tagNames[2] : 'div' });
         this.body.className = 'body ' + this._listType.string;        
+
+        if (this._caption) this.head.textContent = this._caption;
     }
 
     get selectedItem() {
@@ -511,8 +531,8 @@ class UCustomList extends UBaseElement {
         const result = [];            
             
         for (const e of o) {
-            const wrapper  = addElem({ parent:this.body });
-            const isImages = (typeof e == 'object') && ('src' in e);
+            const wrapper   = addElem({ parent:this.body });
+            const isImages  = (typeof e == 'object') && ('src' in e);
             
             if (isImages) {                                                     // copies image from existing <img> tags (or Image instances) or from anonymous object which has "src" property                
                 const img = addElem({ parent:wrapper, type:'img' });
@@ -531,6 +551,10 @@ class UCustomList extends UBaseElement {
         
         return result;
     } 
+
+    findItemByCaption(c) {
+        return this.items.find(f => f.listElem.textContent == c);
+    }
 
     /**
      * Removes element whose "data" matches with given parameter.
@@ -657,6 +681,10 @@ class UDialog extends UWindow {
         const msg    = new UCaption({ owner:this, position:'auto', align:'even center' });
         if ('message' in o) msg.caption = o.message;
 
+        if (o.edit) {
+            this.edit = new UEdit({ owner:this, value:o.editText ? o.editText : '' });
+        }
+
         const pn     = new UPanel({ owner:this, position:'auto', className:'', align:'center bottom', height:'6em' });      
         
         this.buttons = {};
@@ -671,15 +699,44 @@ class UDialog extends UWindow {
     }
 }
 
+/**
+ * Yes/No dialog with a message
+ * @param {*} o 
+ * @returns 
+ */
 const Confirmation = async(o) => {
     return new Promise(resolve => {
         const obj = Object.assign({ owner:('owner' in o) ? o.owner : Engine.ui, center:true }, o);
         const dlg = new UDialog(obj);
 
         for (const [name, button] of Object.entries(dlg.buttons)) {
-            button.events.add('click', e => { dlg.close(); resolve(name); });
+            button.events.add('click', e => { 
+                dlg.close(); 
+                if (dlg.edit) resolve({ response:name, value:dlg.edit.value }); 
+                    else resolve(name);
+            });
         }
     })
 }
 
-export { UBaseElement, UWindow, UPanel, UButton, UEdit, UCaption, USwitch, UCustomList, UCustomFileList, UFileList, UDialog, UMenu, USlider, UColorPicker, URadioButton, URadioGroup, UTable, Confirmation }
+/**
+ * OK dialog with a message
+ * @param {*} o 
+ * @returns 
+ */
+const Information = async(o) => {
+    return new Promise(resolve => {
+        const obj = Object.assign({ owner:('owner' in o) ? o.owner : Engine.ui, center:true, buttons:['OK'], caption:'🛈 Information' }, o);
+        const dlg = new UDialog(obj);
+
+        for (const [name, button] of Object.entries(dlg.buttons)) {
+            button.events.add('click', e => { 
+                dlg.close(); 
+                resolve(name);
+            });
+        }
+    })
+}
+
+export { UBaseElement, UWindow, UPanel, UButton, UEdit, UCaption, USwitch, UCustomList, UCustomFileList, UFileList, UDialog, UMenu, USlider, UColorPicker, URadioButton, URadioGroup, UTable, Confirmation, Information }
+

@@ -1,28 +1,30 @@
-import { Vector2 as Vec2, V2, Rect, RECT } from '../../types.js';
-import { Events } from '../../events.js';
-import { TFocusControl } from './base.js';
+import { Vector2 as Vec2, V2, Rect, RECT } from '../types.js';
+import { TCaptionControl } from './tcaptionControl.js';
 
 const ImplementsEvents = 'mousedown mouseup';
 
-export class TButton extends TFocusControl {
+export class TButton extends TCaptionControl {    
     constructor(o) {        
         super(o);
+
         this.isMovable    = false;
         this.isButtonDown = false;
         this.useFrames    = false;
-        
-        this.settings.captionHeight = this.size.y;
         
         this.fetchDefaults('button');
 
         if ('settings' in o) Object.assign(this.settings, o.settings);
         if ('caption' in o)  this._caption = o.caption;   
         
+        this.settings.align    = 'center';
+        this.settings.baseline = 'middle';
+
         this.events.create(ImplementsEvents);        
     }   
     
     onMouseDown(e) {
         this.isButtonDown = true;
+        this._isActive    = true;
         super.onMouseDown(e);
         this.events.fire('mousedown', { event:e, button:e.button, position:e.position });
     }
@@ -38,22 +40,17 @@ export class TButton extends TFocusControl {
         
         const { settings } = this;
         const s = this.surface;
-        const p = this.position.clone();
+        
+        s.ctx.save();
+        s.ctx.translate(this.position.x, this.position.y);
+        
+        s.drawRect(this.clientRect, { fill:settings.clBtnFace });                                           // draw button background
+        s.drawRect(this.clientRect.expand(1), { stroke:settings.clBtnShadow });                             // draw button frame shadow
+        s.drawRect(this.clientRect.expand(2), { stroke:settings.clBtnHighlight });                          // draw button frame highlight
+        if (this.useFrames && this.background?.frame?.length > 0) this.drawGridPattern();                        
 
-        s.ctx.translate(p.x + this.parent.position.x, p.y + this.parent.position.y);
-                
-        // button
-        s.drawRect(RECT(0, 0, this.size.x, this.size.y).expand(2), { stroke:settings.clBtnHighlight });
-        s.drawRect(RECT(0, 0, this.size.x, this.size.y), { fill:this.isButtonDown ? settings.clBtnActive : settings.clBtnFace });
-
-        // caption
-        const { captionAlign, captionBaseline } = settings;
-        const ofsX = (captionAlign == 'center')    ? this.size.x / 2 : 0;
-        const ofsY = (captionBaseline == 'middle') ? this.size.y / 2 : 0;        
-        s.textOut(V2(ofsX, ofsY).add(settings.captionOffset), this._caption, { font:settings.captionFont, color:settings.clCaptionText, textAlign:captionAlign, textBaseline:captionBaseline });
-
-        if (this.useFrames && this.background?.frame?.length > 0) this.drawGridPattern();
-                
+        s.ctx.restore();        
+        
         super.draw();
     }
 }

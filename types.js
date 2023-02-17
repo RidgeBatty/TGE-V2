@@ -554,12 +554,23 @@ class Rect {
 	 * Offset rectange by 'v'
 	 * @param {Vector2} v 
 	 */
-	offset(v) {
+	moveBy(v) {
 		this.left   += v.x;
         this.top    += v.y;
         this.right  += v.x;
         this.bottom += v.y;
 		return this;
+	}
+	
+	/**
+	 * Move the rectangle to coordinate 'v'
+	 * @param {*} v 
+	 */
+	moveTo(v) {
+		this.right  += this.left - v.x;
+		this.bottom += this.top  - v.y;
+		this.left   = v.x;
+		this.top    = v.y;		
 	}
 	
     clone() {
@@ -588,6 +599,11 @@ class Rect {
 
 	get size() {
 		return V2(this.width, this.height);
+	}
+
+	set size(v) {
+		this.right  = this.left + v.x;
+		this.bottom = this.top  + v.y;
 	}
 	
 	toString() {
@@ -944,6 +960,12 @@ class Vector2 extends VectorBase {
         this.y += a.y + b.x; 		
         return this;       
     }
+
+	abs() {
+		this.x = Math.abs(this.x);
+		this.y = Math.abs(this.y);
+		return this;
+	}
 	
     addScalar(s) {
         this.x += s;

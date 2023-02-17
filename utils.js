@@ -199,6 +199,7 @@ const randomOfArray = (arr) => {
 const loadedJsonMap = new WeakMap();
 
 const getJSON = (url, getText) => {
+	if (typeof url != 'string') throw new Error('Parameter "url" must be a string');
 	if (!url.includes('.')) url += '.hjson';		// assume hjson file ending if none is supplied (v2.4)
 
 	return new Promise(async (resolve, reject) => {		
@@ -270,7 +271,7 @@ const imageFromBlob = (fileOrBlob) => {
 
 const downloadFile = (filename, data, type = 'application/json') => {
 	if (filename != '') {
-		const blob = new Blob([this.createExportObject()], { type });
+		const blob = new Blob([data], { type });
 		const url  = URL.createObjectURL(blob);
 		const e    = window.document.createElement('a');
 		e.href     = url;
@@ -278,6 +279,21 @@ const downloadFile = (filename, data, type = 'application/json') => {
 		e.click();  
 		URL.revokeObjectURL(url);
 	}
+}
+
+/**
+ * Creates an open file dialog
+ * @param {string} acceptedFiles ".doc,.docx,.xml,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+ * @param {boolean} multiple allow multiple files to be selected
+ * @param {function} onAccept callback to be excuted when the file dialog is closed
+ */
+const openFileDialog = (acceptedFiles = '*', multiple = false, onAccept) => {
+	var i = document.createElement('input');
+	i.setAttribute('type', 'file');
+	if (multiple == true) i.setAttribute('multiple', multiple);
+	i.setAttribute('accept', acceptedFiles);
+	if (typeof onAccept == 'function') i.addEventListener('change', e => onAccept(e, i.files));
+	i.click();	
 }
 
 const wrapMax = (x, max) => {
@@ -384,11 +400,13 @@ export {
 	preloadImages, 
 	preloadVideo, 
 	getJSON, 
-	createFileDropZone,
 	imageFromBlob,
-	downloadFile,
 	imgDims,
 	makeHJSON,
+	
+	downloadFile,
+	createFileDropZone,
+	openFileDialog,
 
 	delay, 
 	shuffle, 

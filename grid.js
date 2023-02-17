@@ -3,14 +3,15 @@ import { V2, Vector2 as Vec2 } from "./types.js";
 export class Grid {
     /**
      * 
-     * @param {number} x Number of grid elements in horizontal direction
-     * @param {number} y Number of grid elements in vertical direction
+     * @param {Vector2} dims Grid dimensions in a Vector2 
+     * @param {number} dims.x Number of grid elements in horizontal direction
+     * @param {number} dims.y Number of grid elements in vertical direction
      * @param {number=} itemSizeX Optional. X-size of each grid item (or X and Y size of a square). Defaults to 1.
      * @param {number=} itemSizeY Optional. Y-size of each grid item (if not specified, treat items as squares)
      */
-    constructor(x, y, itemSizeX = 1, itemSizeY) {
-        this.rows = y;
-        this.cols = x;        
+    constructor(dims, itemSizeX = 1, itemSizeY) {
+        this.rows     = dims.y;
+        this.cols     = dims.x;        
         this.itemSize = V2(itemSizeX, (itemSizeY == null) ? itemSizeX : itemSizeY);
         this.position = V2(0, 0);
         this.origin   = V2(-0.5, -0.5);

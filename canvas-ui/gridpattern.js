@@ -1,4 +1,4 @@
-import { Vector2 as Vec2, V2, Rect, RECT } from '../../types.js';
+import { Vector2 as Vec2, V2, Rect, RECT } from '../types.js';
 
 export function drawGridPattern() {
     const { settings } = this;

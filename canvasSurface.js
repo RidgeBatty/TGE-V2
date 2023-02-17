@@ -582,6 +582,27 @@ class CanvasSurface {
 			this.ctx.strokeText(text, pos.x, pos.y);
 		}
 	}
+
+	/**
+	 * 
+	 * @param {string} text 
+	 * @param {string} font 
+	 * @param {string} align left, right, center, start, end
+	 * @param {string} baseline top, hanging, middle, alphabetic, ideographic, bottom
+	 */
+	textBoundingBox(text, font, align = 'left', baseline = 'alphabetic') {
+		this.ctx.font = font;
+		this.ctx.textAlign = align;
+		this.ctx.textBaseline = baseline;
+		const m = this.ctx.measureText(text);
+		return new Rect(m.actualBoundingBoxLeft, m.actualBoundingBoxAscent, m.actualBoundingBoxRight, m.actualBoundingBoxDescent);
+	}
+
+	clipRect(r) {
+		this.ctx.beginPath();
+        this.ctx.rect(r.x, r.y, r.width, r.height);
+        this.ctx.clip();
+	}
 	
 	flipImage(img, flipH, flipV) {
 		const width  = img.naturalWidth;

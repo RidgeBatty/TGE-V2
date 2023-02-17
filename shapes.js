@@ -1,62 +1,155 @@
-/*
+import * as Types from "./types.js";
 
-	Basic geometric shapes and their visualization methods
-	For visualization the shapes can use user provided canvas element or World.canvas (if World object is available).
+const { Vector2 : Vec2, V2, Color, Rect, RECT } = Types;
 
-*/
+export class Shape {
+    constructor(position) {
+        this._position = position;
+    }
 
-import * as Types from './types.js';		
+    get position() {
+        return Vec2.Sub(this._position, Vec2.Add(this.owner.position, this.owner.offset));
+    }
 
-const Vec2 = Types.Vector2;
+    set position(v) {
+        this._position = v;
+    }
+    
+    draw() {
 
-class Polygon {
-	static Star(innerRadius, outerRadius, gram = 5) {
-		const inner = new Vec2(0, innerRadius);
-		const outer = new Vec2(0, outerRadius);
+    }
+}
+export class Circle extends Shape {
+    constructor(position, radius = 0) {
+        super(position);
+        this.radius = radius;
+        this.type   = 1;
+    }
 
-		const points = [];
-		for (let i = 0; i < gram; i++) {                        
-			const angle = Math.PI * 2 / gram * i;
-			let a = inner.clone().rotate(angle - Math.PI / (gram * 2));
-			let b = outer.clone().rotate(angle + Math.PI / (gram * 2));
-			points.push(...[a, b]);                    
+    isPointInside(p) {		
+		return this.radius > Math.sqrt((p.x - this.position.x) ** 2 + (p.y - this.position.y) ** 2);
+	}
+}
+export class Rectangle extends Shape {
+    constructor(position, width = 0, height = 0) {
+        super(position);
+        this.width  = width;
+        this.height = height;
+        this.type   = 2;
+    }
+
+    set size(v) {
+        this.width  = v.x;
+        this.height = v.y;
+    }
+
+    get rect() {
+        return RECT(this.position.x, this.position.y, this.width, this.height);
+    }
+
+    isPointInside(p) {
+        return this.rect.isPointInside(p);
+    }
+}
+export class Polygon extends Shape {
+    constructor(position, points = []) {
+        super(position);
+        this.points = points;        
+        this.type   = 3;
+    }
+
+    get projectedPoints() {
+        let result = [this.position];
+        for (const p of this.points) result.push(Vec2.Sub(p, Vec2.Add(this.owner.position, this.owner.offset)));
+        return result;
+    }
+
+    isPointInside(p) {	
+		const vs  = this.projectedPoints;
+		
+		var inside = false;		
+		for (var i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+			var xi = vs[i].x, yi = vs[i].y;
+			var xj = vs[j].x, yj = vs[j].y;
+
+			var intersect = ((yi > p.y) != (yj > p.y))
+				&& (p.x < (xj - xi) * (p.y - yi) / (yj - yi) + xi);
+			if (intersect) inside = !inside;
 		}
 		
-		return points;
-	}
-
-	static Ngon(corners, scale = 1) {
-		const v = new Vec2(0, scale);
-		
-		const points = [];
-		for (let i = 0; i < corners; i++) {                        
-			const angle = Math.PI * 2 / corners * i;
-			let a = v.clone().rotate(angle + Math.PI / (corners * 2));			
-			points.push(a);
-		}
-		
-		return points;
-	}
-
-	static Ring(innerRadius, outerRadius, corners)  {
-		const inner = new Vec2(0, innerRadius);
-		const outer = new Vec2(0, outerRadius);
-
-		const a = [], b = [];
-		for (let i = 0; i < corners; i++) {                        
-			const angle = Math.PI * 2 / corners * i;
-			const p1 = inner.clone().rotate(angle + Math.PI / (corners * 2));
-			const p2 = outer.clone().rotate(-angle + Math.PI / (corners * 2));
-			a[i] = p1;
-			b[i] = p2;
-		}
-		
-		return { a, b };
-	}
-
-	static Triangle(scale) {		
-		return [new Vec2(-1, 1).mulScalar(scale), new Vec2(1, 1).mulScalar(scale), new Vec2(0, -1).mulScalar(scale)];		
+		return inside;		
 	}
 }
 
-export { Polygon } 
+export class CustomShape extends Shape {
+    constructor(position) {
+        super(position);
+        this.type   = 0;
+    }
+}
+
+export class ShapeContainer {
+    constructor(owner, surface) {
+        this.owner   = owner;
+        this.surface = surface;
+        
+        this.shapes  = [];
+        this.defaultStyles = {
+            Circle    : { stroke:'green',  fill:'rgba(0,255,0,0.3)' },
+            Rectangle : { stroke:'red',    fill:'rgba(255,0,0,0.3)' },
+            Polygon   : { stroke:'yellow', fill:'rgba(255,255,0,0.3)' }
+        }        
+        this.styles  = [];
+        this.active  = [];
+    }
+
+    indexOf(s) {
+        return this.shapes.indexOf(s);
+    }
+
+    styleOf(s) {
+        const i = this.shapes.indexOf(s);
+        if (i == -1) return null;
+        return this.styles[i];
+    }
+
+    add(s) {
+        this.shapes.push(s);
+        s.owner    = this.owner;
+        
+        const styles = Object.values(this.defaultStyles);
+        this.styles.push({ 
+            default: Object.assign({}, styles[s.type - 1]),
+            active: Object.assign({ stroke:'white', fill:'rgba(255,255,255,0.5)'}) 
+        });
+    }
+
+    delete(shape) {
+        for (let i = this.shapes.length; i--;) if (this.shapes[i] == shape) this.shapes.splice(i, 1);
+    }
+
+    update() {
+        const s = this.surface;
+        let i = 0;
+        for (const sh of this.shapes) { 
+            const style = sh.hitTest ? this.styles[i].active : this.styles[i].default;
+            if (sh.type == 0) sh.draw();
+            if (sh.type == 1) s.drawCircle(sh.position, sh.radius, style);
+            if (sh.type == 2) s.drawRect(sh.rect,                  style);    
+            if (sh.type == 3) s.drawPoly(sh.projectedPoints, style);            
+            i++;
+        }             
+    }
+
+    hitTest(p) {
+        const hits = [];
+        for (const s of this.shapes) { 
+            if (s.isPointInside(p)) { 
+                s.hitTest = true;
+                hits.push(s);                
+            } else s.hitTest = false;
+        }
+        this.active = hits;
+        return hits;
+    }
+}

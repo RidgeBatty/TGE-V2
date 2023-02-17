@@ -29,7 +29,7 @@ export class CustomTileMapEditor extends TileMapRenderer {
 			this._drag = false;            
 		}
 
-		const mousedown = (e) => {	            
+		const mousedown = (e) => {	  
             if (ui != null && ui.active != null) return;
 
 			const position = e.position;

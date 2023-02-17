@@ -47,8 +47,11 @@ ui-edit > ui-caption {
 ui-edit > input {
 	font-size:14px;
 	margin:1px;
-	border-radius:8px;
-	padding:0px 4px;
+	border-radius:12px;
+	padding:2px 6px;	
+}
+ui-edit > input:focus {
+	outline:none;
 }
 
 /*
@@ -74,6 +77,7 @@ ui-menu .body {
 	flex-direction: column;
 }
 ui-menu .body > ui-menuitem {
+	position: relative;
 	display: flex;
 	padding-left:1em;
 	padding-right:1em;
@@ -82,12 +86,16 @@ ui-menu .body > ui-menuitem {
 	margin:1px;
 	align-content: space-between;
 }
-ui-menu .body > ui-menuitem > div:first-child {
+ui-menu .body > ui-menuitem > div:nth-child(1) {
+	position: absolute;
+}	
+ui-menu .body > ui-menuitem > div:nth-child(2) {
+	margin-left:1em;
 	text-align: left;
 	margin-right: auto;
 	pointer-events: none;
 }	
-ui-menu .body > ui-menuitem > div:nth-child(2) {
+ui-menu .body > ui-menuitem > div:nth-child(3) {
 	text-align: right;
 	margin-left: auto;
 	pointer-events: none;
