@@ -98,6 +98,24 @@ export class TUI extends TControl {
         this.#isInitialized = true;
         this.isVisible = true;                                                                                  // make ui visible
     }  
+
+    /**
+     * Copy all properties from source object to target, overwriting existing properties. Object references are not copied - they are cloned.
+     * @param {*} target 
+     * @param {*} source 
+     * @returns 
+     */
+    applyProps(target, source) {
+        for (const [k, v] of Object.entries(source)) {
+            if (typeof v == 'object') {
+                if (target[k]) return this.applyProps(target[k], v);
+                target[k] = {};
+                this.applyProps(target[k], v);
+                return;
+            }
+            target[k] = v;
+        }
+    }
 }
 
 const loadFrames = async (o) => {

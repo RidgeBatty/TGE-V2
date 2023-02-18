@@ -18,12 +18,20 @@ export class Shape {
     draw() {
 
     }
+
+    isPointInside(p) {
+        return RECT(this.position.x, this.position.y, this.size.x, this.size.y).isPointInside(p);
+    }
 }
 export class Circle extends Shape {
     constructor(position, radius = 0) {
         super(position);
         this.radius = radius;
         this.type   = 1;
+    }
+
+    get size() {
+        return V2(this.radius * 2, this.radius * 2);
     }
 
     isPointInside(p) {		
@@ -56,6 +64,18 @@ export class Polygon extends Shape {
         super(position);
         this.points = points;        
         this.type   = 3;
+    }
+
+    get size() {
+        let minX = infinity, minY = infinity, maxX = -infinity, maxY = -infinity;
+        const points = this.projectedPoints();
+        for (const p of points) {
+            if (p.x < minX) minX = p.x;
+            if (p.x > maxX) maxX = p.x;
+            if (p.y < minY) minY = p.y;
+            if (p.y > maxY) maxY = p.y;
+        }
+        return V2(maxX - minX, maxY - minY);
     }
 
     get projectedPoints() {

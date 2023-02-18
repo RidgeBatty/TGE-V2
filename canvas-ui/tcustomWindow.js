@@ -1,5 +1,6 @@
 import { Vector2 as Vec2, V2, Rect, RECT } from '../types.js';
-import { TCaptionControl } from './tcaptionControl.js';
+import { TButton } from './tbutton.js';
+import { TTitlebar } from './ttitlebar.js';
 import { TControl } from './tcontrol.js';
 import { TFocusControl } from './tfocusControl.js';
 
@@ -15,25 +16,30 @@ export class TCustomWindow extends TFocusControl {
         this.activeControl = null;
         this._isActive     = false;          
         
-        this.titleBar      = this.add(TCaptionControl, { caption:o.caption, size:V2(this.size.x, 32) });                        // window title bar
+        this.titlebar      = this.add(TTitlebar, { caption:o.caption, size:V2(this.size.x, 32) });                        // window title bar
+        this.btClose       = this.add(TButton, { caption:'✖', position:V2(this.size.x - 30, 4), size:V2(26, 24) });
         this.clientArea    = new TControl({ parent:this, position:V2(0, 32), size:V2(this.size.x, this.size.y - 32) });         // window client area        
 
         this.fetchDefaults('window'); 
-        if ('settings' in o) Object.assign(this.settings, o.settings);
+
+        if ('settings' in o) this.ui.applyProps(this.settings, o.settings);
 
         // override default settings:        
-        if (o.settings?.titleBar) Object.assign(this.titleBar.settings, o.settings.titleBar);                             // overwrite titleBar's settings with parameter settings.caption  
-        if (this.settings?.titleBar?.offset) this.titleBar.position = this.settings.titleBar.offset;
+        if (o.settings?.titlebar) this.ui.applyProps(this.titlebar.settings, o.settings.titlebar);                             // overwrite titleBar's settings with parameter settings.titleBar  
         
+        this.onRecalculate();
+
         this.events.create('show hide');
+
+        this.btClose.onMouseUp = e => { this.close() }
     }
 
     get caption() {
-        return this.titleBar?.caption;
+        return this.titlebar?.caption;
     }
 
     get dragActivationCtrl() {                                                  // returns the control which defines the active drag area
-        return this.titleBar;
+        return this.titlebar;
     }
 
     get isActive() { return this._isActive; }
@@ -48,6 +54,15 @@ export class TCustomWindow extends TFocusControl {
             this._isActive = false;
             return;
         }
+    }
+
+    onRecalculate() {
+        //console.log(this.titleBar.settings)
+        this.titlebar.size.y = this.titlebar.settings.height;
+
+        this.btClose.size.y  = this.titlebar.settings.height - 8;
+        this.btClose.size.x  = this.titlebar.settings.height - 8;
+        this.btClose.position.x  = this.titlebar.size.x - this.titlebar.settings.height + 4;
     }
 
     /**
@@ -115,14 +130,17 @@ export class TCustomWindow extends TFocusControl {
         
         if (this.background?.frame && this.background.frame.length > 0 && this.settings.useFrames) this.drawGridPattern();              // window frame
     
-        const p = this.titleBar.position;
-        s.ctx.translate(p.x, p.y);
-        s.drawRect(this.titleBar.clientRect, { fill:this.isActive ? settings.clActiveCaption : settings.clInactiveCaption });           // title bar background                
-        s.ctx.translate(-p.x, -p.y);
-    
         super.draw();                                                                                                                   // title bar text (caption)
 
         s.ctx.restore();        
+    }
+
+    close() {
+        this.isVisible = false;
+    }
+
+    show() {
+        this.isVisible = true;
     }
 
     /**

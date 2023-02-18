@@ -6,10 +6,20 @@
  * 
  */
 class ManagedArray {
-    constructor(owner, itemClass) {
+    constructor(owner, itemClass, data) {
         this.owner     = owner;
-        this.itemClass = itemClass;
-        this.array     = new Array();
+        this.itemClass = itemClass;        
+        this.array     = data ? [...data] : new Array();
+
+        this.index     = (this.array.length > 0) ? 0 : -1;
+    }
+
+    next() {
+        if (this.array.length == 0) return null;
+
+        this.index++;
+        if (this.index >= this.array.length) this.index = 0;        
+        return this.array[this.index];
     }
     
     add(args) {
@@ -58,7 +68,7 @@ class ManagedArray {
 
     insertAt(index, item) {
         if (index > -1) this.array.splice(index, 0, item);	
-    }
+    }    
 }
 
 export { ManagedArray }

@@ -23,7 +23,7 @@ export class TListitem extends TCaptionControl {
         s.ctx.save();
         s.ctx.translate(p.x, p.y);
 
-        s.drawRect(this.clientRect, { stroke:settings.cl3DLight, fill:'rgba(255,0,0,0.25)' });         
+        s.drawRect(this.clientRect, { stroke:settings.clListitemBorder, fill:settings.clListitemBackground });         
 
         s.ctx.restore();
         s.clipRect(this.rect);        

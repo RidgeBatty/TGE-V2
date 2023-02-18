@@ -14,9 +14,11 @@ export class TListbox extends TFocusControl {
         this.settings     = {};        
         this.fetchDefaults('listbox');
 
+        console.log(this.settings);
+
         this._scroll      = 0;
         this.hoverItem    = null;
-        this.itemLength   = 42;
+        this.itemLength   = this.settings.itemLength;
         this.overflow     = V2(0, 0);
         this.itemAreaSize = V2(0, 0);
         
