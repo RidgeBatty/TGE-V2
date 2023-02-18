@@ -66,6 +66,5 @@ checkbox : {
     labelAlign     : 'left'
     labelBaseline  : 'middle'
     checkmarkFont  : '24px arial'
-    clControlFrame : 'transparent'
-    
+    clControlFrame : 'transparent'    
 }

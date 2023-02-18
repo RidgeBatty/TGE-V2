@@ -60,7 +60,26 @@ export class TComponent {
         console.log('On Create')
     }
     onDestroy() {}
+
+    /**
+     * Adds a created component into the TUI system
+     * @param {*} component 
+     */
+    addInstance(component) {
+        this.children.push(component);
+        this.ui.components.push(component);       
+        
+        component.onCreate();
+
+        return component;
+    }
     
+    /**
+     * Creates a new instance of a component and adds it into the TUI system
+     * @param {*} classRef 
+     * @param {*} o 
+     * @returns 
+     */
     add(classRef, o = {}) {        
         const component = new classRef(Object.assign(o, { parent:this }));
         this.children.push(component);

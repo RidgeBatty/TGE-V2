@@ -4,7 +4,7 @@ const { Vector2 : Vec2, V2, Color, Rect, RECT } = Types;
 
 export class Shape {
     constructor(position) {
-        this._position = position;
+        this._position = position;        
     }
 
     get position() {

@@ -65,7 +65,7 @@ const main = async () => {
     const lbItems = win2.add(TListbox, {
         position: V2(10, 80),
         size    : V2(350, 240),        
-        items   : ['Hello', 'Banana', 'Monkey', 'Eggplant', 'Green', 'Blue', 'White', 'Dickcheese']
+        items   : ['Hello', 'Banana', 'Monkey', 'Eggplant', 'Green', 'White', 'Green', 'Banana', 'Monkey', 'Eggplant', 'Green', 'White']
     });       
 
     const sbItems = win2.add(TScrollbar, {

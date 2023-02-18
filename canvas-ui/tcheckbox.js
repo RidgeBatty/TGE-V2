@@ -39,14 +39,12 @@ export class TCheckbox extends TFocusControl {
     }
     
     onMouseDown(e) {
-        console.log('odwn')
         this.isButtonDown = true;
         super.onMouseDown(e);
         this.events.fire('mousedown', { event:e, button:e.button, position:e.position });
     }
 
     onMouseUp(e) {
-        console.log('up')
         this.toggle();
         this.events.fire('change', { value:this.checked });
         super.onMouseUp(e);        
@@ -63,60 +61,38 @@ export class TCheckbox extends TFocusControl {
         s.ctx.save();
         s.ctx.translate(this.position.x, this.position.y);
         
-        if (settings.boxAlign == 'left') {            
-            const textAlign    = settings.labelAlign;                                           // checkbox label
-            const textBaseline = settings.labelBaseline;        
-            const boxSize      = settings.boxSize;
-
-            let ofs = V2(0, 0);        
+        const textAlign    = settings.labelAlign;                                                                                       // checkbox label
+        const textBaseline = settings.labelBaseline;        
+        const boxSize      = settings.boxSize;        
+        let ofs = V2(0, 0);                
+        if (settings.boxAlign == 'left') {                        
             if (textAlign    == 'left')   ofs.x = boxSize.x;
             if (textAlign    == 'center') ofs.x = (boxSize.x + this.size.x) / 2;
             if (textAlign    == 'right')  ofs.x = this.size.x;
-
             if (textBaseline == 'top')    ofs.y = 0;
             if (textBaseline == 'middle') ofs.y = this.size.y / 2;
             if (textBaseline == 'bottom') ofs.y = this.size.y;        
-
-            const textPos = ofs.add(settings.labelOffset);
-
-            s.textOut(textPos, this._caption, { font:settings.captionFont, color:settings.clCaptionText, textAlign, textBaseline });       // label
-
-            s.drawRect(RECT(1, this.size.y / 2 - boxSize.y / 2, boxSize.x, boxSize.y), { stroke:settings.clBtnHighlight });                // checkmark frame
-
-            // checkmark (checked character)
-            if (this.checked) {
-                const font = settings.checkmarkFont ? settings.checkmarkFont : settings.font;            
-                const size = s.textBoundingBox(settings.checkMark, font);
-                s.textOut(V2(boxSize.x / 2, this.size.y / 2), settings.checkMark, { font, color:settings.clCheckboxMark, textAlign:'center', textBaseline:'middle' });            
-            }
         }
-
-        if (settings.boxAlign == 'right') {            
-            const textAlign    = settings.labelAlign;                                           // checkbox label
-            const textBaseline = settings.labelBaseline;        
-            const boxSize      = settings.boxSize;
-
-            let ofs = V2(0, 0);        
+        if (settings.boxAlign == 'right') {                        
             if (textAlign    == 'left')   ofs.x = 0;
             if (textAlign    == 'center') ofs.x = this.size.x / 2;
             if (textAlign    == 'right')  ofs.x = this.size.x - box.size.x;
-
             if (textBaseline == 'top')    ofs.y = 0;
             if (textBaseline == 'middle') ofs.y = this.size.y / 2;
             if (textBaseline == 'bottom') ofs.y = this.size.y;        
+        }
+        
+        const textPos = ofs.add(settings.labelOffset);
+        s.textOut(textPos, this._caption, { font:settings.captionFont, color:settings.clCaptionText, textAlign, textBaseline });       // label            
 
-            const textPos = ofs.add(settings.labelOffset);
+        const fx = settings.boxAlign == 'right' ? this.size.x - boxSize.x - 1 : 1;            
+        s.drawRect(RECT(fx, this.size.y / 2 - boxSize.y / 2, boxSize.x, boxSize.y), { stroke:settings.clBtnHighlight });                // checkmark frame            
 
-            s.textOut(textPos, this._caption, { font:settings.captionFont, color:settings.clCaptionText, textAlign, textBaseline });       // label
-
-            s.drawRect(RECT(this.size.x - boxSize.x - 1, this.size.y / 2 - boxSize.y / 2, boxSize.x, boxSize.y), { stroke:settings.clBtnHighlight });                // checkmark frame
-
-            // checkmark (checked character)
-            if (this.checked) {
-                const font = settings.checkmarkFont ? settings.checkmarkFont : settings.font;            
-                const size = s.textBoundingBox(settings.checkMark, font);
-                s.textOut(V2(this.size.x - boxSize.x / 2, this.size.y / 2), settings.checkMark, { font, color:settings.clCheckboxMark, textAlign:'center', textBaseline:'middle' });            
-            }
+        // checkmark (checked character)
+        if (this.checked) {
+            const font = settings.checkmarkFont ? settings.checkmarkFont : settings.font;            
+            const x    = settings.boxAlign == 'right' ? this.size.x - boxSize.x / 2 : boxSize.x / 2;            
+            s.textOut(V2(x, this.size.y / 2), settings.checkMark, { font, color:settings.clCheckboxMark, textAlign:'center', textBaseline:'middle' });            
         }
 
         // bounding box

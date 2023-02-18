@@ -21,7 +21,7 @@ export class TCustomWindow extends TFocusControl {
         this.fetchDefaults('window'); 
         if ('settings' in o) Object.assign(this.settings, o.settings);
 
-        // override default settings:
+        // override default settings:        
         if (o.settings?.titleBar) Object.assign(this.titleBar.settings, o.settings.titleBar);                             // overwrite titleBar's settings with parameter settings.caption  
         if (this.settings?.titleBar?.offset) this.titleBar.position = this.settings.titleBar.offset;
         

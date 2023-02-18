@@ -28,8 +28,6 @@ export class TListitem extends TCaptionControl {
         s.ctx.restore();
         s.clipRect(this.rect);        
         
-        super.draw();                                                   // draw caption text
-        
-       
+        super.draw();                                                   // draw caption text       
     }
 }    

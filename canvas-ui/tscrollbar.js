@@ -5,7 +5,7 @@
  */
  
 import { Vector2 as Vec2, V2, Rect, RECT } from '../types.js';
-import { addMethods, preloadImages } from '../utils.js';
+import { addMethods, addPropertyListener, preloadImages } from '../utils.js';
 import { TButton } from './tbutton.js';
 import { TFocusControl } from './tfocusControl.js';
 
@@ -15,10 +15,10 @@ export class TScrollbar extends TFocusControl {
         this.settings      = {};
         this.fetchDefaults('scrollbar');   
         
-        this.targetControl  = 'targetControl' in o ? o.targetControl : null;
+        this._targetControl = null;
         this.orientation    = 'y';
-        this.buttonSize     = V2(24, 20);
         this.buttonOffset   = V2(2, 2);
+        this.buttonSize     = V2(this.size.x - this.buttonOffset.x * 2, 20);
         this.prevButtonRect = RECT(this.buttonOffset.x, this.buttonOffset.y, this.buttonSize.x, this.buttonSize.y);
         this.nextButtonRect = RECT(this.buttonOffset.x, this.buttonOffset.y, this.buttonSize.x, this.buttonSize.y);
         this.trackLength    = this.size.y - (this.buttonOffset.y * 4 + this.buttonSize.y * 2) - 4;
@@ -26,18 +26,46 @@ export class TScrollbar extends TFocusControl {
         // create the buttons
         this.btUp    = this.add(TButton, { position:this.buttonOffset, size:V2(this.buttonSize.x, this.buttonSize.y), caption:'▲' });
         this.btThumb = this.add(TButton, { position:this.thumbInitialPos, size:V2(this.buttonSize.x, this.thumbLength), caption:'' });        
-        this.btDown  = this.add(TButton, { position:V2(2, this.size.y - this.buttonOffset.y - this.buttonSize.y), size:V2(this.buttonSize.x, this.buttonSize.y), caption:'▼' });
-        
-        // event handlers
+        this.btDown  = this.add(TButton, { position:V2(this.buttonOffset.x, this.size.y - this.buttonOffset.y - this.buttonSize.y), size:V2(this.buttonSize.x, this.buttonSize.y), caption:'▼' });
+                
+        this.installEventHandlers();                                                    // install event handlers   
+        this.setTargetControl('targetControl' in o ? o.targetControl : null);           // set the target control for this scrollbar
+    }
+
+    installEventHandlers() {
         this.btThumb.onMouseDown = (e) => {
             this.btThumb.edges     = RECT(this.btThumb.size.x + this.buttonOffset.x, this.thumbInitialPos.y, 0, this.trackLength);            
             this.ui.dragStartPos   = this.btThumb.position;
             this.ui.draggedControl = this.btThumb;
         }
-        this.btThumb.onDrag     = e => { this.targetControl.scroll[this.orientation] = this.scrollRatio; }
+        this.btThumb.onDrag     = e => { if (this._targetControlProxy) this._targetControlProxy.scroll = Math.round(this.scrollRatio * this.targetControl.overflow[this.orientation]); }
         this.btThumb.onMouseUp  = e => { this.ui.draggedControl = null; }
-        this.btUp.onMouseDown   = e => { console.log('up') }
-        this.btDown.onMouseDown = e => { console.log('down') }        
+        this.btUp.onMouseDown   = e => { if (this._targetControlProxy) this._targetControlProxy.scroll -= this.targetControl.itemLength; }
+        this.btDown.onMouseDown = e => { if (this._targetControlProxy) this._targetControlProxy.scroll += this.targetControl.itemLength; }
+    }
+
+    get targetControl() {
+        return this._targetControl;
+    }
+
+    set targetControl(v) {
+        this._targetControl = v;
+        if (this._targetControl == null) return this._targetControlProxy = null;            
+        
+        const _this = this;
+        this._targetControlProxy = new Proxy(this._targetControl, {
+            set(target, prop, value) {                            
+                target[prop] = value;
+                if (prop == 'scroll') {
+                    _this.btThumb.position[_this.orientation] = _this.thumbInitialPos.y + _this.targetControl.scrollRatio * _this.thumbLength;
+                }
+                return true;
+            }
+        });        
+    }
+
+    setTargetControl(c) {
+        this.targetControl = c;
     }
 
     /**

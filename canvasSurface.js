@@ -573,7 +573,10 @@ class CanvasSurface {
 			if ('font' in params)  this.ctx.font = params.font;
 			if ('color' in params) this.ctx.fillStyle = params.color;
 			if ('textAlign' in params) this.ctx.textAlign = params.textAlign;
-			if ('textBaseline' in params) this.ctx.textBaseline = params.textBaseline;			
+			if ('textBaseline' in params) this.ctx.textBaseline = params.textBaseline;	
+			if ('shadow' in params) {				
+				this.ctx.filter = `drop-shadow(${params.shadow})` || 'drop-shadow(1px 1px 2px black)';				
+			}		
 		}
 		this.ctx.fillText(text, pos.x, pos.y);
 
@@ -581,6 +584,8 @@ class CanvasSurface {
 			this.ctx.strokeStyle = params.stroke;
 			this.ctx.strokeText(text, pos.x, pos.y);
 		}
+
+		this.ctx.filter = '';
 	}
 
 	/**
