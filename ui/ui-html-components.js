@@ -67,15 +67,21 @@ class UInputElement extends UBaseElement {
         this.title = new UCaption({ owner:this, caption:o.caption });
         this.input = addElem({ parent:this.elem, type:'input' });
 
-        this.events.create('change');
+        this.events.create('change click');
         const mousedown = e => {
             const target = e.target;    
             const o      = { value:target.value };
             if ('checked' in target) o.checked = target.checked;
             this.events.fire('change', o);
         }        
-        this.elem.addEventListener('change', mousedown);
+        this.elem.addEventListener('change', mousedown);    
+        const mouseup = (e) => {                        
+            this.events.fire('click', Object.assign(e, { name:'click', element:this }));
+        }
+        this.events.add('mouseup', mouseup); 
+
         if ('onChange' in o) this.events.add('change', o.onChange);
+        if ('onClick' in o) this.events.add('click', o.onClick);
 
         if ('value' in o) this.value = o.value;
     }
@@ -287,12 +293,26 @@ class UMenu extends UBaseElement {
         }
     }
 
+    findItemByCaption(caption) {
+        return this.items.find(e => { if (e.tagName == 'UI-MENUITEM' && e.children[1].textContent == caption) return true });
+    }
+
     clear() {
         for (const i of this.items) i.remove();
         this.items.length = 0;
     }
     
-    toggleChecked(item) {
+    /**
+     * Toggles the menuitem's checked state. Parameter "item" can be either a reference to relevant <UI-MENUITEM> element or the caption of the menuitem.
+     * @param {HTMLElement|string} item 
+     * @returns {boolean|null}
+     */
+    toggleChecked(item) {        
+        if (typeof item == 'string') {
+            var item = this.findItemByCaption(item);
+            if (item == null) return;
+        }
+        
         if (item.children[0].textContent == '✓') item.children[0].textContent = '';
             else item.children[0].textContent = '✓';
         return item.children[0].textContent == '✓';

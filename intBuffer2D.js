@@ -27,8 +27,11 @@ export class IntBuffer2D {
         this.buffer = new Uint32Array(this.size.x * this.size.y);                
     }
 
+    get objectType () { return 'IntBuffer2D' }
     get bounds() { return RECT(0,0,this.size.x,this.size.y) }
     get length() { return this.size.x * this.size.y; }
+    get width() { return this.size.x; }
+    get height() { return this.size.y; }
 
     setPixel(x, y, c) { if (!(x < 0 || y < 0 || x >= this.size.x || y >= this.size.y)) this.buffer[this.size.x * y + x] = c; }
     getPixel(x, y) { return this.buffer[y * this.size.x + x]; }
@@ -126,9 +129,23 @@ export class IntBuffer2D {
         const r = [];
         const { size, buffer:pixels } = this;
         r.length = size.x * size.y;
+
         if (axis == 'x') for (let y = 0; y < size.y; y++) for (let x = 0; x < size.x; x++) r[y * size.x + (size.x - 1 - x)] = pixels[y * size.x + x];
         if (axis == 'y') for (let y = 0; y < size.y; y++) for (let x = 0; x < size.x; x++) r[(size.y - 1 - y) * size.x + x] = pixels[y * size.x + x];
         this.buffer.set(r);
+    }
+
+    /**
+     * Copies another IntBuffer2D on this IntBuffer2D. The position is optional.
+     * @param {IntBuffer2D} src Source IntBuffer2D
+     * @param {Vector2=} pos Position where to copy the image to
+     */
+    copyFrom(src, pos = V2(0, 0)) {
+        const { size } = this;
+        if (src.objectType != 'IntBuffer2D') throw new Error('First parameter must be an IntBuffer2D');
+        for (let y = 0; y < size.y; y++) {
+            for (let x = 0; x < size.x; x++) this.buffer[(y + pos.y) * size.x + (x + pos.x)] = src.buffer[y * src.size.x + x];            
+        }
     }
 
     createTexture(name) {

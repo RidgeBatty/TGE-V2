@@ -51,7 +51,7 @@ export class TCustomWindow extends TFocusControl {
         }
         if (v === false) {
             if (this._isActive == true) this.onDeactivate();
-            this._isActive = false;
+            this._isActive = false;            
             return;
         }
     }
@@ -71,18 +71,23 @@ export class TCustomWindow extends TFocusControl {
      */
     onActivate() {
         if (this.ui.activeWindow != this) {
-            if (this.ui.activeWindow != null) this.ui.activeWindow.isActive = false;               // deactivate previously active window
+            if (this.ui.activeWindow != null) this.ui.activeWindow.isActive = false;                // deactivate previously active window
             this.ui.activeWindow = this;             
         }        
     }
 
-    onDeactivate() {}
+    onDeactivate() { }                                                                              // called when Window is deactivated
+    onShow() { this.bringToFront(); }
 
-    onShow() {
-        this.bringToFront();        
+    onHide() {
+        this.isActive = false;
+        if (this.ui.activeControl != null && this.findParentWindow(this.ui.activeControl) == this) {            
+            this.ui.activeControl = null;    
+        }
     }
-
-    onHide() {}
+    
+    close() { this.isVisible = false; }
+    show() { this.isVisible = true; }
     
     bringToFront() {
         if (!this.isActive) this.isActive = true;
@@ -101,6 +106,10 @@ export class TCustomWindow extends TFocusControl {
     onMouseDown(e) {
         if (this.ui.activeWindow != this) this.bringToFront();
         super.onMouseDown(e);
+    }
+    
+    onKeyDown(e) {
+        if (this.ui.activeControl != null && this.ui.activeControl != this) this.ui.activeControl.onKeyDown(e);
     }
 
     draw() {             
@@ -133,14 +142,6 @@ export class TCustomWindow extends TFocusControl {
         super.draw();                                                                                                                   // title bar text (caption)
 
         s.ctx.restore();        
-    }
-
-    close() {
-        this.isVisible = false;
-    }
-
-    show() {
-        this.isVisible = true;
     }
 
     /**

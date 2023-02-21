@@ -72,7 +72,7 @@ export class TUI extends TControl {
             hit.onMouseUp(e);            
         }
         
-        const keydown   = e => {}
+        const keydown   = e => { if (this.activeWindow != null) this.activeWindow.onKeyDown(e); }
         const wheel     = e => {}
         this.engine.events.register(this, { mousemove, mouseup, mousedown, keydown, wheel });
     }  
@@ -115,6 +115,14 @@ export class TUI extends TControl {
             }
             target[k] = v;
         }
+    }
+
+    /**
+     * Adds a bunch of controls as the TUI system's root level children (usually TCustomWindow or its descendants)
+     * @param {TControl} list of TControl descendants
+     */
+    addChildren(list) {
+        for (const ctrl of list) this.addInstance(ctrl);
     }
 }
 

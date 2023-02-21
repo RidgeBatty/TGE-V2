@@ -200,8 +200,8 @@ class Flipbook {
 	 * 
 	 * @param {object} o 
 	 * @param {Actor} o.actor Actor to assign this animation to
-	 * @param {Vector2} o.dims For Atlas only! Number of frames in vertical and horizontal direction
 	 * @param {number} o.fps Playback speed in frames per second
+	 * @param {Vector2} o.dims For Atlas only! Number of frames in vertical and horizontal direction	 
 	 */
 
 	constructor(o = {}) { 

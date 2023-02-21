@@ -577,6 +577,10 @@ class Rect {
         return new Rect(this.left, this.top, this.right, this.bottom);
     }
 
+	get position() {
+		return V2(this.left, this.top);
+	}
+
 	get x() {
 		return Math.min(this.left, this.right);
 	}

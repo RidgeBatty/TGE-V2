@@ -23,7 +23,7 @@ class GameLoop {
 	constructor(o = {}) {		
 		this.engine         = ('engine' in o) ? o.engine : null;
 		this.data           = {};	// user data
-		this._flags		    = { isRunning:false, showColliders:false, collisionsEnabled:false, showBoundingBoxes:false };
+		this._flags		    = { isRunning:false, showColliders:false, collisionsEnabled:false, showBoundingBoxes:false, tickPaused:false };
 		this.flags          = Object.seal(this._flags);  // flags
 		this.events         = new Events(this, ImplementsEvents);
 		this.surface        = this.engine.renderingSurface;
@@ -414,7 +414,9 @@ class GameLoop {
 	/**
 	 * DO NOT USE! This is called internally!
 	 */	
-	_tick(forceSingleTick) {		
+	_tick(forceSingleTick) {	
+		if (this.flags.tickPaused && !forceSingleTick) return;
+
 		const groups = this.hitTestGroups;
 
 		if (!this.flags.isRunning && !forceSingleTick) return;

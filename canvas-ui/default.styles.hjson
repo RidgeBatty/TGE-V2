@@ -35,6 +35,7 @@ color : {
 
     clCheckboxMark              : 'lime'
     clClientArea                : 'white'               # Represents the color of client area in listboxes and similar elements
+    clCaret                     : 'white'
 
     # clGradientActiveCaption	    : Right side color in the color gradient of an active window's title bar.
     # clGradientInactiveCaption	: Right side color in the color gradient of an inactive window's title bar.

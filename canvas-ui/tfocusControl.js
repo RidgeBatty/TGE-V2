@@ -31,7 +31,7 @@ export class TFocusControl extends TControl {
     onKeyDown(e) {}
     
     onMouseDown(e) {        
-        this.ui.activeControl = this;                
+        this.ui.activeControl = this;                        
         super.onMouseDown(e);
     }
 }

@@ -18,7 +18,10 @@ export class TControl extends TComponent {
         this.size       = 'size' in o ? o.size : V2(0, 0);    
         this._isVisible = false;    
         this._createVisible = 'isVisible' in o ? o.isVisible : true;
+        this._isEnabled = true;
     }
+
+    get isEnabled() { return this._isEnabled }
 
     get isVisible() { return this._isVisible; }
     set isVisible(v) {   
@@ -77,7 +80,7 @@ export class TControl extends TComponent {
     onHide(e) {}
     
     onClick(e) {}
-    onMouseDown(e) {
+    onMouseDown(e) {        
         const hit = this.getTopmostChildAt(e.position);
         if (!hit) return;
         hit.onMouseDown(e);                    

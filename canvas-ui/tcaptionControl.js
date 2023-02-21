@@ -13,8 +13,7 @@ export class TCaptionControl extends TControl {
         super(o);        
         this.settings    = {};
         this.fetchDefaults('caption');
-        this.isEnabled   = true;
-
+        
         if ('caption' in o) this._caption = o.caption;        
     }
 
