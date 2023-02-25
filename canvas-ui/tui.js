@@ -54,8 +54,11 @@ export class TUI extends TControl {
                 if (d.onDrag) d.onDrag(e);
             }       
 
-            this.hoveredControl = null;     
-            for (const c of this.components) {                                                                      // TO-DO: optimize this to run only the child controls of an active window!
+            this.hoveredControl = null;
+            
+            const windows = this.components.filter(e => e.isDescendantOf('TCustomWindow'));
+            
+            for (const c of windows) { 
                 if (c.isVisible && c.absoluteRect.isPointInside(e.position)) {                    
                     if (this.hoveredControl == null && c.onMouseOver) c.onMouseOver(e);
                     this.hoveredControl = c;

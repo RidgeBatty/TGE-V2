@@ -496,7 +496,7 @@ class Flipbook {
 	 * @param {number} index 
 	 * @returns 
 	 */
-	getFrame(index) {																								
+	getFrame(index) {
 		const img = this.isAtlas ? this.images[0] : this.images[index];		
 		
 		if (img == null) return;
@@ -506,11 +506,11 @@ class Flipbook {
 
 		if (this.isAtlas) {			
 			if (this._atlasOrder == 'left-to-right') {
-				var a = Math.floor(frame % this.dims.x);
-				var b = Math.floor(frame / this.dims.x);
+				var a = Math.floor(index % this.dims.x);
+				var b = Math.floor(index / this.dims.x);
 			} else {
-				var a = Math.floor(frame / this.dims.x);
-				var b = Math.floor(frame % this.dims.x);
+				var a = Math.floor(index / this.dims.x);
+				var b = Math.floor(index % this.dims.x);
 			}
 			var w = Math.floor(iwidth  / this.dims.x);			
 			var h = Math.floor(iheight / this.dims.y);									

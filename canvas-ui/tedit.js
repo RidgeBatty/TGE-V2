@@ -10,15 +10,25 @@ import { TFocusControl } from './tfocusControl.js';
 
 const ImplementsEvents = 'change';
 
+const isNumeric = (n) => !isNaN(parseFloat(n)) && isFinite(n);
+
 export class TEdit extends TFocusControl {
     constructor(o) {        
         super(o);        
+        this.params      = o;
         this.settings    = {};   
-        this.value       = '';
         this._caretPos   = 0;
         this.fetchDefaults('edit');
+
+        this._value      = ('value' in o) ? String(o.value) : '';        
+        this.min         = ('min' in o) && isNumeric(o.min) ? o.min : -Infinity;
+        this.max         = ('max' in o) && isNumeric(o.max) ? o.max : Infinity;
+        if (this.min > this.max) throw new Error('Minimum must be less than or equal to maximum!');
     }
 
+    get value() { return this._value; }
+    set value(v) { this._value = String(v); }
+ 
     get caretPos() { return this._caretPos }
     set caretPos(v) {
         if (v < 0) return this._caretPos = 0;
@@ -49,7 +59,19 @@ export class TEdit extends TFocusControl {
             return;
         }        
         if (e.key.length == 1) {            
-            this.value = this.value.substring(0, this.caretPos) + e.key + this.value.substring(this.caretPos);            
+            const output = this.value.substring(0, this.caretPos) + e.key + this.value.substring(this.caretPos);
+            if (this.params.type == 'number') {                
+                if (this.min >= 0) {
+                    const regex = /^\d*[.]?\d*$/;
+                    const num   = parseFloat(output);                    
+                    if (!(regex.test(output) && num >= this.min && num <= this.max)) return;                
+                } else {
+                    const regex = /^-?\d*[.]?\d*$/;
+                    const num   = parseFloat(output);
+                    if (!(regex.test(output) && num >= this.min && num <= this.max)) return;                
+                }
+            }
+            this.value = output;
             this._caretPos++;
         }        
     }

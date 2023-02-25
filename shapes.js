@@ -38,12 +38,37 @@ export class Circle extends Shape {
 		return this.radius > Math.sqrt((p.x - this.position.x) ** 2 + (p.y - this.position.y) ** 2);
 	}
 }
+export class Ellipse extends Shape {
+    constructor(position, width = 0, height = 0) {
+        super(position);
+        this.origin = V2(0, 0.5);
+        this.width  = width;
+        this.height = height;        
+        this.type   = 2;
+    }
+
+    set size(v) {
+        this.width  = v.x;
+        this.height = v.y;
+    }
+
+    get rect() {
+        const wm = 1 + this.origin.x * 2 * this.width;
+        const hm = 1 + this.origin.y * 2 * this.height;
+        console.log(wm, hm);
+        return RECT(this.position.x - wm, this.position.y - hm, wm, hm);
+    }
+
+    isPointInside(p) {
+        return this.rect.isPointInside(p);
+    }
+}
 export class Rectangle extends Shape {
     constructor(position, width = 0, height = 0) {
         super(position);
         this.width  = width;
         this.height = height;
-        this.type   = 2;
+        this.type   = 3;
     }
 
     set size(v) {
@@ -63,7 +88,7 @@ export class Polygon extends Shape {
     constructor(position, points = []) {
         super(position);
         this.points = points;        
-        this.type   = 3;
+        this.type   = 4;
     }
 
     get size() {
@@ -116,6 +141,7 @@ export class ShapeContainer {
         this.shapes  = [];
         this.defaultStyles = {
             Circle    : { stroke:'green',  fill:'rgba(0,255,0,0.3)' },
+            Ellipse   : { stroke:'teal',   fill:'rgba(0,255,255,0.3)' },
             Rectangle : { stroke:'red',    fill:'rgba(255,0,0,0.3)' },
             Polygon   : { stroke:'yellow', fill:'rgba(255,255,0,0.3)' }
         }        
@@ -155,8 +181,9 @@ export class ShapeContainer {
             const style = sh.hitTest ? this.styles[i].active : this.styles[i].default;
             if (sh.type == 0) sh.draw();
             if (sh.type == 1) s.drawCircle(sh.position, sh.radius, style);
-            if (sh.type == 2) s.drawRect(sh.rect,                  style);    
-            if (sh.type == 3) s.drawPoly(sh.projectedPoints, style);            
+            if (sh.type == 2) s.drawEllipse(sh.rect,               style);    
+            if (sh.type == 3) s.drawRect(sh.rect,                  style);    
+            if (sh.type == 4) s.drawPoly(sh.projectedPoints, style);            
             i++;
         }             
     }

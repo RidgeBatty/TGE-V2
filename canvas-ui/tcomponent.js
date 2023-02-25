@@ -56,6 +56,10 @@ export class TComponent {
         return chain;        
     }
 
+    isDescendantOf(name) {
+        return this.prototypes.indexOf(name) > -1;
+    }
+
     onCreate() {
         console.log('On Create')
     }

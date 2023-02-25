@@ -387,6 +387,23 @@ class CanvasSurface {
 			this.ctx.strokeRect(~~r.left + 0.5, ~~r.top + 0.5, ~~r.width, ~~r.height);
 		}
 	}
+
+	drawEllipse(r, p = {}) {		
+		this.ctx.beginPath();		
+		const w = Math.abs(r.width);
+		const h = Math.abs(r.height);
+		const x = r.center.x;
+		const y = r.center.y;
+		this.ctx.ellipse(x, y, w * 0.5, h * 0.5, 0, 0, 2 * Math.PI);		
+		if (p.stroke) {
+			this.ctx.strokeStyle = p.stroke; 	
+			this.ctx.stroke();
+		}
+		if (p.fill) { 
+			this.ctx.fillStyle = p.fill; 	
+			this.ctx.fill();
+		}		
+	}
 	
 	/**
 	 * @desc Draws a circle on the canvas
