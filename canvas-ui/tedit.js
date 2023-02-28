@@ -21,9 +21,9 @@ export class TEdit extends TFocusControl {
         this.fetchDefaults('edit');
 
         this.type        = ('type' in o && TEditTypes.includes(o.type)) ? o.type : 'text';
-        this._value      = ('value' in o) ? String(o.value) : '';        
+        this._value      = ('value' in o) ? String(o.value) : '';                                                       // string representation of the edit's value (for editing purposes)
         this.min         = ('min' in o) && isNumeric(o.min) ? o.min : -Infinity;
-        this.max         = ('max' in o) && isNumeric(o.max) ? o.max : Infinity;
+        this.max         = ('max' in o) && isNumeric(o.max) ? o.max : Infinity;        
         if (this.min > this.max) throw new Error('Minimum must be less than or equal to maximum!');
     }
 
@@ -31,14 +31,14 @@ export class TEdit extends TFocusControl {
         if (this.type == 'number') return parseFloat(this._value);
         return this._value; 
     }
-    set value(v) { this._value = String(v); }
+    set value(v) {         
+        this._value = String(v); 
+    }
  
     get caretPos() { return this._caretPos }
     set caretPos(v) {
         if (v < 0) return this._caretPos = 0;
-        if (v > this.value.length) return this._caretPos = this.value.length;
-//        this._leftStr  = this.value.substring(0, this.caretPos);
-        //this._rightStr
+        if (v > this._value.length) return this._caretPos = this._value.length;
     }
 
     /**
@@ -49,42 +49,52 @@ export class TEdit extends TFocusControl {
         if (this.type == 'password') return '*'.repeat(this._value.length);
         return String(this._value);
     }
+
+    validate() {
+        if (this.type == 'number') { 
+            let num = parseFloat(this._value);           
+            if (isNaN(num)) {
+                this._value   = '';
+                this.caretPos = 0;
+                return;
+            }
+            if (this.min >= 0) {
+                const regex = /^\d*[.]?\d*$/;
+                if (!(regex.test(this._value))) num = this.min;
+            } else {
+                const regex = /^-?\d*[.]?\d*$/;
+                if (!(regex.test(this._value))) num = this.min;
+            }        
+            num = AE.clamp(num, this.min, this.max);
+            this._value   = String(num);
+            this.caretPos = this.caretPos;                          // make sure caret is not out of bounds
+        }
+    }
        
     onKeyDown(e) {          
         if (this.ui.activeControl != this) return;  
 
         if (e.code == 'Backspace') {
-            this.value = this.value.substring(0, this.caretPos - 1) + this.value.substring(this.caretPos);            
+            this._value = this._value.substring(0, this.caretPos - 1) + this._value.substring(this.caretPos);            
             if (this.caretPos > 0) this._caretPos--;
-            return;
+            return this.validate();            
         }
         if (e.code == 'ArrowLeft') {
             if (this.caretPos > 0) this._caretPos--;
             return;
         }
         if (e.code == 'ArrowRight') {
-            if (this.caretPos < this.value.length) this._caretPos++;
+            if (this.caretPos < String(this.value).length) this._caretPos++;
             return;
         }
-        if (e.code == 'Delete') {
-            this.value = this.value.substring(0, this.caretPos) + this.value.substring(this.caretPos + 1);            
-            return;
+        if (e.code == 'Delete') {                     
+            this._value = this._value.substring(0, this.caretPos) + this._value.substring(this.caretPos + 1);            
+            return this.validate();            
         }        
-        if (e.key.length == 1) {            
-            const output = this.value.substring(0, this.caretPos) + e.key + this.value.substring(this.caretPos);
-            if (this.params.type == 'number') {                
-                if (this.min >= 0) {
-                    const regex = /^\d*[.]?\d*$/;
-                    const num   = parseFloat(output);                    
-                    if (!(regex.test(output) && num >= this.min && num <= this.max)) return;                
-                } else {
-                    const regex = /^-?\d*[.]?\d*$/;
-                    const num   = parseFloat(output);
-                    if (!(regex.test(output) && num >= this.min && num <= this.max)) return;                
-                }
-            }
-            this.value = output;
+        if (e.key.length == 1) {                
+            this._value = this._value.substring(0, this.caretPos) + e.key + this._value.substring(this.caretPos);
             this._caretPos++;
+            return this.validate();
         }        
     }
     
@@ -93,12 +103,12 @@ export class TEdit extends TFocusControl {
 
         const { surface, settings } = this;
         surface.ctx.font = settings.font;
-        const charWidths = this.value.split('').map((f, i, a) => surface.ctx.measureText(a[i]).width);         // get the widths of all characters
+        const charWidths = this.displayValue.split('').map((f, i, a) => surface.ctx.measureText(a[i]).width);         // get the widths of all characters
 
-        const xofs = e.position.x - this.absoluteOffset.x;                                                     // distance from left edge of the control to the mouse click x-position
+        const xofs = e.position.x - this.absoluteOffset.x;                                                            // distance from left edge of the control to the mouse click x-position
 
-        this._caretPos = this.value.length > 0 ? this.value.length : 0;
-        for (let i = 0, acc = 0; i < charWidths.length; i++) {                                                 // calculate which character was clicked
+        this._caretPos = this.displayValue.length > 0 ? this.displayValue.length : 0;
+        for (let i = 0, acc = 0; i < charWidths.length; i++) {                                                        // calculate which character was clicked
             if (xofs < acc + charWidths[i] * 0.5) { this._caretPos = i; break; }
             acc += charWidths[i];                     
         }        

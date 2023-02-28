@@ -14,7 +14,7 @@ export class TTitlebar extends TCaptionControl {
         this.settings = {};
         this.fetchDefaults('titlebar');        
 
-        this.settings.clActiveText = this.settings.clCaptionText;
+        if (this.settings.clCaptionText) this.settings.clActiveText = this.settings.clCaptionText;
     }    
 
     draw() {

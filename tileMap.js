@@ -112,11 +112,11 @@ class TileMap {
 		for (const t of this.textures) t.rescale(w, h);
 	}
 
-	clear() {
-		this.tiles.fill(0);
-		this.textures.length  = 0;
-		this.overlays.length  = 0;
-		this.colliders        = {};
+	clear(options = {}) {
+		if (!options.keepTileMapTiles)this.tiles.fill(0);
+		if (!options.keepTileMapTextures) this.textures.length  = 0;
+		if (!options.keepTileMapOverlays) this.overlays.length  = 0;		
+		if (!options.keepTileMapColliders) this.colliders  = {};
 	}
 
 	static async Parse(data) {

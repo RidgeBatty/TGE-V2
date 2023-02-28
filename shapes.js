@@ -41,7 +41,7 @@ export class Circle extends Shape {
 export class Ellipse extends Shape {
     constructor(position, width = 0, height = 0) {
         super(position);
-        this.origin = V2(0, 0.5);
+        this.origin = V2(0.5, 0.5);                                                                 // set to 0.5, 0.5 to expand the ellipse from the center OR set to 0, 0 to expand the ellipse from top left corner
         this.width  = width;
         this.height = height;        
         this.type   = 2;
@@ -53,10 +53,15 @@ export class Ellipse extends Shape {
     }
 
     get rect() {
-        const wm = 1 + this.origin.x * 2 * this.width;
-        const hm = 1 + this.origin.y * 2 * this.height;
-        console.log(wm, hm);
-        return RECT(this.position.x - wm, this.position.y - hm, wm, hm);
+        const wm = this.width;
+        const hm = this.height;
+
+        const shift = this.origin.clone().mulScalar(2).mul(V2(wm, hm));
+
+        return RECT(this.position.x - shift.x, 
+                    this.position.y - shift.y, 
+                    wm + shift.x, 
+                    hm + shift.y);        
     }
 
     isPointInside(p) {
@@ -80,6 +85,14 @@ export class Rectangle extends Shape {
         return RECT(this.position.x, this.position.y, this.width, this.height);
     }
 
+    get projectedPoints() {
+        return [this.position.x, this.position.y, this.position.x + this.width, this.position.y + this.height];
+    }
+
+    get points() {
+        return [this._position.x, this._position.y, this._position.x + this.width, this._position.y + this.height];
+    }
+
     isPointInside(p) {
         return this.rect.isPointInside(p);
     }
@@ -92,9 +105,8 @@ export class Polygon extends Shape {
     }
 
     get size() {
-        let minX = infinity, minY = infinity, maxX = -infinity, maxY = -infinity;
-        const points = this.projectedPoints();
-        for (const p of points) {
+        let minX = infinity, minY = infinity, maxX = -infinity, maxY = -infinity;        
+        for (const p of this.points) {
             if (p.x < minX) minX = p.x;
             if (p.x > maxX) maxX = p.x;
             if (p.y < minY) minY = p.y;
@@ -106,6 +118,15 @@ export class Polygon extends Shape {
     get projectedPoints() {
         let result = [this.position];
         for (const p of this.points) result.push(Vec2.Sub(p, Vec2.Add(this.owner.position, this.owner.offset)));
+        return result;
+    }
+
+    /**
+     * Array of all points in shape space as a flat array
+     */     
+    get pointsFlatArray() {
+        let result = [this._position.x, this._position.y];
+        for (const p of this.points) result.push(p.x, p.y);
         return result;
     }
 
@@ -198,5 +219,27 @@ export class ShapeContainer {
         }
         this.active = hits;
         return hits;
+    }
+
+    /**
+     * Stringifies shapes in TGE Collider format. All coordinates are in shape space.
+     */
+    stringify() {
+        const list = [];
+        const oVec = (v) => { return { x:v.x, y:v.y }};
+
+        for (const shape of this.shapes) {
+            let o = {};
+
+            o.type = 'none circle ellipse box poly'.split(' ')[shape.type];
+            if (shape.type == 1 || shape.type == 2) o.position = oVec(shape._position);                
+            if (shape.type == 1) o.radius = shape.radius;                
+            if (shape.type == 2) o.origin = oVec(shape.origin);       
+            if (shape.type == 3) o.points = shape.points;              
+            if (shape.type == 4) o.points = shape.pointsFlatArray;
+
+            list.push(o);
+        } 
+        return JSON.stringify({ colliders:list }, null, 4)
     }
 }

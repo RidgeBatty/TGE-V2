@@ -124,9 +124,13 @@ class TileMapRenderer extends CustomLayer {
 	/**
 	 * Clears actors and the tilemap
 	 */
-	clear() {
-		this.map.clear();
-		for (let i = this.staticActors.length; i--;) this.staticActors[i].destroy();
+	clear(options) {
+		this.map.clear(options);
+		
+		for (const actor of this.staticActors) {
+			actor.destroy();
+			Engine.gameLoop.removeActor(actor);
+		}
 		this.staticActors.length = 0;		
 	}
 

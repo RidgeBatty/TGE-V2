@@ -333,7 +333,7 @@ class GameLoop {
 	/**
 	 * DO NOT USE! This is called internally!
 	 */	
-	_render(timeStamp) {
+	_render(timeStamp, doNotReschedule) {
 		if (!this._flags.isRunning && this._oneShotRender == false) {	  									// frame processing cannot be cancelled when isRunning is false - otherwise debugger will not be able to run its injected code
 			this._lastTickLen  = performance.now();
 			this._frameStart   = this._lastTick;
@@ -391,6 +391,7 @@ class GameLoop {
 		this._frameStart = timeStamp;
 		this._oneShotRender = false;
 
+		if (doNotReschedule) return;
 		this.requestID = window.requestAnimationFrame(t => this._render(t));	// schedule next frame
 	}
 
