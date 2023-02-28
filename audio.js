@@ -347,29 +347,35 @@ class AudioLib {
 	/**
 	 * Fade out all audio instances
 	 * @param {number} time Duration (in seconds)
-	 * @returns 
+	 * @returns {Promise}
 	 */
-	async fadeOut(time = 1) {	
-		this._fadeInfo = {
-			status    : 'fade-out',
-			duration  : time * 1000,
-			startTime : +new Date(),
-			ratio     : new RangedVar(1)
-		}			
+	fadeOut(time = 1) {	
+		return new Promise(resolve => {
+			this._fadeInfo = {
+				status    : 'fade-out',
+				duration  : time * 1000,
+				startTime : +new Date(),
+				ratio     : new RangedVar(1),
+				resolve
+			}			
+		});
 	}
 
 	/**
 	 * Fade in all audio instances
 	 * @param {number} time Duration (in seconds)
-	 * @returns 
+	 * @returns {Promise}
 	 */
-	 async fadeIn(time = 1) {	
-		this._fadeInfo = {
-			status    : 'fade-in',
-			duration  : time * 1000,
-			startTime : +new Date(),
-			ratio     : new RangedVar(0)
-		}	
+	fadeIn(time = 1) {	
+		return new Promise(resolve => {
+			this._fadeInfo = {
+				status    : 'fade-in',
+				duration  : time * 1000,
+				startTime : +new Date(),
+				ratio     : new RangedVar(0),
+				resolve
+			}	
+		});
 	}
 
 	async fadeMute(time = 1) {
@@ -392,8 +398,16 @@ class AudioLib {
 			let v = (+new Date() - f.startTime) / f.duration;			
 			f.ratio.value = (f.status == 'fade-out') ? 1 - v : v;
 
-			if (f.ratio.value == 0 && f.status == 'fade-out') return f.status = 'out';
-			if (f.ratio.value == 1 && f.status == 'fade-in')  return f.status = 'in';			
+			if (f.ratio.value == 0 && f.status == 'fade-out') {
+				f.status = 'out';
+				if ('resolve' in f) f.resolve();
+				return 
+			}
+			if (f.ratio.value == 1 && f.status == 'fade-in') {
+				f.status = 'in';			
+				if ('resolve' in f) f.resolve();
+				return 
+			} 
 			
 			this.forSFX(sfx => { sfx.volume = sfx.volume; } );
 		}		

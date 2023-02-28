@@ -29,7 +29,7 @@ const main = async () => {
             clInactiveCaption : 'rgba(80,80,80,0.7)',                       
             useBackgroundImage : true,
             useFrames          : true,
-            titleBar : {
+            titlebar : {
                 baseline     : 'middle',
                 font         : '20px arial',            
                 textOffset   : V2(10, 0),
@@ -91,7 +91,7 @@ const main = async () => {
     const cbBoobs = win3.add(TCheckbox, {
         position: V2(140, 60),
         size    : V2(120, 28),
-        caption :'Select large boobs',   
+        caption :'Select large milk',   
         settings : {
             checkMark : '🍼'
         }             
@@ -100,7 +100,7 @@ const main = async () => {
     const cbDick = win3.add(TCheckbox, {
         position: V2(140, 90),
         size    : V2(120, 28),
-        caption :'Select tiny cock',        
+        caption :'Select tiny eggplant',        
         settings : {
             checkMark : '🍆'
         }     
@@ -109,7 +109,7 @@ const main = async () => {
     const cbAss = win3.add(TCheckbox, {
         position: V2(140, 120),
         size    : V2(120, 28),
-        caption :'More ass',        
+        caption :'More peach',        
         settings : {
             checkMark : '🍑'
         } 

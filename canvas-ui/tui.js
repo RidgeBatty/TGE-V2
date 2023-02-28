@@ -111,12 +111,10 @@ export class TUI extends TControl {
     applyProps(target, source) {
         for (const [k, v] of Object.entries(source)) {
             if (typeof v == 'object') {
-                if (target[k]) return this.applyProps(target[k], v);
-                target[k] = {};
-                this.applyProps(target[k], v);
-                return;
-            }
-            target[k] = v;
+                if (!(k in target)) target[k] = {};
+                this.applyProps(target[k], v);             
+            } else
+                target[k] = v;
         }
     }
 
@@ -126,6 +124,19 @@ export class TUI extends TControl {
      */
     addChildren(list) {
         for (const ctrl of list) this.addInstance(ctrl);
+    }
+    
+    /**
+     * Traverses up the control's parent chain and stops at the first TCustomWindow component. Returns null if no TCustomWindow is found.
+     * @param {TControl} control 
+     * @returns {(TWindow|null)}
+     */
+    findParentWindow(control) {        
+        while (control != null) {
+            if (control.isWindow) return control;
+            control = control.parent;
+        }
+        return null;        
     }
 }
 

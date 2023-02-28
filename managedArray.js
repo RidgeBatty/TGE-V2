@@ -36,6 +36,10 @@ class ManagedArray {
         return this.array.pop();
     }
 
+    indexOf(a, b) {
+        return this.array.indexOf(a, b);
+    }
+
     deleteByName(name) {
         const a = this.array;
         for (let i = 0; i < a.length; i++) if (a[i].name == name) { a.splice(i, 1); return }

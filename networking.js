@@ -8,9 +8,16 @@ import { Events } from "./events.js";
 const ImplementsEvents = 'connect disconnect receive error';
 
 class Networking {
+    /**
+     * Creates a new Networking object and stores reference to it as Engine.net
+     * @param {string} host Hostname i.e. "http://localhost:3000"
+     * @param {string|null} apiPath Path which is automatically appended to every request right after the host name. Set to "null" if no path is to be appended.
+     * @param {errorHandler=} errorHandler Optional errorHandler
+     */
     constructor(host, apiPath, errorHandler) {
         const url = new URL(host || location.origin);
 
+        this.gameState   = {};
         this.connections = [];        
         const isSecure   = ['wss:', 'https:'].includes(url.protocol);
 
@@ -30,6 +37,7 @@ class Networking {
             headers               : {},
             autoDetectContentType : true,
             customValidation      : null,                                                           // provide a custom validation function which will run before the response is passed to your app
+            lag                   : 0,
         });
 
         this.events = new Events(this, ImplementsEvents);
@@ -42,13 +50,24 @@ class Networking {
         if (connection.protocol.startsWith('ws')) this.initWebSockets(connection);
         return connection;
     }
-    
-    async req(value = '', payload) {    
-        const { host, apiPath, options, autoDetectContentType, errorHandler, customValidation, headers } = this.connection;
 
-        return new Promise((resolve, reject) => {
-            let isJson  = false;            
-            
+    async handleResponse(r) {         
+        if (this.autoDetectContentType) {
+            const h    = [...r.headers]; 
+            const type = h.find(e => e[0].toLowerCase() == 'content-type');
+            if (type == null) throw 'Content header not found';                        
+            if (type[1].includes('json')) return { type:'json', data:await r.json() }
+            if (type[1].includes('text')) return { type:'text', data:await r.text() }
+            if (type[1].includes('octet-stream')) return { type:'blob', data:await r.blob() }
+        } else {                                   
+            return { type:'json', data:await r.json() }
+        }                    
+    }
+    
+    req(value = '', payload) {    
+        const { host, apiPath, options, errorHandler, customValidation, headers } = this.connection;
+
+        return new Promise(async resolve => {
             const customOptions = AE.clone(options);
             if (!('headers' in customOptions)) customOptions.headers = {}
             
@@ -61,44 +80,35 @@ class Networking {
                 Object.assign(customOptions.headers, headers);
             }
             
-            const url = host.origin + '/' + apiPath + '/' + value;
+            const url = apiPath ? host.origin + '/' + apiPath + '/' + value : host.origin + '/' + value;
 
-            const result = fetch(url, customOptions)
-                .then(r => { if (r.ok) return r; else { console.warn(r); throw 'Networking error'; } })
-                .then(r => {         
-                    if (autoDetectContentType) {
-                        const h    = [...r.headers]; 
-                        const type = h.find(e => e[0].toLowerCase() == 'content-type');
-                        if (type == null) throw 'Content header not found';                        
-                        if (type[1].includes('json')) { isJson = true; return r.json(); }
-                        if (type[1].includes('text')) return r.text(); 
-                        if (type[1].includes('octet-stream')) return r.blob(); 
-                    } else {                        
-                        isJson = true;
-                        return r.json(); 
-                    }                    
+            const requestStartTime = performance.now();
+
+            fetch(url, customOptions)
+                .then(r => { 
+                    this.connection.lag = performance.now() - requestStartTime; 
+                    if (r.ok) return r; 
+                    console.warn(r); 
+                    throw new Error('Networking error'); 
                 })
+                .then(r => this.handleResponse(r))
                 .then(v => {                                                                         // we successfully retrieved a response object, place pre-validation here before passing it to user
                     if (customValidation) {
-                        const r = customValidation(v);
-                        if (r) return v;
-                        throw 'Validation failed';
+                        const isValid = customValidation(v);
+                        if (isValid) return v;
+                        throw new Error('Validation failed');
                     }
-                    if (isJson && !('status' in v)) {                                               // if no custom validation code is specified, the default code will run and check for 'status' field if the response is a JSON object
-                        throw 'JSON response is expected to have "status" field';
+                    if (v.type == 'json' && !('status' in v.data)) {                                               // if no custom validation code is specified, the default code will run and check for 'status' field if the response is a JSON object
+                        throw new Error('JSON response is expected to have "status" field');
                     }
-                    return v;
+                    resolve(v.data);
                 })
-                .catch(e => { 
-                    console.warn('Rejecting promise', e);
-                    return reject({ status:'error', message:'Networking error', e });
+                .catch(e => {      
+                    this.events.fire('error', { connection:this.connection, error:e });
+                    const o = { status:'error', message:'Networking error', error:e };                    
+                    resolve(o);
                 });
-
-            resolve(result);                                                                        // finally, fulfill the promise and return the result
-        }).catch(async e => {                   
-            if (errorHandler) await errorHandler(e);
-            this.events.fire('error', e);
-        });
+        });   
     }
 
     initWebSockets(connection) {

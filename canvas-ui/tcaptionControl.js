@@ -13,6 +13,7 @@ export class TCaptionControl extends TControl {
         super(o);        
         this.settings    = {};
         this.fetchDefaults('caption');
+        if ('settings' in o) this.ui.applyProps(this.settings, o.settings);
         
         if ('caption' in o) this._caption = o.caption;        
     }
@@ -33,7 +34,7 @@ export class TCaptionControl extends TControl {
         if (settings.baseline == 'bottom') { pos.y = this.size.y - bb.height; }   
                         
         const o          = Vec2.Add(Vec2.ToInt(pos), Vec2.Add(settings?.textOffset ? settings.textOffset : V2(0, 0), this.position));    
-        const color      = this.isEnabled ? settings.clBtnText : settings.clGrayText;        
+        const color      = this.isEnabled ? settings.clActiveText : settings.clInactiveText;        
         const shadow     = settings.textShadow ? { shadow:settings.textShadow } : null;
         const textParams = Object.assign({ font:settings.font, color, textAlign:'left', textBaseline:'top' }, shadow);
 

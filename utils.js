@@ -394,6 +394,18 @@ const shortAngleDist = (a0, a1) => {
 const angleLerp = (a0, a1, t) => {
     return a0 + shortAngleDist(a0, a1) * t;
 }
+
+/**
+ * Request sourcemap
+ * @param {string} url fully qualified url (including https://)
+ * @param {string} query URL query string without the preceding '?' question mark
+ */
+const smap = (url, query) => {
+    const script = document.createElement("script");    
+    script.textContent = `//# sourceMappingURL=${url}?${query}`;    
+    document.head.appendChild(script);
+    script.remove(); 
+}
 	
 export { 
 	loadedJsonMap,
@@ -403,6 +415,7 @@ export {
 	imageFromBlob,
 	imgDims,
 	makeHJSON,
+	smap,
 	
 	downloadFile,
 	createFileDropZone,

@@ -11,21 +11,43 @@ import { TControl } from './tcontrol.js';
 
 const ImplementsEvents = 'keydown keyup';
 
+let TabIndex = 1;
+
 export class TFocusControl extends TControl {
     constructor(o) {
         super(o);
         
         this.background  = {};
         this.settings    = {};
-
+        this._tabIndex   = TabIndex++;
+        this._isActive   = false;          
+        
         addMethods(TFocusControl, { drawGridPattern });
 
         this.events.create(ImplementsEvents);
     }
     
+    get isActive() { return this._isActive; }
+    set isActive(v) {
+        if (v === true) {
+            if (this._isActive == false) this.onActivate();
+            this._isActive = true;
+            return;
+        }
+        if (v === false) {
+            if (this._isActive == true) this.onDeactivate();
+            this._isActive = false;            
+            return;
+        }
+    }
+    
     async loadFrames(o) {
         if (o.ext) for (let i = 0; i < o.urls.length; i++) o.urls[i] = o.urls[i] += '.' + o.ext;
         this.frames = await preloadImages(o);
+    }
+
+    get tabIndex() {
+        return this._tabIndex;
     }
         
     onKeyDown(e) {}

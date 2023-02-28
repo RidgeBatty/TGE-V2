@@ -15,10 +15,7 @@ export class TButton extends TCaptionControl {
 
         if ('settings' in o) Object.assign(this.settings, o.settings);
         if ('caption' in o)  this._caption = o.caption;   
-        
-        this.settings.align    = 'center';
-        this.settings.baseline = 'middle';
-
+                
         this.events.create(ImplementsEvents);        
     }   
     

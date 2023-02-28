@@ -9,9 +9,9 @@ import { addMethods, preloadImages } from '../utils.js';
 import { TFocusControl } from './tfocusControl.js';
 
 const ImplementsEvents = 'change';
+const TEditTypes = 'number text password'.split(' ');
 
 const isNumeric = (n) => !isNaN(parseFloat(n)) && isFinite(n);
-
 export class TEdit extends TFocusControl {
     constructor(o) {        
         super(o);        
@@ -20,13 +20,17 @@ export class TEdit extends TFocusControl {
         this._caretPos   = 0;
         this.fetchDefaults('edit');
 
+        this.type        = ('type' in o && TEditTypes.includes(o.type)) ? o.type : 'text';
         this._value      = ('value' in o) ? String(o.value) : '';        
         this.min         = ('min' in o) && isNumeric(o.min) ? o.min : -Infinity;
         this.max         = ('max' in o) && isNumeric(o.max) ? o.max : Infinity;
         if (this.min > this.max) throw new Error('Minimum must be less than or equal to maximum!');
     }
 
-    get value() { return this._value; }
+    get value() { 
+        if (this.type == 'number') return parseFloat(this._value);
+        return this._value; 
+    }
     set value(v) { this._value = String(v); }
  
     get caretPos() { return this._caretPos }
@@ -35,7 +39,15 @@ export class TEdit extends TFocusControl {
         if (v > this.value.length) return this._caretPos = this.value.length;
 //        this._leftStr  = this.value.substring(0, this.caretPos);
         //this._rightStr
+    }
 
+    /**
+     * Password edit may have different display value than actual value
+     * Note: always returns a string!
+     */
+    get displayValue() {
+        if (this.type == 'password') return '*'.repeat(this._value.length);
+        return String(this._value);
     }
        
     onKeyDown(e) {          
@@ -107,7 +119,7 @@ export class TEdit extends TFocusControl {
 
         s.clipRect(this.clientRect);
 
-        const text = this.value;
+        const text = this.displayValue;
         s.ctx.font = this.settings.font;
         const m    = s.ctx.measureText(text.substring(0, this.caretPos));
         

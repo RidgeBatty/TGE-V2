@@ -13,6 +13,8 @@ export class TTitlebar extends TCaptionControl {
         super(o);        
         this.settings = {};
         this.fetchDefaults('titlebar');        
+
+        this.settings.clActiveText = this.settings.clCaptionText;
     }    
 
     draw() {

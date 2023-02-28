@@ -60,6 +60,18 @@ export class TComponent {
         return this.prototypes.indexOf(name) > -1;
     }
 
+    /**
+     * Test if this component is parent of "node"
+     * @param {TComponent} node 
+     * @returns {Boolean}
+     */
+    isParentOf(node) {
+        while (node) {
+            if (this == node) return true;
+            node = node.parent;
+        }
+    }
+
     onCreate() {
         console.log('On Create')
     }

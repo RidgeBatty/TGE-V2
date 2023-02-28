@@ -35,11 +35,9 @@ color : {
 
     clCheckboxMark              : 'lime'
     clClientArea                : 'white'               # Represents the color of client area in listboxes and similar elements
-    clCaret                     : 'white'
-
-    # clGradientActiveCaption	    : Right side color in the color gradient of an active window's title bar.
-    # clGradientInactiveCaption	: Right side color in the color gradient of an inactive window's title bar.
+    clCaret                     : 'white' 
 }
+
 background : {
     window : {
         url : '../../assets/ui/Stone-Tile-3x3-128x128.jpg'
@@ -50,11 +48,24 @@ background : {
         }
     }
 }
+
+window : {
+    closeButton : { 
+        font: 'bold 14px arial'
+        clActiveText: 'purple' 
+    }    
+}
+
 caption : {
     font       : '14px arial'    
     baseline   : 'middle'    
+    clActiveText    : 'black',
+    clInactiveText  : 'gray'
 }
 
+listbox : {
+    itemLength : 32    
+}
 listitem : {
     font       : '20px arial'    
     baseline   : 'middle'        
@@ -69,3 +80,18 @@ checkbox : {
     checkmarkFont  : '24px arial'
     clControlFrame : 'transparent'    
 }
+
+titlebar : {
+    height     : 32
+    font       : 'bold 20px arial'
+    baseline   : 'middle'
+    textOffset : { x:10, y:2 }
+}
+
+button : {
+    align    : 'center'
+    baseline : 'middle'
+    clActiveText : 'yellow'
+    clInactiveText : 'blue'
+}
+

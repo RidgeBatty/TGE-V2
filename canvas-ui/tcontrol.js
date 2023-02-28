@@ -67,10 +67,10 @@ export class TControl extends TComponent {
         return this.parent.children.indexOf(this);
     }
     
-    get firstChild()  { return this.children[0]; }
-    set firstChild(v) { if (this.children.length > 0) { this.children[0] = v; v.parent = this; } }
-    get lastChild()   { return this.children.at(-1); }
-    set lastChild(v)  { if (this.children.length > 0) { this.children[this.children.length - 1] = v; v.parent = this; } }
+    get firstChild()   { return this.children[0]; }
+    set firstChild(v)  { if (this.children.length > 0) { this.children[0] = v; v.parent = this; } }
+    get lastChild()    { return this.children.at(-1); }
+    set lastChild(v)   { if (this.children.length > 0) { this.children[this.children.length - 1] = v; v.parent = this; } }
 
     onCreate() {
         if (this._createVisible) this.isVisible = true;
@@ -133,9 +133,10 @@ export class TControl extends TComponent {
         }
     }
 
-    forAllChildren(callback) {
+    forAllChildren(callback, skipSelf = true) {
         const loopChildren = (node) => {
-            callback(node);
+            if (skipSelf == false) callback(node);             
+            skipSelf = false;
             for (let ch of node.children) loopChildren(ch);
         }
         loopChildren(this);        
