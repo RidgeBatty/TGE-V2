@@ -208,6 +208,8 @@ class TileMapRenderer extends CustomLayer {
 
 	async parseStaticActorsFromObject(objects) {
 		console.warn('Parsing actors...');
+		console.log(objects);
+
 		for (const o of objects) {
 			const texture  = this.map.textures[o.texture];	
 			
@@ -222,7 +224,7 @@ class TileMapRenderer extends CustomLayer {
 				if ('texture' in o) { params.img = texture.canvas };
 				if ('url' in o)     { params.imgUrl = o.url; };
 								
-				this.addStaticActor(V2(p[0], p[1]), params, async (actor) => {
+				this.addStaticActor(V2(p[0], p[1]), params, null, async (actor) => {
 					if (p != null) {
 						if (p[4] != null) {																					// 4th value is mirror: 1 = x, 2 = y, 3 = x+y
 							if ((p[4] & 1) == 1) actor.renderHints.mirrorX = true;
@@ -250,9 +252,10 @@ class TileMapRenderer extends CustomLayer {
 	 * Adds a new static actor in the current gameLoop and links it to this tileMap	 
 	 * @param {Vector2} position In map coordinates (tiles)
 	 * @param {object} o Standard Actor create parameters	 	 
+	 * @param {object} staticActorParams parameters related to static actors only 
 	 * @param {function} onAfterCreate Optional callback function. Called before the created actor is inserted in the gameLoop
 	 */
-	async addStaticActor(position, o = {}, onAfterCreate) {
+	async addStaticActor(position, o = {}, staticActorParams, onAfterCreate) {
 		const { map } = this;	
 
 		const params = {
@@ -270,11 +273,37 @@ class TileMapRenderer extends CustomLayer {
 		await this.engine.gameLoop._addActor(actor);														// add the actor in the gameloop		
 		if (o.flipbooks) actor.flipbooks = await Flipbook.Parse(o.flipbooks, actor);						// load flipbooks
 
-		this.staticActors.push(actor);																		// add to staticActors array
+		if (staticActorParams) this.generateStaticActorRenderInfo(actor, staticActorParams);
 
-		this.events.fire('createprop', { prop:actor });
+		this.staticActors.push(actor);																		// add to staticActors array
+		this.events.fire('createprop', { prop:actor });														// fire 'prop created' event
 
 		return actor;
+	}
+
+	/**
+	 * 
+	 * @param {StaticActor} actor 
+	 * @param {object} o parameters object
+	 */
+	generateStaticActorRenderInfo(actor, o) {			
+        const r         = actor.renderPosition;
+        const startTile = this.unProject(r).add(o.floorOrigin ? o.floorOrigin : V2(0, 0));        
+        const endTile   = startTile.clone().add(o.floor ? o.floor : V2(0, 0));
+
+        const st = V2(Math.min(startTile.x, endTile.x), Math.min(startTile.y, endTile.y));
+        const et = V2(Math.max(startTile.x, endTile.x), Math.max(startTile.y, endTile.y));            
+
+        const f1 = this.project(V2(st.x + 0.5, st.y - 0.5)); // top
+        const f2 = this.project(V2(et.x + 0.5, st.y - 0.5)); // right    
+        const f3 = this.project(V2(et.x + 0.5, et.y - 0.5)); // bottom  
+        const f4 = this.project(V2(st.x + 0.5, et.y - 0.5)); // left
+            
+		actor.renderInfo = {
+        	startTile : st,
+        	endTile   : et,
+        	corners   : [f1.sub(r), f2.sub(r), f3.sub(r), f4.sub(r)]
+		}
 	}
 
 	destroyStaticActors(actors) {

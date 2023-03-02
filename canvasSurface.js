@@ -13,19 +13,23 @@ const { Rect, RECT, Vector2, Color } = Engine.Types;
 class CanvasSurface {
 	/**
 	 * 
-	 * @param {object} o 
-	 * @param {Vector2=} o.dims
-	 * @param {object=} o.flags
-	 * @param {string=} o.name
+	 * @param {object} o Parameters object.
+	 * @param {Vector2=} o.dims Optional.
+	 * @param {object=} o.flags Optional.
+	 * @param {string=} o.name Optional.
+	 * @param {Canvas=} o.canvas Optional.
 	 */
-	constructor(o = {}) {			
+	constructor(o = {}) {	
+		if ('canvas' in o) {
+			var canvas = o.canvas;
+		} else
 		if (o.preferOffscreenCanvas) {
 			try {
 				var canvas = new OffscreenCanvas(o.dims.x, o.dims.y);
 			} catch (e) {
 				console.warn('Offscreen canvas not supported by this platform')
 			}
-		} 
+		} 	
 
 		if (canvas == null) var canvas = document.createElement('canvas');
 		
@@ -263,15 +267,15 @@ class CanvasSurface {
 	}
 
 	/**	
-	 * Draw a polygon on canvas with a cutout. Accepts two arrays of Vector2 as parameter. First is the filled shape, seconds in the cutout.
-	 * @param {[Vector2]} fillPoints
-	 * @param {[Vector2]} cutPoints
+	 * Draw a polygon on canvas with a cutout. Accepts two arrays of Vector2 as parameter. First is the filled shape, seconds in the ARRAY of cutouts.
+	 * @param {Vector2[]} fillPoints
+	 * @param {Vector2[[]]} cutOuts
 	 * @param {object} [p] Options style object
 	 * @param {string} [p.stroke='black'] Stroke (outline color)
 	 * @param {string=} p.fill Optional fill color	  
 	 */
-	 drawPolyCut(fillPoints, cutPoints, p = { stroke:'black' }) {	
-		if (!Array.isArray(fillPoints) || fillPoints.length < 2 || !Array.isArray(cutPoints) || cutPoints.length < 2) return;
+	 drawPolyCut(fillPoints, cutOuts, p = { stroke:'black' }) {	
+		if (!Array.isArray(fillPoints) || fillPoints.length < 2 || !Array.isArray(cutOuts)) return;
 
 		this.ctx.beginPath();		
 		this.ctx.moveTo(fillPoints[0].x, fillPoints[0].y);
@@ -281,12 +285,15 @@ class CanvasSurface {
 		this.ctx.lineTo(fillPoints[0].x, fillPoints[0].y);
 		this.ctx.closePath();
 
-		this.ctx.moveTo(cutPoints[0].x, cutPoints[0].y);
-		for (var i = 1; i < cutPoints.length; i++) {
-			this.ctx.lineTo(cutPoints[i].x, cutPoints[i].y);
+		for (const cutPoints of cutOuts) {			
+			this.ctx.moveTo(cutPoints[0].x, cutPoints[0].y);
+			for (var i = 1; i < cutPoints.length; i++) {
+				this.ctx.lineTo(cutPoints[i].x, cutPoints[i].y);
+			}
+			this.ctx.lineTo(cutPoints[0].x, cutPoints[0].y);
+			this.ctx.closePath();		
 		}
-		this.ctx.lineTo(cutPoints[0].x, cutPoints[0].y);
-		this.ctx.closePath();		
+
 		if (p.stroke)	{ this.ctx.strokeStyle = p.stroke; this.ctx.stroke(); }
 		if (p.fill)		{ this.ctx.fillStyle   = p.fill;   this.ctx.fill(); }
 	}

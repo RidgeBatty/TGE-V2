@@ -77,6 +77,10 @@ class LineSegment {
 		let y = this.p0.y - this.p1.y;
 		return Math.sqrt(x * x + y * y);
 	}
+
+	get center() {
+		return V2((this.p0.x + this.p1.x) * 0.5, (this.p0.y + this.p1.y) * 0.5);
+	}
 	
 	distToPoint(p) {	// p:Vector2
 	    function dist2(v, w) { return (v.x - w.x) ** 2 + (v.y - w.y) ** 2 }
@@ -129,7 +133,7 @@ class LineSegment {
         return dist < radius * radius;
     }
 	
-	intersectsLine(l) { // l:LineSegment, return:boolean
+	intersectsLineSegment(l) { // l:LineSegment, return:boolean
 		const x1 = this.p0.x;
 		const y1 = this.p0.y;
 		const x2 = this.p1.x;
@@ -148,6 +152,32 @@ class LineSegment {
 		const b = ((x2-x1)*(y1-y3) - (y2-y1)*(x1-x3)) / d;
 
 		return (a >= 0 && a <= 1 && b >= 0 && b <= 1);
+	}
+
+	intersectsLine(p0, p1) {
+		const x1 = this.p0.x;
+		const y1 = this.p0.y;
+		const x2 = this.p1.x;
+		const y2 = this.p1.y;
+
+		const x3 = p0.x;
+		const y3 = p0.y;
+		const x4 = p1.x;
+		const y4 = p1.y;
+
+		if ((x1 == x2 && y1 == y2) || (x3 == x4 && y3 == y4)) return false;			// Check if none of the lines are of length 0
+
+		const d = ((y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1));
+			
+		if (d == 0) return false; 													// Lines are parallel
+	
+		let ua = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / d;
+		let ub = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / d;
+	
+		let x = x1 + ua * (x2 - x1);
+		let y = y1 + ub * (y2 - y1);
+	
+		return V2(x, y);															// intersection poit
 	}
 
 	/*

@@ -19,7 +19,7 @@
 * For example a space invaders, tetris, pong, asteroids, etc. might have no use of container for static World but a platformer game definitely has.
 *
 */
-const VersionNumber = '2.7.4';
+const VersionNumber = '2.7.5';
 
 import * as Types from "./types.js";
 import { Root, Enum_HitTestMode } from "./root.js";
@@ -432,7 +432,7 @@ class TinyGameEngine {
 	 */
 	crossesViewport(l) {
 		const vp = this.viewportLineSegments;
-		return (vp.top.intersectsLine(l) || vp.left.intersectsLine(l) || vp.right.intersectsLine(l) || vp.bottom.intersectsLine(l));
+		return (vp.top.intersectsLineSegment(l) || vp.left.intersectsLineSegment(l) || vp.right.intersectsLineSegment(l) || vp.bottom.intersectsLineSegment(l));
 	}
 
 	autoZoom() {
