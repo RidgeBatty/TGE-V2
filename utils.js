@@ -271,7 +271,7 @@ const imageFromBlob = (fileOrBlob) => {
 
 const downloadFile = (filename, data, type = 'application/json') => {
 	if (filename != '') {
-		const blob = new Blob([data], { type });
+		const blob = data instanceof Blob ? data : new Blob([data], { type });
 		const url  = URL.createObjectURL(blob);
 		const e    = window.document.createElement('a');
 		e.href     = url;

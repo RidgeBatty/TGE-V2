@@ -76,10 +76,10 @@ class KeyController {
 
 	installEventHandlers() {
 		const keydown = (e) => {
-			//e.event.preventDefault();  			
+			//e.event.preventDefault();  	
 			if (this.isActive == false) return;		
 			const { keyBind, keyState } = this;		
-			for (var i in keyBind) for (var j = 0; j < keyBind[i].length; j++) if (e.event.code == keyBind[i][j]) {
+			for (var i in keyBind) for (var j = 0; j < keyBind[i].length; j++) if (e.event.code == keyBind[i][j]) {			
 				if (keyState[i] == false) this.events.fire('keypressed', { key:i }); 
 				keyState[i] = true; 			
 			}		

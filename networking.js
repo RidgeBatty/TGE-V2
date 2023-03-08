@@ -37,7 +37,7 @@ class Networking {
             headers               : {},
             autoDetectContentType : true,
             customValidation      : null,                                                           // provide a custom validation function which will run before the response is passed to your app
-            lag                   : 0,
+            lag                   : 0,            
         });
 
         this.events = new Events(this, ImplementsEvents);

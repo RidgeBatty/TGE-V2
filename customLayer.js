@@ -20,16 +20,20 @@ class CustomLayer extends Root {
         super(o);
 
         this.owner   = o.owner || Engine.gameLoop;       
-        this.zIndex  = ('zIndex' in o) ? o.zIndex : 1;
-		this.engine  = o.engine;
-		this.surface = ('surface' in o) ? o.surface : Engine.renderingSurface;
-		this._buffer = null;																// backbuffer reference (draw on this surface)
-		this._bufferSize = null;
+		this.engine  = o.engine || Engine;
+        this.zIndex  = ('zIndex' in o) ? o.zIndex : 1;		
+		this.surface = ('surface' in o) ? o.surface : this.engine.renderingSurface;
+		this._buffer         = ('buffer' in o) ? o.buffer : null;																// backbuffer reference (draw on this surface)
+		this._bufferSize     = null;
+		this._resetTransform = ('resetTransform' in o) ? o.resetTransform : false;
         
         if ('addLayer' in o && o.addLayer == true) {
             this.owner.zLayers[this.zIndex].push(this);
         }
 	}
+
+	get resetTransform() { return this._resetTransform }
+	set resetTransform(v) { if (typeof v == 'boolean') this._resetTransform = v; }
 
 	get viewport() {
 		return RECT(0, 0, this._buffer.width, this._buffer.height);
@@ -61,7 +65,8 @@ class CustomLayer extends Root {
         
 	}
 
-	update() {        
+	update() {   
+		if (this.resetTransform) this.surface.resetTransform();     
 		this.surface.drawImage(Vec2.Zero(), this._buffer.canvas)
 	}
 }

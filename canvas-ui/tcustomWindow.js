@@ -12,12 +12,15 @@ export class TCustomWindow extends TFocusControl {
         super(o);
 
         this.isMovable     = true;
-        this.isWindow      = true;
+        this.isWindow      = true;        
         this.edges         = this.ui.surface.rect;                                                                              // the window cannot be moved outside of this area
-        this._opacityChangeSpeed = 0.05;
+        this._opacityChangeSpeed = 0.05;        
         
-        this.titlebar      = this.add(TTitlebar, { caption:o.caption, size:V2(this.size.x, 32) });                        // window title bar
-        this.btClose       = this.add(TButton, { caption:'✖', position:V2(this.size.x - 30, 4), size:V2(26, 24) });
+        if (!o.noTitlebar) {
+            this.titlebar = this.add(TTitlebar, { caption:o.caption, size:V2(this.size.x, 32) });                        // window title bar
+            this.btClose  = this.add(TButton, { caption:'✖', position:V2(this.size.x - 30, 4), size:V2(26, 24) });
+            this.btClose.onMouseUp = e => { this.close() }
+        }
         this.clientArea    = new TControl({ parent:this, position:V2(0, 32), size:V2(this.size.x, this.size.y - 32) });         // window client area        
 
         this.fetchDefaults('window'); 
@@ -30,9 +33,7 @@ export class TCustomWindow extends TFocusControl {
 
         this.onRecalculate();
 
-        this.events.create('show hide');
-
-        this.btClose.onMouseUp = e => { this.close() }
+        this.events.create('show hide');        
     }
 
     get caption() {
@@ -44,6 +45,7 @@ export class TCustomWindow extends TFocusControl {
     }
 
     onRecalculate() {
+        if (!this.titlebar) return;
         //console.log(this.titleBar.settings)
         this.titlebar.size.y = this.titlebar.settings.height;
 
@@ -111,7 +113,7 @@ export class TCustomWindow extends TFocusControl {
 
     draw() {             
         if (!this.isVisible) return;
-        
+                
         const { settings } = this;
         const s = this.surface;
 
@@ -153,6 +155,6 @@ export class TCustomWindow extends TFocusControl {
         // fade in / fade out
         if (this._opacity < 1) this._opacity += this._opacityChangeSpeed;
         if (this._opacity > 1) this._opacity = 1;
-        if (this._opacity < 0) this._opacity = 0;
+        if (this._opacity < 0) this._opacity = 0;        
     }
 }

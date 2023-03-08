@@ -69,6 +69,15 @@ class TileMap {
 		this.tiles[y * this.size.x + x] = v;
 	}
 
+	overlayAt(x, y) {
+		const t = this.tileAt(x, y);
+		return (t >> 8) - 1;
+	}
+
+	setOverlayAt(x, y, o) {
+		this.setTileAt(x, y, (this.tileAt(x, y) & 0x000000FF) + (o << 8));
+	}
+
 	/**
 	 * Appends more textures in TileMap.textures array by loading them from image files. This async function returns when all images are loaded.
 	 * @param {array}  list Array of texture filenames
@@ -129,14 +138,14 @@ class TileMap {
 					
 					for (const row of data.tiles) {															// parse map tiles
 						const cells = row.split(' ');
-						const r     = cells.map(e => +e);
+						const r     = cells.map(e => +e);						
 						map.tiles.set(r, rowLen);
 						rowLen += cells.length;						
 					}					
 				}
 
 				map.textures = await map.loadTextures(data.textures, data.texturePath, data.textureExt);	//  load textures				
-				map.overlays = await map.loadTextures(data.overlays, data.texturePath, data.textureExt);	//  load overlays
+				map.overlays = await map.loadTextures(data.overlays, data.texturePath, data.textureExt);	//  load overlays				
 			} catch (e) {
 				console.warn('Unable to parse tilemap!');				
 				reject(e);

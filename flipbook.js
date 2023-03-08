@@ -169,7 +169,7 @@ class Sequence {
 						
 			return this.index;				
 		}
-							
+
 		return n;
 	}
 	
@@ -184,6 +184,12 @@ class Sequence {
 			} 
 	}		
 	
+	/**
+	 * Seeks to the given frame number in this sequence and sets this sequence as the flipbook's active sequence.
+	 * i.e. the image becomes visible to the actor rendering function.
+	 * @param {*} frame 
+	 * @returns 
+	 */
 	seek(frame) {
 		if (isNaN(frame)) return;
 		
@@ -213,6 +219,7 @@ class Flipbook {
 		this.images       = [];
 		this.sequences    = {};
 		this.sequence     = null;
+		this._isVisible   = true;
 		
 		this._fps         = ('fps' in o && !isNaN(o.fps)) ? AE.clamp(o.fps, 0, 60) : 60;
 		this._isAtlas     = true;		
@@ -244,6 +251,7 @@ class Flipbook {
 						
 		for (const [k, v] of Object.entries(this.sequences)) c.sequences[k] = v.clone(c);		// clone Sequences, and make the cloned Flipbook their owner
 		
+		c._isVisible   = this._isVisible;
 		c._isAtlas     = this._isAtlas;
 		c.sequence     = (this.sequence == null) ? null : Object.values(c.sequences).find(e => e.name == this.sequence.name);
 		c._lastFrame   = this._lastFrame;
@@ -294,15 +302,17 @@ class Flipbook {
 					} else
 						var seq = flipbook.appendSequence(s.name, urls.length, s.loop);
 
-					if ('direction' in s) seq.direction = s.direction;
+					if ('direction' in fb) seq.direction = fb.direction;					// flipbook direction is "global" for all sequences...
+					if ('direction' in s) seq.direction = s.direction;						// ...but you can override it on ever sequence individually
 				}
 			}
 				else
 			if (fb.type == 'atlas') {
-				const atlas = await flipbook.loadAsAtlas(fb.url, fb.dims, fb.order);
+				const atlas = await flipbook.loadAsAtlas(fb.url, fb.dims, fb.order);				
 				for (const s of fb.sequences) {										
 					const seq = flipbook.addSequence({ name:s.name, startFrame : s.frames.from, endFrame : s.frames.to, loop:s.loop });					
-					if ('direction' in s) seq.direction = s.direction;
+					if ('direction' in fb) seq.direction = fb.direction;					// flipbook direction is "global" for all sequences...
+					if ('direction' in s) seq.direction = s.direction;						// ...but you can override it on ever sequence individually
 				}
 			}
 				else throw 'Unknown Flipbook type in asset file';
@@ -338,6 +348,19 @@ class Flipbook {
 	
 	get isAtlas() {
 		return this._isAtlas;
+	}
+
+	get isVisible() {
+		return this._isVisible;
+	}
+
+	set isVisible(v) {
+		if (v === true) return this._isVisible = true;			
+		if (v === false) {
+			this._isVisible = false;
+			if (this.customRender && this.customRender.img) delete this.customRender.img;
+			return;
+		}
 	}
 	
 	/**
@@ -501,8 +524,8 @@ class Flipbook {
 		
 		if (img == null) return;
 
-		const iwidth  = img instanceof HTMLCanvasElement ? img.width  : img.naturalWidth;
-		const iheight = img instanceof HTMLCanvasElement ? img.height : img.naturalHeight;
+		const iwidth  = img.width  || img.naturalWidth;
+		const iheight = img.height || img.naturalHeight;
 
 		if (this.isAtlas) {			
 			if (this._atlasOrder == 'left-to-right') {
@@ -517,7 +540,9 @@ class Flipbook {
 		} else {
 			var w = iwidth;
 			var h = iheight;			
-		}		
+		}	
+		
+		if (this.isVisible == false) return { a, b, w, h };		
 		return { img, a, b, w, h };		
 	}
 }

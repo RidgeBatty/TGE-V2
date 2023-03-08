@@ -185,10 +185,11 @@ class TileMapRenderer extends CustomLayer {
 	 * @returns 
 	 */
 	getFrustumBoundingBox(f = this.frustum) {
-		const top    = Math.min(f[0].p0.y, f[1].p0.y, f[2].p0.y, f[3].p0.y);
-		const bottom = Math.max(f[0].p0.y, f[1].p0.y, f[2].p0.y, f[3].p0.y);
-		const left   = Math.min(f[0].p0.x, f[1].p0.x, f[2].p0.x, f[3].p0.x);
-		const right  = Math.max(f[0].p0.x, f[1].p0.x, f[2].p0.x, f[3].p0.x);
+		const margin = 1;
+		const top    = Math.min(f[0].p0.y - margin, f[1].p0.y - margin, f[2].p0.y - margin, f[3].p0.y - margin);
+		const bottom = Math.max(f[0].p0.y + margin, f[1].p0.y + margin, f[2].p0.y + margin, f[3].p0.y + margin);
+		const left   = Math.min(f[0].p0.x - margin, f[1].p0.x - margin, f[2].p0.x - margin, f[3].p0.x - margin);
+		const right  = Math.max(f[0].p0.x + margin, f[1].p0.x + margin, f[2].p0.x + margin, f[3].p0.x + margin);
 		return new Rect(left, top, right, bottom);
 	}
 
@@ -466,14 +467,16 @@ class TileMapRenderer extends CustomLayer {
 				const hasOverlay = id > 255;
 				const overlayId  = (id >> 8) - 1;
 				const tex        = map.textures[tileId];
-				
+
 				if (this.flags.ownerDraw && tex) {		
 					if (tex.canvas.width == 0 || tex.canvas.height == 0) imageDataPending++;
 						else
 					ctx.drawImage(tex.canvas, p.x, p.y);												
 
 					if (hasOverlay && map.overlays[overlayId]) {							
-						ctx.drawImage(map.overlays[overlayId].canvas, p.x, p.y);
+						const overlayImg = map.overlays[overlayId];
+						if (overlayImg.canvas.width == 0 || overlayImg.canvas.height == 0) imageDataPending++;
+							else ctx.drawImage(map.overlays[overlayId].canvas, p.x, p.y);
 					}
 				}				
 				this.events.fire('customdraw', { renderer:this, x, y, ctx, tileId, overlayId, drawPos:p });				
