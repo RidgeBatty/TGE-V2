@@ -68,12 +68,13 @@ export class TCustomWindow extends TFocusControl {
     onDeactivate() { }   
                                                                                // called when Window is deactivated
     onShow() { this.bringToFront(); this._opacity = 0; }
+    onHide() { this.forAllChildren(f => { f._isHovered = false; }, false); }
 
     onClose() {
         this.isActive = false;
         if (this.ui.activeWindow != null && this.ui.findParentWindow(this.ui.activeWindow) == this) {            
             this.ui.activeWindow = null;    
-        }
+        }        
     }
     
     close() { this.isVisible = false; this.onClose(); }

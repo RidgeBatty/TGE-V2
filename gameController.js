@@ -234,7 +234,7 @@ class PointerController {
 		this.init();
 		this.joysticks = [];
 
-		AE.sealProp(this, '_events', { start : [], move : [], end : [] });				
+		this.events    = new Events(this, PointerEvents);			
 				
 		Controllers.all.push(this);
 	}	
@@ -352,8 +352,10 @@ class PointerController {
 			}	
 		}
 		
-		const onMouseMove = (e) => { 
+		const mousemove = (evt) => { 
 			if (this.isActive == false) return;
+
+			const e = evt.event;
 			const touches = e.changedTouches ? e.changedTouches.length : 1;
 			
 			for (let i = 0; i < touches; i++) {
@@ -368,8 +370,10 @@ class PointerController {
 			}
 		}
 		
-		const onMouseDown = (e) => {
+		const mousedown = (evt) => {
 			if (this.isActive == false) return;
+
+			const e = evt.event;
 			const touches = e.changedTouches ? e.changedTouches.length : 1;
 			
 			for (let i = 0; i < touches; i++) {
@@ -387,8 +391,10 @@ class PointerController {
 			}
 		}
 		
-		const onMouseUp = (e) => { 
+		const mouseup = (evt) => { 			
 			if (this.isActive == false) return;
+
+			const e = evt.event;
 			const touches = e.changedTouches ? e.changedTouches.length : 1;
 			
 			for (let i = 0; i < touches; i++) {
@@ -405,16 +411,7 @@ class PointerController {
 			}
 		}
 		
-		AE.addEvent(window, 'mousemove',   (e) => onMouseMove(e), null);
-		AE.addEvent(window, 'mousedown',   (e) => onMouseDown(e), null);
-		AE.addEvent(window, 'mouseup',     (e) => onMouseUp(e), null);
-
-		AE.addEvent(window, 'dragstart', (e) => { e.preventDefault(); });
-		AE.addEvent(window, 'touchmove', (e) => { e.preventDefault(); onMouseMove(e); }, { passive:false });	
-		AE.addEvent(window, 'touchstart', (e) => { onMouseDown(e); });
-		AE.addEvent(window, 'touchend', (e) => { onMouseUp(e); });
-
-		this.events = new Events(this, PointerEvents);
+		Engine.events.register(this, { mousemove, mouseup, mousedown });
 	}
 }
 

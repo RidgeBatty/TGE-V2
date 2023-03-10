@@ -19,6 +19,7 @@ export class TControl extends TComponent {
         this._isVisible = false;    
         this._createVisible = 'isVisible' in o ? o.isVisible : true;
         this._isEnabled = true;
+        this._isHovered = false;
     }
 
     get isEnabled() { return this._isEnabled }
@@ -28,7 +29,7 @@ export class TControl extends TComponent {
         if (v === true) {
             if (this._isVisible == false) {
                 this.events.fire('show', {});
-                this.onShow();
+                if (this.onShow) this.onShow();
             }
             this._isVisible = true;                
             return;
@@ -36,7 +37,7 @@ export class TControl extends TComponent {
         if (v === false) {        
             if (this._isVisible == true) {
                 this.events.fire('hide', {});
-                this.onHide();
+                if (this.onHide) this.onHide();
             }
             this._isVisible = false;
         }         
@@ -76,9 +77,6 @@ export class TControl extends TComponent {
         if (this._createVisible) this.isVisible = true;
     }
 
-    onShow(e) {}
-    onHide(e) {}
-    
     onClick(e) {}
     onMouseDown(e) {        
         const hit = this.getTopmostChildAt(e.position);
@@ -92,6 +90,8 @@ export class TControl extends TComponent {
     }
     onMouseMove(e) {}
     onWheel(e) {}
+    onMouseOver(e) {}                                           // called by TUI on mouse over
+    onMouseOut(e) {}                                            // called by TUI on mouse out
         
     draw() {     
         if (!this.isVisible) return;    

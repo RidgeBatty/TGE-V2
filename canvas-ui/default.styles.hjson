@@ -36,6 +36,7 @@ color : {
     clCheckboxMark              : 'lime'
     clClientArea                : 'white'               # Represents the color of client area in listboxes and similar elements
     clCaret                     : 'white' 
+    clHoverHilite               : 'red'
 }
 
 background : {

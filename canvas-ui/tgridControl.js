@@ -16,18 +16,43 @@ export class TGridControl extends TFocusControl {
         this._size          = ('size' in o) ? o.size : V2(32, 32);
         this._gridSize      = ('gridSize' in o) ? o.gridSize : V2(0, 0);
         this._gridItemSize  = ('gridItemSize' in o) ? o.gridItemSize : V2(0, 0);
-        this.gridGap        = 2;
+        this.gridGap        = 3;
         this.customGridDraw = null;
+        this.gridRects      = [];
+        this.activeItem     = -1;
 
         this.recalculate();
     }
 
+    onMouseMove(e) {
+        const { _gridSize, _gridItemSize, gridGap } = this;
+        const g = V2(gridGap, gridGap);
+        const p = e.position.sub(this.absoluteOffset);
+        const v = Vec2.Div(p, Vec2.Add(_gridItemSize, g));        
+        const i = Vec2.ToInt(v);        
+
+        const gapPercentage = Vec2.Div(g, Vec2.Add(_gridItemSize, g));                                                      // calculate gap width as percentage
+        if (v.x - i.x <= gapPercentage.x || v.y - i.y <= gapPercentage.y) return this.activeItem = -1;                      // if the position is in the gap, set active item to -1 and leave
+        this.activeItem = i.y * _gridSize.x + i.x;
+    }
+
     get gridSize() { return this._gridSize.clone(); }
 
+    /**
+     * Reconstruct the grid rectangle cache and "size" property
+     */
     recalculate() {
         const { _gridSize, _gridItemSize, gridGap } = this;
         if (this._size == 'auto') {
             this.size = V2(_gridSize.x * (_gridItemSize.x + gridGap) + gridGap, _gridSize.y * (_gridItemSize.y + gridGap) + gridGap);
+
+            this.gridRects.length = _gridSize.x + _gridSize.y;
+            const g = this._gridItemSize;
+            for (let y = 0; y < _gridSize.y; y++) {
+                for (let x = 0; x < _gridSize.x; x++) {
+                    this.gridRects[y * _gridSize.x + x] = RECT(gridGap + x * (g.x + gridGap), gridGap + y * (g.y + gridGap), g.x, g.y);
+                }
+            }
         }
     }
 
@@ -43,13 +68,18 @@ export class TGridControl extends TFocusControl {
         s.clipRect(this.clientRect);        
 
         //s.ctx.save();
-        
-        const g = this._gridItemSize;
-        
+                        
         for (let y = 0; y < _gridSize.y; y++)
-            for (let x = 0; x < _gridSize.x; x++) {
-                const r = RECT(gridGap + x * (g.x + gridGap), gridGap + y * (g.y + gridGap), g.x, g.y);                
+            for (let x = 0; x < _gridSize.x; x++) {                
+                const index = y * _gridSize.x + x;
+                const r = this.gridRects[index];
+
                 s.drawRect(r, { stroke:settings.cl3DDkShadow });
+                if (this.activeItem == index) {                                                                 // active item
+                    s.drawRect(r, { stroke:settings.clBtnShadow });                                                      
+                    s.drawRect(r.clone().expand(1), { stroke:settings.clHoverHilite });                                  
+                }
+
                 if (this.customGridDraw) this.customGridDraw({ surface:s, rect:r, position:V2(x, y) });
             }
         

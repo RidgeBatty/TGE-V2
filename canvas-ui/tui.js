@@ -18,6 +18,7 @@ export class TUI extends TControl {
         this.components = [];
         this.isCanvasUI = true;
         this.defaults   = {};                       // defaults are loaded from "default.styles.hjson"
+        this.windows    = {};
 
         this.draggedControl = null;
         this.activeWindow   = null;
@@ -42,6 +43,7 @@ export class TUI extends TControl {
                 }
             }                        
         }
+
         const mousemove = e => {
             const d = this.draggedControl;
             if (d) {                
@@ -54,24 +56,46 @@ export class TUI extends TControl {
                 if (d.onDrag) d.onDrag(e);
             }       
 
-            this.hoveredControl = null;
-            
-            const windows = this.components.filter(e => e.isDescendantOf('TCustomWindow'));
-            
-            for (const c of windows) { 
-                if (c.isVisible && c.absoluteRect.isPointInside(e.position)) {                    
-                    if (this.hoveredControl == null && c.onMouseOver) c.onMouseOver(e);
-                    this.hoveredControl = c;
-                    c.onMouseMove(e);
+            // Simulate mouse over (Note! this MUST BE simulated because there are no HTMLElements to launch the real mouseover event!)
+            let comp = this.getTopmostChildAt(e.position);
+            if (comp == null) {
+                for (let c of this.children) if (c._isHovered) {
+                    c._isHovered = false;
+                    c.onMouseOut(e);                    
+                }
+                return;
+            }
+
+            // if at least one component on top level has mouse over it, continue to its children:
+            const list = [];
+            if (comp) list.push(comp);
+            while (list.length > 0) {                
+                comp = list.pop();
+                const isInside = comp.absoluteRect.isPointInside(e.position);
+                
+                if (isInside) {            
+                    comp.onMouseMove(e);
+                    if (!comp._isHovered) {
+                        comp._isHovered = true;
+                        comp.onMouseOver(e);
+                    }
+                    list.push(...comp.children);
+                } else {
+                    if (comp._isHovered) {
+                        comp._isHovered = false;
+                        comp.onMouseOut(e);                    
+                    }
                 }
             }
         }
+
         const mouseup   = e => {
             this.draggedControl = null;
             
             const hit = this.getTopmostChildAt(e.position);        
             if (hit == null) return;
-
+            
+            this.engine.events.stopPropagation('mouseup');                                                      // prevent propagation if a window was hit (i.e. click doesn't go "through" the window)           
             hit.onMouseUp(e);            
         }
         
@@ -123,7 +147,10 @@ export class TUI extends TControl {
      * @param {TControl} list of TControl descendants
      */
     addChildren(list) {
-        for (const ctrl of list) this.addInstance(ctrl);
+        for (const ctrl of list) {            
+            const i = this.addInstance(ctrl);
+            if (i.prototypes.includes('TCustomWindow') && i.name) this.windows[i.name] = i;
+        }
     }
     
     /**

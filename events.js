@@ -112,8 +112,8 @@ class Events {
             }
         }
     }
-
-    fire(name, args) {        
+    
+    fire(name, args) {       
         const e = this.#list[name];        
         if (!e || !this.isActive) return;
         const o = Object.assign({ instigator:this.owner, name }, args);
