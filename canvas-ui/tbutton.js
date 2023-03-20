@@ -1,8 +1,6 @@
 import { Vector2 as Vec2, V2, Rect, RECT } from '../types.js';
 import { TCaptionControl } from './tcaptionControl.js';
 
-const ImplementsEvents = 'mousedown mouseup';
-
 export class TButton extends TCaptionControl {    
     constructor(o) {        
         super(o);
@@ -14,9 +12,7 @@ export class TButton extends TCaptionControl {
         this.fetchDefaults('button');
 
         if ('settings' in o) Object.assign(this.settings, o.settings);
-        if ('caption' in o)  this._caption = o.caption;   
-                
-        this.events.create(ImplementsEvents);        
+        if ('caption' in o)  this._caption = o.caption;           
     }   
     
     onMouseDown(e) {

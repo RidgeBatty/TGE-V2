@@ -19,9 +19,27 @@ export class TGridControl extends TFocusControl {
         this.gridGap        = 3;
         this.customGridDraw = null;
         this.gridRects      = [];
-        this.activeItem     = -1;
 
-        this.recalculate();
+        this.selectedItem   = -1;
+        this.hoveredItem    = -1;                                       
+        this.downItem       = -1;                                                                                           // mouse was over this item on button down
+
+        this.recalculate();        
+    }
+
+    onMouseDown(e) {        
+        this.selectedItem = -1;
+        this.downItem     = this.hoveredItem;
+        const gridPos = V2(this.hoveredItem % this.gridSize.x, Math.floor(this.hoveredItem / this.gridSize.x));
+        this.events.fire('mousedown', { event:e, item:this.hoveredItem, gridPos });
+    }
+
+    onMouseUp(e) {        
+        const gridPos = V2(this.hoveredItem % this.gridSize.x, Math.floor(this.hoveredItem / this.gridSize.x));
+        this.events.fire('mouseup', { event:e, item:this.hoveredItem, gridPos });
+
+        if (this.downItem == this.hoveredItem) this.selectedItem = this.hoveredItem;                                        // set selectedItem only when MB down and MB up were on the same grid element            
+        this.events.fire('click', { event:e, item:this.selectedItem, gridPos });        
     }
 
     onMouseMove(e) {
@@ -32,11 +50,21 @@ export class TGridControl extends TFocusControl {
         const i = Vec2.ToInt(v);        
 
         const gapPercentage = Vec2.Div(g, Vec2.Add(_gridItemSize, g));                                                      // calculate gap width as percentage
-        if (v.x - i.x <= gapPercentage.x || v.y - i.y <= gapPercentage.y) return this.activeItem = -1;                      // if the position is in the gap, set active item to -1 and leave
-        this.activeItem = i.y * _gridSize.x + i.x;
+        if (v.x - i.x <= gapPercentage.x || v.y - i.y <= gapPercentage.y) return this.hoveredItem = -1;                     // if the position is in the gap, set active item to -1 and leave
+        this.hoveredItem = i.y * _gridSize.x + i.x;
     }
 
     get gridSize() { return this._gridSize.clone(); }
+
+    getData(pos) {
+        const index = pos.y * this._gridSize.x + pos.x;
+        if (index > -1 && index < this.gridRects.length) return this.gridRects[index].data;
+    }
+
+    setData(pos, data) {
+        const index = pos.y * this._gridSize.x + pos.x;
+        if (index > -1 && index < this.gridRects.length) this.gridRects[index].data = data
+    }
 
     /**
      * Reconstruct the grid rectangle cache and "size" property
@@ -75,7 +103,7 @@ export class TGridControl extends TFocusControl {
                 const r = this.gridRects[index];
 
                 s.drawRect(r, { stroke:settings.cl3DDkShadow });
-                if (this.activeItem == index) {                                                                 // active item
+                if (this.hoveredItem == index) {                                                                 // active item
                     s.drawRect(r, { stroke:settings.clBtnShadow });                                                      
                     s.drawRect(r.clone().expand(1), { stroke:settings.clHoverHilite });                                  
                 }

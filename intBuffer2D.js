@@ -27,6 +27,16 @@ export class IntBuffer2D {
         this.buffer = new Uint32Array(this.size.x * this.size.y);                
     }
 
+    /**
+     * Reallocates the buffer with new size
+     * @param {Vector2|number} w 
+     * @param {number} h height if first parameter is a number
+     */
+    resize(w, h) {
+        this.size   = Vec2.IsVector2(w) ? V2(w.x, w.y) : V2(w, h);
+        this.buffer = new Uint32Array(this.size.x * this.size.y);                
+    }
+
     get objectType () { return 'IntBuffer2D' }
     get bounds() { return RECT(0,0,this.size.x,this.size.y) }
     get length() { return this.size.x * this.size.y; }
@@ -157,10 +167,13 @@ export class IntBuffer2D {
         return t;
     }
 
-    copyToSurface(canvasSurface) {
+    copyToSurface(canvasSurface, position = Vec2.Zero()) {
         canvasSurface.width  = this.width;
         canvasSurface.height = this.height;
-        canvasSurface.ctx.putImageData(this.buffer, 0, 0);
+
+        const idata = new Uint8ClampedArray(this.buffer.buffer);        
+
+        canvasSurface.ctx.putImageData(new ImageData(idata, this.width, this.heighth), position.x, position.y);
     }
     
     /**

@@ -60,8 +60,9 @@ class AssetManager {
         });
 
         this.assets = {
-            actors : [],
-            images : []
+            actors        : [],
+            images        : [],
+            emitterParams : [],                                                  // particle system emitter parameters
         };
 
         if (assignAsDefault) this.engine.assetManager = this;

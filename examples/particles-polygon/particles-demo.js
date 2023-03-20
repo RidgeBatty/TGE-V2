@@ -6,25 +6,21 @@ const Engine = TGE.Engine;
 
 const main = async () => {        
     // First let's set up the engine    
-    Engine.setRootElement('game');
-    Engine.setFlags({ hasEdges:false, hasRenderingSurface:true });
+    await Engine.setup('../../settings.hjson');
     
-    try {
-        // create background actor
-        Engine.gameLoop.add('actor', { imgUrl:'img/level1.jpg', scale:1.125, position:Engine.dims.mulScalar(0.5) });
-        
-        // create a particle system
-        const particleSystem = new ParticleSystem(Engine);
+    
+    try {        
+        Engine.gameLoop.add('actor', {                                                      // create background actor
+            imgUrl:'img/level1.jpg', scale:1.125, position:Engine.dims.mulScalar(0.5) 
+        });
+                
+        const particleSystem = new ParticleSystem(Engine);                                  // create a particle system
+        const params  = await getJSON('shape-emitter.hjson');                               // load emitter parameters from a HJSON file
 
-        // load emitter parameters from a HJSON file
-        const params = await getJSON('shape-emitter.hjson');
+        params.surface = Engine.renderingSurface;
+        const emitter = await particleSystem.addEmitter(params);                            // create an emitter
         
-        // create an emitter
-        const emitter = particleSystem.addEmitter(params);                
-        emitter.analyze(params);        
-
-        // start the emitter and set initial position (to center of the screen)
-        emitter.start();   
+        emitter.start();                                                                    // start the emitter and set initial position (to center of the screen)
         emitter.position = Engine.dims.mulScalar(0.5);
 
         // set the emitter pivot position to match mouse position on every tick - effectively making the emitted particles spawn at mouse cursor

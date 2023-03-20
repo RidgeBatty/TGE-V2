@@ -378,7 +378,9 @@ class Actor extends Root {
 
 		const { img } = this;
 		const c = this.surface.ctx;		
-		c.globalAlpha = this.opacity;		
+
+		c.globalAlpha = this.opacity;
+		if (this.filter) c.filter = this.filter;
 
 		this._renderFlipbooks(c);
 		
@@ -395,6 +397,7 @@ class Actor extends Root {
 				else c.drawImage(img, 0, 0);			
 		}
 
+		if (this.filter) c.filter = 'none';
 		c.globalAlpha = 1;
 
 		if (this.hasColliders && this.renderHints.showColliders && this.owner.flags.showColliders) this.colliders.update();			

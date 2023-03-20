@@ -56,6 +56,10 @@ class Sequence {
 		
 		return s;
 	}
+
+	get frame() {
+		return this.index - this.start;
+	}
 	
 	set loop(value) {
 		if (typeof value === 'boolean') {
@@ -304,6 +308,9 @@ class Flipbook {
 
 					if ('direction' in fb) seq.direction = fb.direction;					// flipbook direction is "global" for all sequences...
 					if ('direction' in s) seq.direction = s.direction;						// ...but you can override it on ever sequence individually
+
+					if ('loop' in fb) seq.loop = fb.loop;
+					if ('loop' in s) seq.loop = s.loop;
 				}
 			}
 				else
@@ -313,6 +320,9 @@ class Flipbook {
 					const seq = flipbook.addSequence({ name:s.name, startFrame : s.frames.from, endFrame : s.frames.to, loop:s.loop });					
 					if ('direction' in fb) seq.direction = fb.direction;					// flipbook direction is "global" for all sequences...
 					if ('direction' in s) seq.direction = s.direction;						// ...but you can override it on ever sequence individually
+
+					if ('loop' in fb) seq.loop = fb.loop;
+					if ('loop' in s) seq.loop = s.loop;
 				}
 			}
 				else throw 'Unknown Flipbook type in asset file';

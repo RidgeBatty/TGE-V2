@@ -8,6 +8,8 @@ class TileMap {
 		this.overlays  = [];
 		this.colliders = {};
 		this.origin    = '';
+		this.outOfBoundsId       = -1;													// return this number for a tile when the coordinates are out of map bounds
+		this.outOfBoundsCallback = null;												// call this function when tile access is out of bounds
 
 		this._size     = V2(0, 0);
 		this.tiles     = new Uint32Array();		
@@ -59,13 +61,18 @@ class TileMap {
 	}
 
 	tileAt(x, y) {
-		if (y < 0 || y >= this.height || x < 0 || x >= this.width) throw 'Tile coordinates out of range';
+		if (y < 0 || y >= this.height || x < 0 || x >= this.width) {
+			if (this.outOfBoundsCallback) this.outOfBoundsCallback(x, y);
+			return this.outOfBoundsId;
+		}
 		return this.tiles[y * this.size.x + x];
 	}
 
-	setTileAt(x, y, v) {
-		//if (v < 0 || v >= this.textures.length) throw 'Texture ID out of range (' + v + ')';
-		if (y < 0 || y >= this.height || x < 0 || x >= this.width) throw 'Tile coordinates out of range';
+	setTileAt(x, y, v) {		
+		if (y < 0 || y >= this.height || x < 0 || x >= this.width) {
+			if (this.outOfBoundsCallback) this.outOfBoundsCallback(x, y);
+			return this.outOfBoundsId;
+		}			
 		this.tiles[y * this.size.x + x] = v;
 	}
 
@@ -132,7 +139,7 @@ class TileMap {
 		return new Promise(async (resolve, reject) => {
 			let map = new TileMap();
 			try {				
-				if (data.tiles.length > 0) {		
+				if ('tiles' in data && data.tiles.length > 0) {		
 					let rowLen = 0;
 					map.resize(data.tiles.length, data.tiles[0].split(' ').length);							// create the buffer				
 					

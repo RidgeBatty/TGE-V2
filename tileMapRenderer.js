@@ -209,7 +209,6 @@ class TileMapRenderer extends CustomLayer {
 
 	async parseStaticActorsFromObject(objects) {
 		console.warn('Parsing actors...');
-		console.log(objects);
 
 		for (const o of objects) {
 			const texture  = this.map.textures[o.texture];	
@@ -266,6 +265,8 @@ class TileMapRenderer extends CustomLayer {
 		Object.assign(params, o);
 
 		const actor = this.engine.gameLoop.createTypedActor('obstacle', params);							// create the actor		
+		actor.isStaticActor = true;
+
 		if (onAfterCreate) onAfterCreate(actor);
 
 		if (params.mirrorX) actor.renderHints.mirrorX = true;
@@ -435,6 +436,7 @@ class TileMapRenderer extends CustomLayer {
 		
 		const ctx    = this.buffer.ctx;		
 		const size   = this.tileSize;
+		const height = size * this.aspectRatio;																				// tile height
 		const camPos = (world == null) ? position : world.camPos;
 		
 		ctx.resetTransform();
@@ -467,16 +469,18 @@ class TileMapRenderer extends CustomLayer {
 				const hasOverlay = id > 255;
 				const overlayId  = (id >> 8) - 1;
 				const tex        = map.textures[tileId];
-
+										
+				// NOTE! offset images upwards in y-direction if the height of the texture is greater than width * aspectRatio
+				
 				if (this.flags.ownerDraw && tex) {		
 					if (tex.canvas.width == 0 || tex.canvas.height == 0) imageDataPending++;
 						else
-					ctx.drawImage(tex.canvas, p.x, p.y);												
+					ctx.drawImage(tex.canvas, p.x, p.y + height - tex.canvas.height);
 
 					if (hasOverlay && map.overlays[overlayId]) {							
 						const overlayImg = map.overlays[overlayId];
 						if (overlayImg.canvas.width == 0 || overlayImg.canvas.height == 0) imageDataPending++;
-							else ctx.drawImage(map.overlays[overlayId].canvas, p.x, p.y);
+							else ctx.drawImage(overlayImg.canvas, p.x, p.y + height - overlayImg.canvas.height);
 					}
 				}				
 				this.events.fire('customdraw', { renderer:this, x, y, ctx, tileId, overlayId, drawPos:p });				
@@ -572,6 +576,11 @@ class TileMapRenderer extends CustomLayer {
 
 	tick() {		
 		//console.log((Engine.gameLoop.tickCount / 60).toFixed());
+		const s = this.getViewportStaticActors();
+		for (const a of this.engine.gameLoop.actors) {
+			if (a.isStaticActor) a.isVisible = false;
+		}
+		for (const a of s) a.isVisible = true;		
 		
 		if ('target' in this.params) {	
 			this.rotation = this.params.target.rotation;

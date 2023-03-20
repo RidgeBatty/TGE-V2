@@ -315,6 +315,7 @@ class GameLoop {
 			return o;
 		}
 
+		let a;
 		if (aType == 'layer') {
 			a = new Layer(o);
 			a.objectType = aType;			

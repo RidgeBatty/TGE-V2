@@ -33,7 +33,7 @@ export class TCustomWindow extends TFocusControl {
 
         this.onRecalculate();
 
-        this.events.create('show hide');        
+        this.events.create(ImplementsEvents);        
     }
 
     get caption() {

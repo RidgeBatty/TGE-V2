@@ -7,7 +7,7 @@
 import { Vector2 as Vec2, V2, Rect, RECT } from '../types.js';
 import { TComponent } from './tcomponent.js';
 
-const ImplementsEvents = 'click mousedown mousemove mousemove wheel';
+const ImplementsEvents = 'click mousedown mouseup mousemove wheel';
 /**
  * Represents a (visual) component which can be drawn on the canvas and interact with the mouse
  */
@@ -20,6 +20,8 @@ export class TControl extends TComponent {
         this._createVisible = 'isVisible' in o ? o.isVisible : true;
         this._isEnabled = true;
         this._isHovered = false;
+
+        this.events.create(ImplementsEvents);
     }
 
     get isEnabled() { return this._isEnabled }

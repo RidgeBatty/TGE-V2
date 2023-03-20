@@ -10,7 +10,8 @@ import { V2, Vector2 as Vec2, RECT } from './types.js';
 
 class CustomLayer extends Root {
     /**
-     * 
+     * Creates a new customLayer which has an internal backbuffer canvas "buffer". The buffer is flipped on the "surface" during gameLoop.update().
+	 * The default "surface" is Engine.renderingSurface.
      * @param {object} o  
 	 * @param {GameLoop?} o.owner Optional reference to the owning gameLoop
 	 * @param {number?} o.zIndex
@@ -47,6 +48,10 @@ class CustomLayer extends Root {
         this.owner.removeFromZLayers(this);        
     }
     
+	/**
+	 * Call this to update the dimensions of the internal buffer surface. 
+	 * First call will automatically create the buffer surface if it doesn't exist already.
+	 */
     updateViewport() {
         const { engine, _bufferSize } = this;
 		const width  = _bufferSize ? _bufferSize.x : engine.viewport.width;

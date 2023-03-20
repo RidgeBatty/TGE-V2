@@ -154,26 +154,32 @@ class Emitter extends EventBroadcaster {
 	 * DO NOT CALL MANUALLY!
 	 * Set initial state for this emitter. Called internally by Emitter.start()
 	 */
-	async _initEmitter(params) {		
-		this._params     = AE.clone(params);
+	async _initEmitter(params) {				
+		const deepCopy = (o) => {
+			if (typeof o !== 'object' || o === null) return o;		
 
-		// AE.clone can't clone a CanvasSurface!
-		this._params.surface = params.surface;
+			const result = Array.isArray(o) ? [] : {};
+			for (let key in o) {
+				if (key == 'surface') return o;
+				if (key == 'img' && o.img instanceof Image) return o;
 
-		// AE.clone can't clone an Image object!!!
-		if ('initParticle' in params && 'img' in params.initParticle && params.initParticle.img instanceof Image) {
-			this._params.initParticle.img = params.initParticle.img;
+				let value = o[key];
+				result[key] = deepCopy(value);
+			}
+			return result;
 		}
+
+		this._params     = deepCopy(params);													// make a copy of the params object (excluding complex objects) so that params cannot be modified outside!
 				
 		this.name	     = ('name') in params ? params.name : null;
-		this.emitSpeed   = params.emitSpeed || 1;				// how many particles to emit per tick?	1 = 60/second
-		this.angle 	 	 = calc('angle', params);	  // rotation of the emitter				
-		this.delay	     = calc('delay', params);	  // emitter start delay
+		this.emitSpeed   = params.emitSpeed || 1;												// how many particles to emit per tick?	1 = 60/second
+		this.angle 	 	 = calc('angle', params);	  											// rotation of the emitter				
+		this.delay	     = calc('delay', params);	  											// emitter start delay
 		this.maxDelay    = params.delay || 0;		
 		this.textContent = params.textContent || '';			
-		this.emitCount   = params.emitCount || 0;				// 0 = emit unlimited number of particles
+		this.emitCount   = params.emitCount || 0;												// 0 = emit unlimited number of particles
 		this.emitSurface = params.emitSurface || false;
-		this.emitMax     = ('emitMax' in params) ? params.emitMax : Infinity;	// how many particles to emit total?		
+		this.emitMax     = ('emitMax' in params) ? params.emitMax : Infinity;					// how many particles to emit total?		
 		this.activeParticleCount = 0;
 		this.compositeOperation  = ('compositeOperation' in params) ? params.compositeOperation : null;
 		this.destroyOnComplete   = ('destroyOnComplete' in params) ? params.destroyOnComplete : true;
@@ -243,6 +249,7 @@ class Emitter extends EventBroadcaster {
 			this._imageList = await preloadImages({ urls });
 		}		
 		
+		this.particles.length = 0;
 		this._createParticles(params.maxDrawCount);		
 	}
 	
@@ -570,7 +577,7 @@ class Emitter extends EventBroadcaster {
 
 			// shape
 			if (particle.shape) {
-				const fill = ('outColor' in particle) ? particle.outColor : particle.fillColor.css;				// outColor = calculated property, fillColor = css
+				const fill = ('outColor' in particle) ? particle.outColor.css : particle.fillColor.css;				// outColor = calculated property, fillColor = css
 				if (particle.shape == 1) this.surface.drawCircle(Vec2.Zero(), 1, { fill });
 				if (particle.shape == 2) this.surface.drawRectangle(-1, -1, 2, 2, { fill });						
 				if (particle.shape == 3) this.surface.drawPolyCut(particle.points.a, particle.points.b, { fill });

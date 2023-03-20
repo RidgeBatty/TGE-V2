@@ -421,6 +421,10 @@ class Color extends BaseColor {
 	get int() {
 		return (this.value[0] << 24) + (this.value[1] << 16) + (this.value[2] << 8) + this.value[3];
 	}
+
+	get uint() {
+		return ((this.value[0] << 24) + (this.value[1] << 16) + (this.value[2] << 8) + this.value[3]) >>> 0;
+	}
 	
 	/**
 	 * Returns a CSS representation of the color 
@@ -812,6 +816,7 @@ class VectorBase {
 			}		
 		}
 	}
+
 }
 
 /*

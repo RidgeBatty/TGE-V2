@@ -4,7 +4,7 @@
     type : 'circle'                                                         # circle emitter has several additional parameters (optional)
     radius : 5                                                              # radius of spawn area    
     position: { x: 540, y: 335 },                                           # NOTE! the position is the center point of the emitter
-    maxDrawCount: 500                                                       # draw max. 500 particles at any given time
+    maxDrawCount: 50                                                       # draw max. 500 particles at any given time
     emitSpeed: 5                                                            # emit 5 particles/frame    
     initParticle: {                                                         # how particles are initialized at birth?
         shape: {                                                            # use a shape instead of an image
