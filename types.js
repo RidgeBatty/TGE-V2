@@ -1160,7 +1160,7 @@ class Vector2 extends VectorBase {
 	 * @param {number=1} scale 
 	 * @returns {Vector2}
 	 */
-	static FromAngle(angle, scale = 1) { return new Vector2(Math.sin(angle) * scale, -Math.cos(angle) * scale); }
+	static FromAngle(angle, scale = 1) { return new Vector2(-Math.sin(angle) * scale, Math.cos(angle) * scale); }
 	static IsVector2(a) { return (AE.isObject(a) && a.constructor === Vector2.prototype.constructor); }
 
 	/**

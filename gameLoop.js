@@ -101,6 +101,10 @@ class GameLoop {
 		this._tickRate = 1000 / AE.clamp(fps, 1, 1000);
 	}
 
+	get tickRate() {
+		return this._tickRate;
+	}
+
 	/**
 	 * Returns GameLoop running time in seconds
 	 */

@@ -13,9 +13,10 @@ export class AnimationEditor extends Flipbook {
      * @param {*} dims 
      * @param {*} order 
      */
-    convertFramesToAtlas(sequences, dims, order = 'sequence-per-row') {
+    convertFramesToAtlas(sequences, images, dims, order = 'sequence-per-row') {
         let atlas;
         const frames = [];
+
         if (order == 'sequence-per-row') {
             let y = 0;
             let atlasWidth = 0;
@@ -33,6 +34,29 @@ export class AnimationEditor extends Flipbook {
                 if (x > atlasWidth) atlasWidth = x;
                 y += tallest;                
             }
+
+            atlas = new Texture('atlas', { width:atlasWidth, height:y });            
+            for (const f of frames) atlas.ctx.drawImage(f.img, f.x, f.y);                           // draw the frames on the atlas' canvas                            
+        } else
+        if (order == 'dims') {
+            let x = 0, y = 0, xCount = 0;
+            let atlasWidth = 0, img;
+            
+            for (img of images) {                                
+                frames.push({ x, y, img });
+
+                x += img.width || img.naturalWidth;
+                xCount++;
+
+                if (x > atlasWidth) atlasWidth = x;
+                if (xCount == dims.x) {
+                    xCount = 0;
+                    x = 0;
+                    y += img.height || img.naturalHeight;
+                }
+            }
+
+            if (xCount < dims.x) y += img.height || img.naturalHeight;
 
             atlas = new Texture('atlas', { width:atlasWidth, height:y });            
             for (const f of frames) atlas.ctx.drawImage(f.img, f.x, f.y);                           // draw the frames on the atlas' canvas                            

@@ -101,7 +101,7 @@ class Actor extends Root {
 		 *  @memberof Actor
 		 *  @type {Actor#movement}
 		 */
-		AE.sealProp(this, 'movement', new ActorMovement(this));								// movement object (TO-DO: might need a Class?)
+		AE.sealProp(this, 'movement', new ActorMovement());								// movement object (TO-DO: might need a Class?)
 		AE.sealProp(this, 'data', ('data' in o) ? o.data : {});								// Container for custom user data
 		AE.sealProp(this, 'surface');
 
@@ -267,6 +267,7 @@ class Actor extends Root {
 		actor.flags       = Object.assign({}, this.flags);
 		actor.renderHints = Object.assign({}, this.renderHints);
 		actor.isVisible   = this.isVisible;
+		actor.movement    = structuredClone(this.movement);
 
 		// include gameloop flag overrides
 		if (this.owner.flags.showColliders) actor.renderHints.showColliders = true;
@@ -436,10 +437,16 @@ class Actor extends Root {
 			if (this.movement.speed > this.movement.maxVelocity) this.movement.speed = this.movement.maxVelocity;
 		}
 
-		if (this.movement) {																				// apply movement parameters, velocity and velocity cap
+		if (this.movement.isEnabled) {																		// apply movement parameters, velocity and velocity cap
 			this.rotation += this.movement._angularSpeed;
 			var len = this.velocity.length;
 			if (len > this.movement.maxVelocity) this.velocity.normalize().mulScalar(this.movement.maxVelocity);	
+			
+			if (this.path) {
+				const direction = this.updatePath();
+				if (direction) this.velocity.set(Vec2.FromAngle(direction).mulScalar(this.movement.speed / this.owner.tickRate));
+			}
+
 			this.moveBy(this.velocity);				
 		}
 				
@@ -566,6 +573,33 @@ class Actor extends Root {
 		
 		return p;
 	}
+
+	updatePath() {    
+		const { path, data } = this;
+			
+		if (path) {
+			if (!this.pathTarget) this.pathTarget = 0;
+	
+			const point = path.points[this.pathTarget];
+			const delay = path.delay ? path.delay[this.pathTarget] : 0;
+	
+			if (Vec2.IsEqual(this.position, point, 0.1)) {
+				if (delay > 0 && data.pathDelay == null) data.pathDelay = delay;
+				if (data.pathDelay > 0) {
+					data.pathDelay -= 1/60;
+					if (data.pathDelay > 0) return;
+					data.pathDelay = null;                
+				}
+	
+				this.pathTarget++;
+				if (this.pathTarget >= path.points.length) this.pathTarget = 0;                
+			} else {
+				const angle = Vec2.Sub(this.position, point).normalize().toAngle();				
+				return angle;
+			}
+		}
+		return null;
+	}	
 }
 
 export { Actor, Enum_ActorTypes, ActorMovement }; 

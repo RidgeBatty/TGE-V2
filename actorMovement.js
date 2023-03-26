@@ -1,7 +1,10 @@
 class ActorMovement {
-	constructor(actor) {
-		this._actor = actor;		
-		this.from({
+	constructor() {	
+		Object.assign(this, ActorMovement.DefaultProperties);
+	}
+
+	static get DefaultProperties() {
+		return {
 			acceleration    : 1,		// this is the increment/multiplier applied to velocity on each tick
 			maxVelocity     : 1,		// this is the maximum speed physics simulation allows Actor.velocity to reach.
 			friction        : 0.2, 		// constant scalar multiplier to resist movement: 1.0 instant stop (100% speed reduction), 0.25: reduce speed by 25% per frame
@@ -11,13 +14,12 @@ class ActorMovement {
 
 			targetProximity : 20,		// when following a target, switch from acceleration to deceleration when distance is less than "targetProximity" pixels
 			orbitRadius     : 100,		// orbital radius upon reaching target (in pixels)
-			orbitOffset     : 0,			// position to aim on the target's orbit (in radians)
+			orbitOffset     : 0,		// position to aim on the target's orbit (in radians)
 			orbitDuration   : 0.07,		// how long it takes for this actor to orbit the target? (in revolutions per second)
-		});
-	}
 
-	from(o) {
-		Object.assign(this, o);
+			speed           : 1,	    // sometimes using "speed" variable might make more sense than working with velocity (see --> Actor.path)			
+			isEnabled       : true,
+		}
 	}
 
 	set angularSpeed(value) {

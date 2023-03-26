@@ -18,6 +18,7 @@ class CanvasSurface {
 	 * @param {object=} o.flags Optional.
 	 * @param {string=} o.name Optional.
 	 * @param {Canvas=} o.canvas Optional.
+	 * @param {boolean=} o.preferOffscreenCanvas Optional flag.
 	 */
 	constructor(o = {}) {	
 		if ('canvas' in o) {
@@ -369,11 +370,11 @@ class CanvasSurface {
 	drawRectangle(x, y, w, h, p = { stroke:'black' }) {
 		if (p.fill) { 
 			this.ctx.fillStyle = p.fill; 			
-			this.ctx.fillRect(~~x + 0.5, ~~y + 0.5, ~~w, ~~h); 
+			this.ctx.fillRect(~~x, ~~y, ~~w, ~~h); 
 		}
 		if (p.stroke) {			
 			this.ctx.strokeStyle = p.stroke; 
-			this.ctx.strokeRect(~~x + 0.5, ~~y + 0.5, ~~w, ~~h);
+			this.ctx.strokeRect(~~x, ~~y, ~~w, ~~h);
 		}
 	}
 
@@ -387,11 +388,11 @@ class CanvasSurface {
 	drawRect(r, p = {}) {
 		if (p.fill) { 
 			this.ctx.fillStyle = p.fill; 			
-			this.ctx.fillRect(~~r.left + 0.5, ~~r.top + 0.5, ~~r.width, ~~r.height); 			
+			this.ctx.fillRect(~~r.left, ~~r.top, ~~r.width, ~~r.height); 			
 		}
 		if (p.stroke) {			
 			this.ctx.strokeStyle = p.stroke; 
-			this.ctx.strokeRect(~~r.left + 0.5, ~~r.top + 0.5, ~~r.width, ~~r.height);
+			this.ctx.strokeRect(~~r.left, ~~r.top, ~~r.width, ~~r.height);
 		}
 	}
 
@@ -562,7 +563,7 @@ class CanvasSurface {
 
 	/**
 	 * 
-	 * @param {*} o 
+	 * @param {object} o 
 	 * @param {Rect} o.clip Clip rectangle
 	 * @param {Vector2} o.pos Draw position on the target canvas	 
 	 * @param {Vector2=} o.size Optional
@@ -584,13 +585,14 @@ class CanvasSurface {
 	
 	/**
 	 * Writes text on canvas
+	 * 
 	 * @param {Vector2} pos 
 	 * @param {string} text 
-	 * @param {Object} params Optional parameters object
+	 * @param {object} params Optional parameters object
 	 * @param {string=} params.font
 	 * @param {string=} params.color
 	 * @param {string=} params.textAlign
-	 * @param {string=} params.textBaseline
+	 * @param {string=} params.textBaseline ("top","hanging","middle","alphabetic","ideographic","bottom")
 	 */
 	textOut(pos, text, params) {
 		if (params) {

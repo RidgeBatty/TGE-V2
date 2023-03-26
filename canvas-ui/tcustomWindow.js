@@ -21,7 +21,6 @@ export class TCustomWindow extends TFocusControl {
             this.btClose  = this.add(TButton, { caption:'✖', position:V2(this.size.x - 30, 4), size:V2(26, 24) });
             this.btClose.onMouseUp = e => { this.close() }
         }
-        this.clientArea    = new TControl({ parent:this, position:V2(0, 32), size:V2(this.size.x, this.size.y - 32) });         // window client area        
 
         this.fetchDefaults('window'); 
 
@@ -147,8 +146,8 @@ export class TCustomWindow extends TFocusControl {
 
         if (this.background?.frame && this.background.frame.length > 0 && this.settings.useFrames) this.drawGridPattern();              // window frame
 
-        super.draw();                                                                                                                   // title bar text (caption)
-
+        super.draw();                                    
+        
         s.ctx.globalAlpha = 1;
 
         s.ctx.restore();    

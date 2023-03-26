@@ -63,7 +63,7 @@ export class TGridControl extends TFocusControl {
 
     setData(pos, data) {
         const index = pos.y * this._gridSize.x + pos.x;
-        if (index > -1 && index < this.gridRects.length) this.gridRects[index].data = data
+        if (index > -1 && index < this.gridRects.length) this.gridRects[index].data = data;
     }
 
     /**
