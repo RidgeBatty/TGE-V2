@@ -12,21 +12,26 @@ export class TListitem extends TCaptionControl {
         super(o);        
         this.settings    = {};        
         this.fetchDefaults('listitem');        
+
+        if ('data' in o) Object.assign(this.data, o.data);
+
+        this._clTextDefault = this.settings.clActiveText;
     }
 
     draw() {    
+        const { settings } = this;
         const s = this.surface;
-        
-        const { settings, clipRect } = this;
-
         const p = this.position;
+        
         s.ctx.save();
-        s.ctx.translate(p.x, p.y);
-
-        s.drawRect(this.clientRect, { stroke:settings.clListitemBorder, fill:settings.clListitemBackground });         
-
+        s.ctx.translate(p.x, p.y);        
+            
+        let fill = (this._isHovered) ? settings.clHoveredItem : settings.clItem;
+        s.drawRect(this.clientRect, { stroke:settings.clItemBorder, fill });                 
+        if (this._isHovered) settings.clActiveText = settings.clHoveredItemText;
+            else settings.clActiveText = this._clTextDefault;
+            
         s.ctx.restore();
-        s.clipRect(this.rect);        
         
         super.draw();                                                   // draw caption text       
     }

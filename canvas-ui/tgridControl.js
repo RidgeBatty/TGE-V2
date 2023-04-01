@@ -27,6 +27,10 @@ export class TGridControl extends TFocusControl {
         this.recalculate();        
     }
 
+    onMouseOut() {
+        this.hoveredItem = -1;
+    }
+
     onMouseDown(e) {        
         this.selectedItem = -1;
         this.downItem     = this.hoveredItem;
@@ -42,15 +46,17 @@ export class TGridControl extends TFocusControl {
         this.events.fire('click', { event:e, item:this.selectedItem, gridPos });        
     }
 
-    onMouseMove(e) {
+    onMouseMove(e) {        
         const { _gridSize, _gridItemSize, gridGap } = this;
         const g = V2(gridGap, gridGap);
-        const p = e.position.sub(this.absoluteOffset);
+        const p = e.position.clone().sub(this.absoluteOffset);
         const v = Vec2.Div(p, Vec2.Add(_gridItemSize, g));        
         const i = Vec2.ToInt(v);        
 
         const gapPercentage = Vec2.Div(g, Vec2.Add(_gridItemSize, g));                                                      // calculate gap width as percentage
+        if (v.x < 0 || v.y < 0 || v.x > _gridSize.x || v.y > _gridSize.y) return this.hoveredItem = -1;                     // mouse is outside of the grid dimensions
         if (v.x - i.x <= gapPercentage.x || v.y - i.y <= gapPercentage.y) return this.hoveredItem = -1;                     // if the position is in the gap, set active item to -1 and leave
+        
         this.hoveredItem = i.y * _gridSize.x + i.x;
     }
 

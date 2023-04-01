@@ -34,7 +34,7 @@ export class CustomEditor extends CustomLayer {
             text            : { font:'16px arial', color:'white' },
             size            : V2(40, 40),
             showCoordinates : true,
-            enableSnap      : true,
+            enableSnap      : false,
         }
         this.crosshair = {
             isVisible       : true,
@@ -81,8 +81,8 @@ export class CustomEditor extends CustomLayer {
             this.mouse.coords = this.snapToGrid(Vec2.ToInt(e.position));            
 
             if (e.event.shiftKey && e.dragging) {
-                const diff  = Vec2.Sub(this.mouse.startPos, e.position);
-                this.offset = Vec2.ToInt(diff); 
+                const diff  = Vec2.Sub(this.mouse.startPos, this.mouse.coords);                
+                this.offset = Vec2.ToInt(diff);                 
             }
 
             if (this.onMouseMove) this.onMouseMove(e, this.mouse);

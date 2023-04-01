@@ -16,6 +16,7 @@ export class TListbox extends TFocusControl {
 
         this._scroll      = 0;
         this.hoverItem    = null;
+        this.selectedItem = null;
         this.itemLength   = this.settings.itemLength;
         this.overflow     = V2(0, 0);
         this.itemAreaSize = V2(0, 0);
@@ -23,33 +24,46 @@ export class TListbox extends TFocusControl {
         if ('items' in o) this.add(o.items);
     }
 
-    add(item) {        
-        let items       = Array.isArray(item) ? item : [item];
-        let h           = this.itemLength;
-        let totalLength = 0;
-
+    add(item) {          
+        let items = Array.isArray(item) ? item : [item];
+        
         for (let i = 0; i < items.length; i++) {
             let caption, data;
             if (typeof items[i] == 'object') {
                 caption = items[i].caption;
-                data    = items[i].data;
+                data    = items[i].data;                
             } else
             if (typeof items[i] == 'string') {
                 caption = items[i];
             }
             
-            const c = super.add(TListitem, { size:V2(this.rect.width, h), position:V2(0, i * h), caption, data });
-            
-            c.settings.clInactiveBorder = '#111';
-            c.onMouseMove = (e) => {
-                if (this.rect.isPointInside(e.position)) {              // is mouse cursor inside the Listbox client rectangle?
-                    this.hoverItem = c;                                 // which item in the listbox is currently hovered?
-                }
-            }
+            const c = super.add(TListitem, { size:V2(this.rect.width - 2, this.itemLength), position:V2(0, i * this.itemLength), caption, data });            
+            c.settings.clInactiveBorder = '#111';   
 
-            totalLength += h;
+            // get the scroll offset for all listitems by reading the Listbox.scroll property
+            const _this = this;
+            Object.defineProperty(c, 'scrollOffset', {
+                get() { return V2(0, -_this.scroll) }
+            })
         }
-        this.itemAreaSize.y = Math.min(this.size.y, totalLength);
+
+        this.recalculate();        
+    }
+
+    onMouseDown = (e) => {    
+        const list = this.ui.hoveredControls.filter(f => f.control.parent == this);
+        if (list.length > 0) this.hoverItem = list[0].control;
+            else this.hoverItem = null;        
+    }        
+
+    onMouseMove = (e) => {    
+        const list = this.ui.hoveredControls.filter(f => f.control.parent == this);
+        if (list.length > 0) this.hoverItem = list[0].control;
+            else this.hoverItem = null;        
+    }        
+
+    recalculate() {
+        this.itemAreaSize.y = this.children.length * this.itemLength;         
         this.overflow.y     = Math.max(0, this.itemAreaSize.y - this.size.y); 
     }
 
@@ -73,19 +87,22 @@ export class TListbox extends TFocusControl {
     }
     
     draw() {    
-        const s = this.surface;        
         const { settings, clipRect } = this;
+        const s = this.surface;        
         const p = this.position;
-
+        
         s.ctx.translate(p.x, p.y);
-
         s.drawRect(this.clientRect, { stroke:settings.cl3DLight });         
+        
+        s.clipRect(clipRect);        
 
         s.ctx.save();
-        s.clipRect(clipRect);        
         
         s.ctx.translate(0, -this.scroll);
-        super.draw();                                                   // draw listitems
+   //     s.ctx.translate(this.scrollOffset.x, this.scrollOffset.y)
+
+        if (this.customDraw) this.customDraw({ surface:s, rect:this.clipRect });
+            else super.draw();                                                                       // draw listitems
         
         s.ctx.restore();
     }
@@ -95,7 +112,7 @@ export class TListbox extends TFocusControl {
      */
     get clipRect() {        
         const c = this.clientRect.moveBy(V2(2, 2));
-        c.size.sub(V2(3, 3));
+        c.size = c.size.sub(V2(3, 3));
         return c;
     }
 

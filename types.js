@@ -1187,6 +1187,18 @@ class Vector2 extends VectorBase {
 		}
 		return new Vector2(x, y);
 	}
+
+	static BoundingRect(v2s) {
+		const r = new Rect(Infinity, Infinity, -Infinity, -Infinity);
+		for (let i = 0; i < v2s.length; i++) {
+			const p = v2s[i];
+			if (p.x < r.left)   r.left   = p.x;  
+			if (p.y < r.top)    r.top    = p.y;
+			if (p.x > r.right)  r.right  = p.x;  
+			if (p.y > r.bottom) r.bottom = p.y;
+		}
+		return r;
+	}
 }
 
 /*

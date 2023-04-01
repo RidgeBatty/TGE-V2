@@ -22,6 +22,8 @@ export class TComponent {
         this.children = [];
         this.surface  = this.parent?.surface || this.surface;        
         this.events   = new Events(this, ImplementsEvents);
+
+        Object.defineProperty(this, 'data', { value:{}, configurable:false });
     }
 
     destroy() {
@@ -35,6 +37,16 @@ export class TComponent {
         
         this.events.fire('destroy', {});
         this.onDestroy();
+    }
+
+    get parents() { 
+        const p = []; 
+        let node = this; 
+        while (node.parent) { 
+            p.push(node.parent);
+            node = node.parent; 
+        } 
+        return p; 
     }
 
     get ui() {

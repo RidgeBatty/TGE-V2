@@ -13,8 +13,7 @@ export class TCaptionControl extends TControl {
         super(o);        
         this.settings    = {};
         this.fetchDefaults('caption');
-        if ('settings' in o) this.ui.applyProps(this.settings, o.settings);
-        
+        if ('settings' in o) this.ui.applyProps(this.settings, o.settings);        
         if ('caption' in o) this._caption = o.caption;        
     }
 

@@ -14,7 +14,14 @@ const ImplementsEvents = 'click mousedown mouseup mousemove wheel';
 export class TControl extends TComponent {
     constructor(o) {
         super(o);
+
+        if (o.align == 'x') {
+            const pc = this.parent.clientRect.center;
+            o.position = V2(pc.x - o.size.x * 0.5 + o.position.x, o.position.y);
+        }
+
         this.position   = 'position' in o ? o.position : V2(0, 0);
+        this.scrollOffset = V2(0, 0);
         this.size       = 'size' in o ? o.size : V2(0, 0);    
         this._isVisible = false;    
         this._createVisible = 'isVisible' in o ? o.isVisible : true;
@@ -25,6 +32,7 @@ export class TControl extends TComponent {
     }
 
     get isEnabled() { return this._isEnabled }
+    set isEnabled(v) { if (v === true || v === false) this._isEnabled = v; }
 
     get isVisible() { return this._isVisible; }
     set isVisible(v) {   
@@ -49,7 +57,7 @@ export class TControl extends TComponent {
      * Absolute coordinates
      */
     get absoluteOffset() {        
-        if (this?.parent?.absoluteOffset) return this.position.clone().add(this.parent.absoluteOffset);
+        if (this?.parent?.absoluteOffset) return this.position.clone().add(this.parent.absoluteOffset).add(this.scrollOffset);
         return this.position.clone();
     }
 
@@ -80,16 +88,8 @@ export class TControl extends TComponent {
     }
 
     onClick(e) {}
-    onMouseDown(e) {        
-        const hit = this.getTopmostChildAt(e.position);
-        if (!hit) return;
-        hit.onMouseDown(e);                    
-    }
-    onMouseUp(e) {
-        const hit = this.getTopmostChildAt(e.position);
-        if (!hit) return;
-        hit.onMouseUp(e);                    
-    }
+    onMouseDown(e) {}
+    onMouseUp(e) {}
     onMouseMove(e) {}
     onWheel(e) {}
     onMouseOver(e) {}                                           // called by TUI on mouse over
@@ -99,6 +99,7 @@ export class TControl extends TComponent {
         if (!this.isVisible) return;    
         
         for (const c of this.children) {
+            if (!c.isVisible) continue;
             this.surface.ctx.save();
             c.draw();
             this.surface.ctx.restore();

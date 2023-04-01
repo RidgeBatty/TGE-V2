@@ -25,23 +25,31 @@ export class TUI extends TControl {
         this.dragStartPos   = null;
         this.hoveredControl = null;
         this.activeControl  = null;
+        
+        this.mbDownControls  = [];                 // mouse down control (needs to be saved to complete click event)
+        this.hoveredControls = [];
 
         this.installEventHandlers();
     }
 
     installEventHandlers() {
         const mousedown = e => { 
-            const hit = this.getTopmostChildAt(e.position);
-            if (hit == null) return;
 
-            hit.onMouseDown(e);                        
-            
-            if (hit.isMovable && hit.dragActivationCtrl) {                      
-                if (hit.dragActivationCtrl.absoluteRect.isPointInside(e.position)) {                    
-                    this.draggedControl = hit;                    
-                    this.dragStartPos   = hit.position.clone();                            
-                }
-            }                        
+            let node = this;
+            while (node) {                                                                  // propagate click through the stack of controls under the mouse
+                node = node.getTopmostChildAt(e.position);
+                if (node == null) break;
+                
+                node.onMouseDown(e);                        
+                this.mbDownControls.push(node);
+              
+                if (node.isMovable && node.dragActivationCtrl) {                      
+                    if (node.dragActivationCtrl.absoluteRect.isPointInside(e.position)) {                    
+                        this.draggedControl = node;                    
+                        this.dragStartPos   = node.position.clone();                            
+                    }
+                }                        
+            }
         }
 
         const mousemove = e => {
@@ -56,47 +64,56 @@ export class TUI extends TControl {
                 if (d.onDrag) d.onDrag(e);
             }       
 
-            // Simulate mouse over (Note! this MUST BE simulated because there are no HTMLElements to launch the real mouseover event!)
-            let comp = this.getTopmostChildAt(e.position);
-            if (comp == null) {
-                for (let c of this.children) if (c._isHovered) {
-                    c._isHovered = false;
-                    c.onMouseOut(e);                    
-                }
-                return;
-            }
-
-            // if at least one component on top level has mouse over it, continue to its children:
-            const list = [];
-            if (comp) list.push(comp);
-            while (list.length > 0) {                
-                comp = list.pop();
-                const isInside = comp.absoluteRect.isPointInside(e.position);
+            // Simulate mouse over (Note! this MUST BE simulated because there are no HTMLElements to launch the real mouseover event!)                  
+            this.forAllChildren(child => {
+                if (!child.isEnabled || !child.isVisible) return;
                 
-                if (isInside) {            
-                    comp.onMouseMove(e);
-                    if (!comp._isHovered) {
-                        comp._isHovered = true;
-                        comp.onMouseOver(e);
+                let isInside = child.absoluteRect.isPointInside(e.position);                    
+                if (isInside) {
+                    child.onMouseMove(e);
+
+                    if (this.hoveredControls.find(f => f.control == child) == null) {
+                        this.hoveredControls.push({ hovered:true, control:child });
+                        child.onMouseOver(e);
+                        child._isHovered = true;
                     }
-                    list.push(...comp.children);
-                } else {
-                    if (comp._isHovered) {
-                        comp._isHovered = false;
-                        comp.onMouseOut(e);                    
-                    }
-                }
-            }
+                }                                                  
+            });
+                
+            this.hoveredControls.forEach(item => {                    
+                let isInside = item.control.absoluteRect.isPointInside(e.position);
+                if (!isInside) {
+                    item.control.onMouseOut(e);
+                    item.control._isHovered = false;
+                    item.hovered = false;                                            
+                }                        
+            });
+            
+            this.hoveredControls = this.hoveredControls.filter(f => f.hovered);
         }
 
         const mouseup   = e => {
-            this.draggedControl = null;
+            if (this.draggedControl) {
+                if (this.draggedControl.onDragEnd) this.draggedControl.onDragEnd(e);                
+                for (const h of this.hoveredControls) {                                                         // check which controls are hovered, when drag operation ends
+                    if (h.control.onDrop) h.control.onDrop(this.draggedControl);
+                }                
+                this.draggedControl = null;
+            }
             
-            const hit = this.getTopmostChildAt(e.position);        
-            if (hit == null) return;
+            let node = this;
+            while (node) {
+                node = node.getTopmostChildAt(e.position);        
+                if (node == null) break;
             
-            this.engine.events.stopPropagation('mouseup');                                                      // prevent propagation if a window was hit (i.e. click doesn't go "through" the window)           
-            hit.onMouseUp(e);            
+                //this.engine.events.stopPropagation('mouseup');                                                      // prevent propagation if a window was hit (i.e. click doesn't go "through" the window)           
+                node.onMouseUp(e);
+
+                const c = this.mbDownControls.shift();
+                if (node == c) node.onClick(Object.assign({}, e, { name:'click', control:node }));
+            }
+
+            this.mbDownControls.length = 0;
         }
         
         const keydown   = e => { if (this.activeWindow != null) this.activeWindow.onKeyDown(e); }

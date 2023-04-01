@@ -35,6 +35,10 @@ export class TCustomWindow extends TFocusControl {
         this.events.create(ImplementsEvents);        
     }
 
+    get clientOffset() {
+        return this.absoluteOffset.add(V2(0, this.titlebar.size.y));        
+    }
+
     get caption() {
         return this.titlebar?.caption;
     }
@@ -149,6 +153,8 @@ export class TCustomWindow extends TFocusControl {
         super.draw();                                    
         
         s.ctx.globalAlpha = 1;
+
+        if (this.onCustomDraw) this.onCustomDraw();
 
         s.ctx.restore();    
         

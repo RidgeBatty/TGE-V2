@@ -29,7 +29,9 @@ export class TImage extends TControl {
         s.ctx.translate(p.x, p.y);
 
         s.drawRect(this.clientRect, { stroke:settings.cl3DLight });         
-        s.clipRect(this.clientRect);        
+        s.clipRect(this.clientRect);     
+        
+        if ('bgColor' in this.settings) s.drawRect(this.clientRect.expand(-1), { fill:settings.bgColor });
         if (this._image != null) s.drawImage(this.offset, this._image);
 
         s.ctx.restore();

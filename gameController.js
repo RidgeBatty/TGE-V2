@@ -387,7 +387,7 @@ class PointerController {
 				m.dragStart.set(n);
 				m.dragging = true;				
 				if (this.joysticks.length > 0) setJoystickPosition(n, id, 'start');			
-				this.events.fire('start', { position:n, id });
+				this.events.fire('start', { position:n, id, button:evt.button });
 			}
 		}
 		
@@ -407,7 +407,7 @@ class PointerController {
 				m.direction = Math.atan2(m.rawPosition.x - m.rawDragStart.x, m.rawPosition.y - m.rawDragStart.y);
 				m.dragging  = false;
 				if (this.joysticks.length > 0) setJoystickPosition(Vec2.Zero(), id, 'end');
-				this.events.fire('end', { position:n, id });
+				this.events.fire('end', { position:n, id, button:evt.button });
 			}
 		}
 		
