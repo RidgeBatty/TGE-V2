@@ -338,6 +338,60 @@ class Actor extends Root {
 		if (len > this.movement.maxVelocity) this.velocity.normalize().mulScalar(this.movement.maxVelocity);	
 	}
 
+	_renderAnimations(c) {
+		const frames = [];
+		
+		let isOrdered = false;
+		for (const fb of this.flipbooks) {
+			const n = fb.customRender;					
+			if (n.img) {
+				let z = 0;
+				z = fb.sequence?.zOrder && Array.isArray(fb.sequence.zOrder) ? fb.sequence.zOrder[~~fb.sequence.frameIndex] : fb.sequence.zOrder;				
+				if (z != 0) isOrdered = true;
+				frames.push({ fb, n, z, index:~~fb.sequence.frameIndex, seq:fb.sequence });                
+			}
+		}
+
+		if (isOrdered) frames.sort((a, b) => a.z - b.z);
+
+		let x = 0, y = 0, rx = 0, ry = 0, r = 0;		
+		for (const frame of frames) {
+			const { n, fb, index, seq } = frame;
+			const { rotation, scale, origin, size, offset, renderHints, renderPosition } = this;			
+			
+			size.x = n.w;
+			size.y = n.h;
+			
+			if (seq.ofs.length > 0) {
+				x = seq.ofs[index * 2 + 0];
+				y = seq.ofs[index * 2 + 1];
+			}			
+			if (seq.rot.length > 0) {
+				rx = seq.rot[index * 3 + 0];
+				ry = seq.rot[index * 3 + 1];
+				r  = seq.rot[index * 3 + 2];
+			}
+
+			c.setTransform((renderHints.mirrorX ? -1 : 1) * scale, 0, 0, (renderHints.mirrorY ? -1 : 1) * scale, renderPosition.x + offset.x + x, renderPosition.y + offset.y + y);
+			c.rotate(rotation);
+			if (seq.rot.length > 0) {
+				c.translate(rx, ry);
+				c.rotate(r);
+				c.translate(-rx, -ry);
+			}
+			c.translate(size.x * origin.x, size.y * origin.y);
+
+			if (fb.filter) c.filter = fb.filter;
+			if (fb.isAtlas) {						                                        // atlas
+				c.drawImage(n.img, n.a * n.w, n.b * n.h, n.w, n.h, 0, 0, n.w, n.h);                    				
+			} else {                                                                        // NOT Atlas - the flipbook contains an array of images
+				if (n.img.isCanvasSurface) c.drawImage(n.img.canvas, 0, 0);							
+					else c.drawImage(n.img, 0, 0);                
+			}
+			c.filter = 'none';
+		}
+	}
+
 	/**
 	 *	Update method draws all the graphics needed to fully display this actor with minimal possible overhead
 	 */	
@@ -378,6 +432,7 @@ class Actor extends Root {
 		
 		if (this.flags.boundingBoxEnabled) this._updateBoundingBox();										// calculate bounding box for the actor?
 		if (this.animationPlayer) this.animationPlayer.tick();									   		    // make the animationPlayer to select a frame for display
+			else if (this.flipbooks) for (const fb of this.flipbooks) fb.tick();			
 				
 		if (this._target) {																					// if we're targeting another actor:
 			const radius = ('orbitRadius' in this.movement) ? this.movement.orbitRadius : 0;
@@ -565,7 +620,13 @@ class Actor extends Root {
 			}
 		}
 		return null;
-	}	
+	}
+	
+	onSpawn() {
+		if (this.flipbooks) for (const fb of this.flipbooks) {
+			if (fb.autoplay) fb.play(fb.autoplay);
+		}
+	}
 }
 
 export { Actor, Enum_ActorTypes, ActorMovement }; 

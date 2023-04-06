@@ -22,6 +22,7 @@ import { VideoStream } from "./videoStream.js";
 import { V2 } from "./types.js";
 
 const ImplementsEvents = 'end';
+const FlipbookTypes = ['images', 'atlas', 'video'];
 
 class Sequence {
 	constructor(flipbook, name, start, end, loop = true) {
@@ -43,7 +44,7 @@ class Sequence {
 		this._dir   	 = 1;
 		this._cycle		 = 'normal';
 		this._isPaused   = true;
-		this._isPausing  = false;
+		this._isPausing  = false;		
 	}
 	
 	clone(ownerFlipbook) {
@@ -126,18 +127,18 @@ class Sequence {
 	play(doNotRestart) {			
 		return new Promise(resolve => {
 			if (doNotRestart && this.flipbook.sequence == this && !this._isPaused) return resolve();
-
+			
 			this.resetCycle();
 					
 			if (this.flipbook._fps > 0) this.frameIncrement = Math.round(this._dir * this.flipbook._fps / 60 * 64);
-				else if (this._fps > 0) this.frameIncrement = Math.round(this._dir * this._fps / 60 * 64);
+				else if (this._fps > 0) this.frameIncrement = Math.round(this._dir * this._fps / 60 * 64);				
 
 			this._iterations = 0;		
 			this._cycle      = 'normal';
 			this._isPaused   = false;
 			this.flipbook.sequence = this;		
 			
-			if (this.length > 0 && this._iterationCount > 0 && this._iterationCount != Infinity) {
+			if (this.length > 0 && this._iterationCount > 0 && this._iterationCount != Infinity) {				
 				this.onComplete = () => resolve();
 			} 
 			resolve();
@@ -218,7 +219,7 @@ class Sequence {
 	 * @param {*} frame 
 	 * @returns 
 	 */
-	seek(frame) {
+	seek(frame) {		
 		if (isNaN(frame)) return;				
 		this.playHead = AE.clamp(this.start + frame, this.start, this.end) * 64;				
 		this.flipbook.sequence = this;
@@ -281,6 +282,8 @@ class Flipbook {
 		c.sequence     = (this.sequence == null) ? null : Object.values(c.sequences).find(e => e.name == this.sequence.name);
 		c._lastFrame   = this._lastFrame;
 		c.filter       = this.filter;
+		c.autoplay     = this.autoplay;
+		c.type         = this.type;
 		
 		return c;
 	}
@@ -290,6 +293,37 @@ class Flipbook {
 	*/	
 	static Generate(count, callback) {
 		return Array(count).fill().map((_, i) => callback(i));
+	}
+
+	async parseFromImages(fb, flipbook) {
+		for (const s of fb.sequences) {
+			var urls = s.urls;
+			if (typeof s.urls == 'object' && !Array.isArray(s.urls)) {
+				if (!('name' in s.urls && 'start' in s.urls && 'end' in s.urls)) throw 'URLs object must contain name, start and end properties';
+				var hashCount = 0, urls = [];
+				for (const c of s.urls.name) hashCount += (c == '#');
+				for (let i = s.urls.start; i <= s.urls.end; i++) {
+					let str = (i + '').padStart(hashCount, '0');							
+					urls.push(s.urls.name.replace('#'.repeat(hashCount), str));
+				}
+			} 						
+			const images = await flipbook.loadAsFrames(urls, s.path, true);	
+			
+			if ('frames' in s) {													// "frames" can be used to recreate non-linear animation by duplicating and rearranging the image frames
+				const order = images.slice(images.length - urls.length);			// get the images that belong to this sequence
+				const rearr = [];
+				for (let i = 0; i < s.frames.length; i++) rearr.push(order[s.frames[i]]);
+				images.push(...rearr);
+				var seq = flipbook.appendSequence(s.name, s.frames.length, s.loop);						
+			} else
+				var seq = flipbook.appendSequence(s.name, urls.length, s.loop);
+
+			if ('direction' in fb) seq.direction = fb.direction;					// flipbook direction is "global" for all sequences...
+			if ('direction' in s) seq.direction = s.direction;						// ...but you can override it on ever sequence individually
+
+			if ('loop' in fb) seq.loop = fb.loop;
+			if ('loop' in s) seq.loop = s.loop;
+		}
 	}
 
 	/**
@@ -302,39 +336,14 @@ class Flipbook {
 		for (const fb of data) {
 			const flipbook = new Flipbook({ actor, fps:fb.fps, name:fb.name });
 
+			if (!FlipbookTypes.includes(fb.type)) throw `Invalid Flipbook type: "${fb.type}". Accepted types: ${FlipbookTypes}`;
+			flipbook.type = fb.type;
+			if ('autoplay' in fb) flipbook.autoplay = fb.autoplay;
+			if ('filter' in fb)   flipbook.filter = fb.filter;			
+
 			if (fb.type == 'video') await flipbook.createSequencesFromVideo(fb.sequences);
 				else
-			if (fb.type == 'images') {
-				for (const s of fb.sequences) {
-					var urls = s.urls;
-					if (typeof s.urls == 'object' && !Array.isArray(s.urls)) {
-						if (!('name' in s.urls && 'start' in s.urls && 'end' in s.urls)) throw 'URLs object must contain name, start and end properties';
-						var hashCount = 0, urls = [];
-						for (const c of s.urls.name) hashCount += (c == '#');
-						for (let i = s.urls.start; i <= s.urls.end; i++) {
-							let str = (i + '').padStart(hashCount, '0');							
-							urls.push(s.urls.name.replace('#'.repeat(hashCount), str));
-						}
-					} 						
-					const images = await flipbook.loadAsFrames(urls, s.path, true);	
-					
-					if ('frames' in s) {													// "frames" can be used to recreate non-linear animation by duplicating and rearranging the image frames
-						const order = images.slice(images.length - urls.length);			// get the images that belong to this sequence
-						const rearr = [];
-						for (let i = 0; i < s.frames.length; i++) rearr.push(order[s.frames[i]]);
-						images.push(...rearr);
-						var seq = flipbook.appendSequence(s.name, s.frames.length, s.loop);
-						
-					} else
-						var seq = flipbook.appendSequence(s.name, urls.length, s.loop);
-
-					if ('direction' in fb) seq.direction = fb.direction;					// flipbook direction is "global" for all sequences...
-					if ('direction' in s) seq.direction = s.direction;						// ...but you can override it on ever sequence individually
-
-					if ('loop' in fb) seq.loop = fb.loop;
-					if ('loop' in s) seq.loop = s.loop;
-				}
-			}
+			if (fb.type == 'images') await flipbook.parseFromImages(fb, flipbook);
 				else
 			if (fb.type == 'atlas') {
 				const atlas = await flipbook.loadAsAtlas(fb.url, fb.dims, fb.order);								
@@ -359,16 +368,8 @@ class Flipbook {
 					if ('rot' in s) seq.rot = s.rot;
 				}
 			}
-				else throw 'Unknown Flipbook type in asset file';
+				else throw 'Unknown Flipbook type in asset file';			
 			
-			if ('autoplay' in fb) {
-				const seq = flipbook.sequences[fb.autoplay];                    
-				if (seq) seq.play();
-			}
-			if ('filter' in fb) {
-				flipbook.filter = fb.filter;
-			}
-
 			flipbooks.push(flipbook);
 		}
 		return flipbooks;
@@ -380,9 +381,10 @@ class Flipbook {
 	/*
 		Link this Flipbook with an Actor or ChildActor. Optionally start any animation sequence by providing its name (second parameter)		
 	*/
-	assignTo(actor, autoPlaySequence) {		
-		this.actor = actor;
+	assignTo(actor, autoPlaySequence) {				
+		this.actor = actor;		
 		if (autoPlaySequence && this.sequences[autoPlaySequence]) this.sequences[autoPlaySequence].play();		
+		console.log(this)			
 	}	
 	
 	set FPS(value) {		
@@ -527,7 +529,7 @@ class Flipbook {
 		for (const seq of Object.values(this.sequences)) cb(seq);
 	}
 
-	play(name, options) {
+	play(name, options) {		
 		if (this.sequences[name]) this.sequences[name].play(options);
 	}
 	
@@ -549,16 +551,22 @@ class Flipbook {
 	/**
 	 * Automatically called from Actor.tick()
 	 */
-	tick() {		
+	tick() {				
 		if (this.sequence == null || this.actor == null) return;	
 				
 		const seq   = this.sequence;
 		if (seq == null || seq._cycle == 'ended') return;
-						
-		const index = seq.next();
-		const frame = (seq.frames.length > 0) ? seq.frames[index] : index;
+				
+		const index = seq.next();				
 
-		const image = this.getFrame(frame);
+		let image;
+		if (this.type == 'images') {
+			image = this.getFrame(index);			
+		} else {					
+			const frame = (seq.frames.length > 0) ? seq.frames[index] : index;		// do we have 'frames' collection which containes the bucket list pointing to frames?
+			image = this.getFrame(frame);
+		}
+		
 		if (this.customRender == null) return;
 
 		this.customRender = image;		
@@ -572,7 +580,7 @@ class Flipbook {
 	 * @param {number} index 
 	 * @returns 
 	 */
-	getFrame(index) {		
+	getFrame(index) {				
 		const img   = this.isAtlas ? this.images[0] : this.images[index];		
 		
 		if (img == null) return;
