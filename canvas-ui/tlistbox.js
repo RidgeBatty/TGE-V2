@@ -8,6 +8,8 @@ import { Vector2 as Vec2, V2, Rect, RECT } from '../types.js';
 import { TListitem } from './tlistItem.js';
 import { TFocusControl } from './tfocusControl.js';
 
+const ImplementsEvents = 'select';
+
 export class TListbox extends TFocusControl {
     constructor(o) {
         super(o);        
@@ -22,6 +24,8 @@ export class TListbox extends TFocusControl {
         this.itemAreaSize = V2(0, 0);
         
         if ('items' in o) this.add(o.items);
+
+        this.events.create(ImplementsEvents);        
     }
 
     add(item) {          
@@ -62,6 +66,11 @@ export class TListbox extends TFocusControl {
             else this.hoverItem = null;        
     }        
 
+    onClick = (e) => {
+        this.selectedItem = this.hoverItem;        
+        this.events.fire('select', { event:e, button:e.button, position:e.position, selectedItem:this.selectedItem });
+    }    
+
     recalculate() {
         this.itemAreaSize.y = this.children.length * this.itemLength;         
         this.overflow.y     = Math.max(0, this.itemAreaSize.y - this.size.y); 
@@ -91,20 +100,21 @@ export class TListbox extends TFocusControl {
         const s = this.surface;        
         const p = this.position;
         
+        s.ctx.save();
+   
         s.ctx.translate(p.x, p.y);
         s.drawRect(this.clientRect, { stroke:settings.cl3DLight });         
         
         s.clipRect(clipRect);        
 
-        s.ctx.save();
+   //     s.ctx.save();
         
         s.ctx.translate(0, -this.scroll);
    //     s.ctx.translate(this.scrollOffset.x, this.scrollOffset.y)
-
         if (this.customDraw) this.customDraw({ surface:s, rect:this.clipRect });
             else super.draw();                                                                       // draw listitems
         
-        s.ctx.restore();
+        s.ctx.restore();     
     }
 
     /**

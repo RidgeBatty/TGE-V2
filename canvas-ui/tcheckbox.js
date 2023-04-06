@@ -1,7 +1,7 @@
 import { Vector2 as Vec2, V2, Rect, RECT } from '../../types.js';
 import { TFocusControl } from './tfocusControl.js';
 
-const ImplementsEvents = 'mousedown mouseup change';
+const ImplementsEvents = 'change';
 
 export class TCheckbox extends TFocusControl {
     constructor(o) {        

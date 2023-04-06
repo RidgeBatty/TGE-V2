@@ -11,10 +11,12 @@ import { TButton } from '../../canvas-ui/tbutton.js';
 import { TCheckbox } from '../../canvas-ui/tcheckbox.js';
 import { TListbox } from '../../canvas-ui/tlistbox.js';
 import { TScrollbar } from '../../canvas-ui/tscrollbar.js';
+import { TCombobox } from '../../canvas-ui/tcombobox.js';
 
 const { Vector2:Vec2, V2 } = Types;
 
 const main = async () => {    
+    
     await Engine.setup('../../settings.hjson');        
     await Engine.ui.init('../../canvas-ui/default.styles.hjson');
 
@@ -47,10 +49,12 @@ const main = async () => {
             clBtnFace : 'purple'
         }
     });   
-    
+
+    btOk.onClick = e => { console.log('Clicked OK') }    
+
     const win2 = Engine.ui.add(TWindow, { 
         position: V2(750, 150), 
-        size    : V2(400, 400),
+        size    : V2(400, 800),
         caption : 'Second Window',
         settings: {
             clWindow        : 'rgba(0,0,0,0.75)',
@@ -61,12 +65,23 @@ const main = async () => {
             }
         }
     });
+
+    const cbItems = win2.add(TCombobox, {
+        position: V2(10, 380),
+        size    : V2(380, 240),        
+        items   : ['Hello Bitch', 'Banana', 'Monkey', 'Eggplant', 'Peach', 'Poop']
+    });           
     
     const lbItems = win2.add(TListbox, {
         position: V2(10, 80),
         size    : V2(350, 240),        
         items   : ['Hello', 'Banana', 'Monkey', 'Eggplant', 'Green', 'White', 'Green', 'Banana', 'Monkey', 'Eggplant', 'Green', 'White']
     });       
+    
+    lbItems.onClick = (e) => {    
+        console.log('LOBS')
+    }
+
 
     const sbItems = win2.add(TScrollbar, {
         position: V2(362, 80),
@@ -87,7 +102,7 @@ const main = async () => {
             }
         }
     });
-    
+
     const cbBoobs = win3.add(TCheckbox, {
         position: V2(140, 60),
         size    : V2(120, 28),
@@ -123,7 +138,7 @@ const main = async () => {
             boxAlign : 'right'
         }
     });   
-
+    
     console.log(Engine.ui);
     
     Engine.events.add('keydown', e => { 
@@ -132,6 +147,7 @@ const main = async () => {
             Engine.ui.children.forEach(f => { console.log(f.caption + ' --> ' + f.zIndex + ' --> ' + f.isActive); });
         }
     });
+    
     Engine.start();
 }
 

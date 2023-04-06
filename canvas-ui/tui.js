@@ -28,6 +28,7 @@ export class TUI extends TControl {
         
         this.mbDownControls  = [];                 // mouse down control (needs to be saved to complete click event)
         this.hoveredControls = [];
+        this.hoverCursor     = 'pointer';
 
         this.installEventHandlers();
     }
@@ -65,20 +66,23 @@ export class TUI extends TControl {
             }       
 
             // Simulate mouse over (Note! this MUST BE simulated because there are no HTMLElements to launch the real mouseover event!)                  
-            this.forAllChildren(child => {
-                if (!child.isEnabled || !child.isVisible) return;
-                
-                let isInside = child.absoluteRect.isPointInside(e.position);                    
+            const check = (node) => {
+                if (!node.isEnabled || !node.isVisible) return;                    
+                let isInside = node.absoluteRect.isPointInside(e.position);                    
                 if (isInside) {
-                    child.onMouseMove(e);
+                    node.onMouseMove(e);
 
-                    if (this.hoveredControls.find(f => f.control == child) == null) {
-                        this.hoveredControls.push({ hovered:true, control:child });
-                        child.onMouseOver(e);
-                        child._isHovered = true;
+                    if (this.hoveredControls.find(f => f.control == node) == null) {
+                        this.hoveredControls.push({ hovered:true, control:node });
+                        node.onMouseOver(e);
+                        node._isHovered = true;                                                
+                        if (node.hoverCursor) document.body.style.cursor = node.hoverCursor;
+                            else document.body.style.cursor = this.hoverCursor;
                     }
-                }                                                  
-            });
+                }           
+                for (const child of node.children) check(child);
+            }                                                                       
+            check(this);            
                 
             this.hoveredControls.forEach(item => {                    
                 let isInside = item.control.absoluteRect.isPointInside(e.position);
@@ -86,6 +90,7 @@ export class TUI extends TControl {
                     item.control.onMouseOut(e);
                     item.control._isHovered = false;
                     item.hovered = false;                                            
+                    document.body.style.cursor = 'default';
                 }                        
             });
             

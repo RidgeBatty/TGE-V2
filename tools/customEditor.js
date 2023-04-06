@@ -111,6 +111,7 @@ export class CustomEditor extends CustomLayer {
         if (this.mouseOut) return                                                  
         const m = this.mouse.coords;
 
+        s.resetTransform();
         s.drawLine(V2(m.x, 0), V2(m.x, s.height), 'rgba(255,255,255,0.5)');
         s.drawLine(V2(0, m.y), V2(s.width, m.y), 'rgba(255,255,255,0.5)');
 
@@ -142,7 +143,7 @@ export class CustomEditor extends CustomLayer {
 
                 if (this.grid.showCoordinates) {
                     if (vLines < 50 && x > 0) s.textOut(V2(px, vy - 4), vertLineNum, this.grid.text);
-                    if (hLines < 30 && x == 0 && y < hLines - 1) s.textOut(V2(0, py), horzLineNum, this.grid.text);
+                    if (hLines < 30 && x == 0 && y < hLines - 1) s.textOut(V2(0, py - 4), horzLineNum, this.grid.text);
                 }
             }                
         }

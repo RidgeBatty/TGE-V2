@@ -37,11 +37,10 @@ export class TButton extends TCaptionControl {
         s.ctx.save();
         s.ctx.translate(this.position.x, this.position.y);
         
-        s.drawRect(this.clientRect, { fill:settings.clBtnFace });                                           // draw button background
-        s.drawRect(this.clientRect.expand(1), { stroke:settings.clBtnShadow });                             // draw button frame shadow
-        s.drawRect(this.clientRect.expand(2), { stroke:settings.clBtnHighlight });                          // draw button frame highlight
-        if (this.useFrames && this.background?.frame?.length > 0) this.drawGridPattern();                        
-
+        s.drawRect(this.clientRect.expand(-2), { fill:settings.clBtnFace });                                           // draw button background
+        s.drawRect(this.clientRect.expand(-1), { stroke:settings.clBtnShadow });                             // draw button frame shadow
+        s.drawRect(this.clientRect, { stroke:settings.clBtnHighlight });                          // draw button frame highlight
+        if (this.useFrames && this.background?.frame?.length > 0) this.drawGridPattern();                                
         s.ctx.restore();        
         
         super.draw();

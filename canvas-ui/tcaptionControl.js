@@ -32,7 +32,7 @@ export class TCaptionControl extends TControl {
         if (settings.baseline == 'middle') { pos.y = this.size.y * 0.5 - bb.height * 0.5;  }
         if (settings.baseline == 'bottom') { pos.y = this.size.y - bb.height; }   
                         
-        const o          = Vec2.Add(Vec2.ToInt(pos), Vec2.Add(settings?.textOffset ? settings.textOffset : V2(0, 0), this.position));    
+        const o          = Vec2.Add(pos, Vec2.Add(settings?.textOffset ? settings.textOffset : V2(0, 0), this.position));    
         const color      = this.isEnabled ? settings.clActiveText : settings.clInactiveText;        
         const shadow     = settings.textShadow ? { shadow:settings.textShadow } : null;
         const textParams = Object.assign({ font:settings.font, color, textAlign:'left', textBaseline:'top' }, shadow);

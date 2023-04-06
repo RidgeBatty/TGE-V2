@@ -593,6 +593,7 @@ class CanvasSurface {
 	 * @param {string=} params.color
 	 * @param {string=} params.textAlign
 	 * @param {string=} params.textBaseline ("top","hanging","middle","alphabetic","ideographic","bottom")
+	 * @param {string=} params.shadow ofsx ofsy shadowlength shadowcolor ("1px 1px 2px black")
 	 */
 	textOut(pos, text, params) {
 		if (params) {
@@ -600,10 +601,9 @@ class CanvasSurface {
 			if ('color' in params) this.ctx.fillStyle = params.color;
 			if ('textAlign' in params) this.ctx.textAlign = params.textAlign;
 			if ('textBaseline' in params) this.ctx.textBaseline = params.textBaseline;	
-			if ('shadow' in params) {				
-				this.ctx.filter = `drop-shadow(${params.shadow})` || 'drop-shadow(1px 1px 2px black)';				
-			}		
+			if ('shadow' in params) this.ctx.filter = `drop-shadow(${params.shadow})`;		
 		}
+
 		this.ctx.fillText(text, pos.x, pos.y);
 
 		if ('stroke' in params) {
@@ -611,7 +611,7 @@ class CanvasSurface {
 			this.ctx.strokeText(text, pos.x, pos.y);
 		}
 
-		this.ctx.filter = '';
+		this.ctx.filter = 'none';
 	}
 
 	/**
@@ -626,7 +626,7 @@ class CanvasSurface {
 		this.ctx.textAlign = align;
 		this.ctx.textBaseline = baseline;
 		const m = this.ctx.measureText(text);
-		return new Rect(m.actualBoundingBoxLeft, m.actualBoundingBoxAscent, m.actualBoundingBoxRight, m.actualBoundingBoxDescent);
+		return new Rect(m.actualBoundingBoxLeft, m.fontBoundingBoxAscent, m.actualBoundingBoxRight, m.fontBoundingBoxDescent);
 	}
 
 	clipRect(r) {

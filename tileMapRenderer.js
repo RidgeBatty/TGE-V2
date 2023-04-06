@@ -453,8 +453,10 @@ class TileMapRenderer extends CustomLayer {
 		
 		this.events.fire('beforedraw', { renderer:this, ctx });		
 
-		let imageDataPending = 0;
+		const isCustomDraw = this.events.names.includes('customdraw');
 
+		let imageDataPending = 0;
+		
 		for (let y = sY; y < eY; y++) {			
 			for (let x = sX; x < eX; x++) {								
 				const p = this.project(V2(x, y));
@@ -483,7 +485,7 @@ class TileMapRenderer extends CustomLayer {
 							else ctx.drawImage(overlayImg.canvas, p.x, p.y + height - overlayImg.canvas.height);
 					}
 				}				
-				this.events.fire('customdraw', { renderer:this, x, y, ctx, tileId, overlayId, drawPos:p });				
+				if (isCustomDraw) this.events.fire('customdraw', { renderer:this, x, y, ctx, tileId, overlayId, drawPos:p });				
 			}
 		}
 

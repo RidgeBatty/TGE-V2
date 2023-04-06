@@ -338,59 +338,22 @@ class Actor extends Root {
 		if (len > this.movement.maxVelocity) this.velocity.normalize().mulScalar(this.movement.maxVelocity);	
 	}
 
-	_renderFlipbooks(c) {		
-		for (const fb of this.flipbooks) {			
-			fb.update();						// select a frame from a flipbook if the actor has one specified			
-			
-			const n = fb.customRender;			
-			if (!n.img) continue;
-
-			this.size.x = n.w;
-			this.size.y = n.h;
-			const { rotation, scale, origin, size, offset } = this;			
-			const pos = this.renderPosition;
-
-			if (fb.isAtlas) {						
-				c.setTransform((this.renderHints.mirrorX ? -1 : 1) * scale, 0, 0, (this.renderHints.mirrorY ? -1 : 1) * scale, pos.x + offset.x, pos.y + offset.y);
-				c.rotate(rotation);					
-				c.translate(size.x * origin.x, size.y * origin.y);
-				
-				c.drawImage(n.img, n.a * n.w, n.b * n.h, n.w, n.h, 
-									0,         0,         n.w, n.h);
-				continue;
-			} 
-
-			// NOT Atlas - the flipbook contains an array of images:
-			c.setTransform((this.renderHints.mirrorX ? -1 : 1) * scale, 0, 0, (this.renderHints.mirrorY ? -1 : 1) * scale, pos.x + offset.x, pos.y + offset.y);
-			//c.scale(this.renderHints.mirrorX ? -1 : 1, this.renderHints.mirrorX ? -1 : 1);
-			c.rotate(rotation);
-			c.translate(size.x * origin.x, size.y * origin.y);
-			
-			if (n.img.isCanvasSurface) c.drawImage(n.img.canvas, 0, 0);							
-				else c.drawImage(n.img, 0, 0);
-		}
-	}
-
 	/**
 	 *	Update method draws all the graphics needed to fully display this actor with minimal possible overhead
 	 */	
 	update() {		
 		if (!this.isVisible) return;
 
-		const { img } = this;
 		const c = this.surface.ctx;		
 
 		c.globalAlpha = this.opacity;
 		if (this.filter) c.filter = this.filter;
-
-		this._renderFlipbooks(c);
-		
-		if (img) {										// if the Actor has an image attached, directly or via flipbook, display it
-			const { rotation, scale, origin, size, offset } = this;			
+		if (this._renderAnimations) this._renderAnimations(c);			// if animation rendering algorithm is attached, use it		
+		if (this.img) {			   		  								// if the Actor has an image attached, directly or via flipbook, display it
+			const { rotation, scale, origin, size, offset, img } = this;			
 			const pos = this.renderPosition;
 
 			c.setTransform((this.renderHints.mirrorX ? -1 : 1) * scale, 0, 0, (this.renderHints.mirrorY ? -1 : 1) * scale, pos.x + offset.x, pos.y + offset.y);
-			//c.scale(this.renderHints.mirrorX ? -1 : 1, this.renderHints.mirrorX ? -1 : 1);
 			c.rotate(rotation);
 			c.translate(size.x * origin.x, size.y * origin.y);
 			
@@ -414,7 +377,7 @@ class Actor extends Root {
 		this.events.fire('tick');
 		
 		if (this.flags.boundingBoxEnabled) this._updateBoundingBox();										// calculate bounding box for the actor?
-		for (const fb of this.flipbooks) fb.tick();															// select a frame from a flipbook if the actor has one specified			
+		if (this.animationPlayer) this.animationPlayer.tick();									   		    // make the animationPlayer to select a frame for display
 				
 		if (this._target) {																					// if we're targeting another actor:
 			const radius = ('orbitRadius' in this.movement) ? this.movement.orbitRadius : 0;
@@ -439,8 +402,11 @@ class Actor extends Root {
 
 		if (this.movement.isEnabled) {																		// apply movement parameters, velocity and velocity cap
 			this.rotation += this.movement._angularSpeed;
-			var len = this.velocity.length;
+
+
+			var len = this.velocity.length;			
 			if (len > this.movement.maxVelocity) this.velocity.normalize().mulScalar(this.movement.maxVelocity);	
+
 			
 			if (this.path) {
 				const direction = this.updatePath();

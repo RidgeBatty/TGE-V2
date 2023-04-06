@@ -17,12 +17,11 @@ export class TScrollbar extends TFocusControl {
         
         this._targetControl = null;
         this.orientation    = 'y';
-        this.buttonOffset   = V2(2, 2);
-        this.buttonSize     = V2(this.size.x - this.buttonOffset.x * 2, 20);
+        this.buttonOffset   = V2(0, 0);
+        this.buttonSize     = V2(this.size.x - this.buttonOffset.x * 2, 28);
         this.prevButtonRect = RECT(this.buttonOffset.x, this.buttonOffset.y, this.buttonSize.x, this.buttonSize.y);
         this.nextButtonRect = RECT(this.buttonOffset.x, this.buttonOffset.y, this.buttonSize.x, this.buttonSize.y);
-        this.trackLength    = this.size.y - (this.buttonOffset.y * 4 + this.buttonSize.y * 2) - 4;
-
+        
         // create the buttons
         this.btUp    = this.add(TButton, { position:this.buttonOffset, size:V2(this.buttonSize.x, this.buttonSize.y), caption:'▲' });
         this.btThumb = this.add(TButton, { position:this.thumbInitialPos, size:V2(this.buttonSize.x, this.thumbLength), caption:'' });        
@@ -43,6 +42,10 @@ export class TScrollbar extends TFocusControl {
         this.btUp.onMouseDown   = e => { if (this._targetControlProxy) this._targetControlProxy.scroll -= this.targetControl.itemLength; }
         this.btDown.onMouseDown = e => { if (this._targetControlProxy) this._targetControlProxy.scroll += this.targetControl.itemLength; }
     }
+
+    get trackLength() {
+        return this.size.y - (this.buttonOffset.y * 4 + this.buttonSize.y * 2);
+    }   
 
     get targetControl() {
         return this._targetControl;

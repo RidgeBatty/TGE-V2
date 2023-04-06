@@ -15,10 +15,12 @@ export class TCustomWindow extends TFocusControl {
         this.isWindow      = true;        
         this.edges         = this.ui.surface.rect;                                                                              // the window cannot be moved outside of this area
         this._opacityChangeSpeed = 0.05;        
+        this.type          = ('type' in o) ? o.type : 'normal';
         
-        if (!o.noTitlebar) {
-            this.titlebar = this.add(TTitlebar, { caption:o.caption, size:V2(this.size.x, 32) });                        // window title bar
-            this.btClose  = this.add(TButton, { caption:'✖', position:V2(this.size.x - 30, 4), size:V2(26, 24) });
+        if (!o.noTitlebar) {            
+            this.titlebar = this.add(TTitlebar, { caption:o.caption, size:V2(this.size.x, 1) });                        // window title bar
+            this.titlebar.hoverCursor = 'default';
+            this.btClose  = this.add(TButton, { caption:'✖', position:V2(this.size.x, 4), size:V2(8, 8) });
             this.btClose.onMouseUp = e => { this.close() }
         }
 
@@ -49,6 +51,19 @@ export class TCustomWindow extends TFocusControl {
 
     onRecalculate() {
         if (!this.titlebar) return;
+
+        if (this.type == 'toolwindow') {         
+            this.titlebar.settings.height     = 20;
+            this.titlebar.settings.font       = '14px arial';
+            this.titlebar.settings.textOffset = V2(4, 0);
+            this.btClose.settings.font        = 'bold 11px arial';
+        }
+        if (this.type == 'normal') {
+            this.titlebar.settings.height = 32;
+            if (this._params.settings?.titlebar)    this.ui.applyProps(this.titlebar.settings, this._params.settings.titlebar);                    
+            if (this._params.settings?.closeButton) this.ui.applyProps(this.btClose.settings, this._params.settings.closeButton);                  
+        }
+            
         //console.log(this.titleBar.settings)
         this.titlebar.size.y = this.titlebar.settings.height;
 
@@ -154,7 +169,7 @@ export class TCustomWindow extends TFocusControl {
         
         s.ctx.globalAlpha = 1;
 
-        if (this.onCustomDraw) this.onCustomDraw();
+        if (this.customDraw) this.customDraw({ surface:s, rect:this.clientRect });
 
         s.ctx.restore();    
         

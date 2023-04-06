@@ -27,6 +27,7 @@ export class TControl extends TComponent {
         this._createVisible = 'isVisible' in o ? o.isVisible : true;
         this._isEnabled = true;
         this._isHovered = false;
+        this._params    = o;
 
         this.events.create(ImplementsEvents);
     }

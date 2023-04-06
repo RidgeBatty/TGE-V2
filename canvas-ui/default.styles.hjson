@@ -34,9 +34,14 @@ color : {
     clInactiveCaptionText	    : 'gray'                # Represents the default color of the title text in an inactive window.
 
     clCheckboxMark              : 'lime'
-    clClientArea                : 'white'               # Represents the color of client area in listboxes and similar elements
-    clCaret                     : 'white' 
-    clHoverHilite               : 'red'
+    clClientArea                : 'white'               # Represents the color of client area in listboxes and similar elements    
+    
+    clItemBorder                : 'black'
+    clItem                      : 'rgba(64,64,64,0.5)'    
+    clHoveredItem               : 'rgba(255,0,0,0.5)'
+    clHoveredItemText           : 'white'
+
+    clCaret                     : 'white'
 }
 
 background : {
@@ -71,6 +76,7 @@ listitem : {
     font       : '20px arial'    
     baseline   : 'middle'        
     textOffset : { x:10, y:0 }
+    clActiveText : 'white'        
 }
 
 checkbox : {
