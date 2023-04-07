@@ -17,6 +17,7 @@ class World {
         this.renderer = null;
 
         this.engine.world = this;
+        this.engine.flags.setFlag('hasWorld');
 
         AE.sealProp(this, 'data', {});
     }

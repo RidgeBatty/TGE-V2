@@ -104,6 +104,7 @@ class Actor extends Root {
 		AE.sealProp(this, 'movement', new ActorMovement());								// movement object (TO-DO: might need a Class?)
 		AE.sealProp(this, 'data', ('data' in o) ? o.data : {});								// Container for custom user data
 		AE.sealProp(this, 'surface');
+		AE.sealProp(this, 'counters', {});
 
 		if ('surface' in o) this.surface = o.surface;
 			else
@@ -429,6 +430,8 @@ class Actor extends Root {
 		if (this.flags.isDestroyed) return;
 
 		this.events.fire('tick');
+
+		for (const [k, v] of Object.entries(this.counters)) if (v > 0) this.counters[k]--;
 		
 		if (this.flags.boundingBoxEnabled) this._updateBoundingBox();										// calculate bounding box for the actor?
 		if (this.animationPlayer) this.animationPlayer.tick();									   		    // make the animationPlayer to select a frame for display

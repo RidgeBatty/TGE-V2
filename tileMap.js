@@ -135,6 +135,10 @@ class TileMap {
 		for (const t of this.textures) t.rescale(w, h);
 	}
 
+	rescaleOverlays(w, h) {
+		for (const t of this.overlays) t.rescale(w, h);
+	}
+
 	clear(options = {}) {
 		if (!options.keepTileMapTiles)this.tiles.fill(0);
 		if (!options.keepTileMapTextures) this.textures.length  = 0;

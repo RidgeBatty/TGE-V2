@@ -12,7 +12,7 @@ import { Actor, Enum_ActorTypes } from './actor.js';
 import { Layer } from './layer.js';
 import { Events } from './events.js';
 
-import { Vector2 } from './types.js';
+import { Vector2 as Vec2 } from './types.js';
 import { HitTestFlag, Enum_HitTestMode } from './root.js';
 
 const ImplementsEvents = 'addactor removeactor activate deactivate';
@@ -23,7 +23,7 @@ class GameLoop {
 	constructor(o = {}) {		
 		this.engine         = ('engine' in o) ? o.engine : null;
 		this.data           = {};	// user data
-		this._flags		    = { isRunning:false, showColliders:false, collisionsEnabled:false, showBoundingBoxes:false, tickPaused:false };
+		this._flags		    = { isRunning:false, showColliders:false, collisionsEnabled:false, showBoundingBoxes:false, tickPaused:false, doubleBuffering:false };
 		this.flags          = Object.seal(this._flags);  // flags
 		this.events         = new Events(this, ImplementsEvents);
 		this.surface        = this.engine.renderingSurface;
@@ -43,6 +43,7 @@ class GameLoop {
 		this.onBeforeTick   = ('onBeforeTick' in o && typeof o.onBeforeTick == 'function') ? o.onBeforeTick : null; 
 		this.onPanic        = ('onPanic' in o && typeof o.onPanic == 'function') ? o.onPanic : null;
 		this.onAfterRender  = ('onAfterRender' in o && typeof o.onAfterRender == 'function') ? o.onAfterRender : null;
+		this.onFlipBuffers  = ('onFlipBuffers' in o && typeof o.onFlipBuffers == 'function') ? o.onFlipBuffers : null;
 		this.timers		    = [];
 		
 		// other:
@@ -185,7 +186,7 @@ class GameLoop {
 		return this.actors.filter(e => e.isPlayer);
 	}
 
-	findTimerByName(name) {
+	findTimer(name) {
 		return this.timers.find(e => e.name == name);
 	}
 
@@ -394,7 +395,13 @@ class GameLoop {
 			if (this.engine.ui.isCanvasUI) this.engine.ui.draw();											// GUI overlay
 		}
 
-		if (this.onAfterRender) this.onAfterRender();		
+		if (this.flags.doubleBuffering) {
+			if (this.onFlipBuffers) this.onFlipBuffers({ front:this._frontBuffer, back: this.surface });
+			this._frontBuffer.resetTransform();
+			this._frontBuffer.drawImage(Vec2.Zero(), this.surface.canvas);
+		}
+
+		if (this.onAfterRender) this.onAfterRender({ front:this._frontBuffer, back: this.surface });				
 		
 		// time delta and average fps calculations		
 		this.frameTimes[this.frameCount % 30] = this.frameDelta;			
@@ -584,6 +591,20 @@ class GameLoop {
 			result.push(copyOfLayer);
 		}
 		return result;
+	}
+
+	/**
+	 * Set up double buffering
+	 * @param {object} o parameters object
+	 * @param {CanvasSurface} o.front Front buffer (defaults to Engine.renderingSurface)
+	 * @param {CanvasSurface} o.back Back buffer. All gameLoop rendering is done in the given buffer
+	 * @param {function} o.onRender Optional callback to be fired when the backbuffer is about to be rendered
+	 */
+	enableDoubleBuffering(o) {
+		this.flags.doubleBuffering = true;
+		this._frontBuffer  = ('front' in o) ? o.front : this.engine.renderingSurface;
+		this.surface       = o.back;
+		this.onFlipBuffers = o.onRender;
 	}
 
 	/**

@@ -83,11 +83,13 @@ class Player extends Actor {
 	*/	
 	set movementType(value) {	
 		if (typeof value == 'string') value = Enum_PlayerMovement[value.toLowerCase()];
+
+		const m = this.movement;
 		
 		if (value == Enum_PlayerMovement.Arcade) {					
-			this.movement.maxVelocity  = 1;
-			this.movement.acceleration = 1;		
-			this.movement.friction     = 1;
+			m.maxVelocity  = 1;
+			m.acceleration = 1;		
+			m.friction     = 1;
 			this._movementType         = value;
 
 			this.flags.isPhysicsEnabled = true;
@@ -97,39 +99,43 @@ class Player extends Actor {
 			if ('keyboard' in this.controllers) {
 				this.controllers['keyboard'].addYawKeyDefaults();			// TO-DO: add yaw into other controllers!
 			}			
-			this.movement.strafe       = 0.001;		
-			this.movement.acceleration = 0.001;		
-			this.movement.turnRate     = 0.002;
-			this.movement.friction     = 0.1;
+			m.strafe       = 0.001;		
+			m.acceleration = 0.001;		
+			m.turnRate     = 0.002;
+			m.friction     = 0.1;
 			this._movementType         = value;
 
 			this.flags.isPhysicsEnabled = true;
 			return;
 		}		
 		if (value == Enum_PlayerMovement.SpaceShip) {
-			this.movement.acceleration = 0.001;		
-			this.movement.turnRate     = 0.002;
+			m.acceleration = 0.001;		
+			m.turnRate     = 0.002;
 			this._movementType         = value;
 			return;
 		}		
 		if (value == Enum_PlayerMovement.Car) {
-			this.movement.acceleration = 0.0004;		
-			this.movement.turnRate     = 0.0004;
-			this.movement.friction     = 0.01;		    // how much the vehicle resists movement in lateral slip condition
-			this.movement.rollingFriction = 0.002;		// how much the vehicle resists movement when moving forward
+			m.acceleration = 0.0004;		
+			m.turnRate     = 0.0004;
+			m.friction     = 0.01;		    	// how much the vehicle resists movement in lateral slip condition
+			m.rollingFriction = 0.002;			// how much the vehicle resists movement when moving forward
 			this._movementType         = value;
 			return;
 		}		
 		if (value == Enum_PlayerMovement.Platformer) {	
-			this.movement.isAirborne   = true;
-			this.movement.isJumping    = false;
-        	this.movement.isFalling    = false;		
-        	this.movement.acceleration = 0.7;
-        	this.movement.maxVelocity  = 15;
-        	this.movement.friction     = 0.15;     
-			this.movement.gravity      = V2(0, 0.6);
-			this.movement.jumpForce    = V2(0, -14);
-			this.movement.fallingThreshold = 14;			// how fast the player should be falling when the isFalling flag is turned on
+			m.isKeyUpJump  = true;				// arbitrarily turn off jumping with up key
+			m.isAirborne   = true;
+			m.isJumping    = false;
+        	m.isFalling    = false;		
+
+        	m.acceleration = 0.7;
+			m.airAcceleration = 0.1;
+        	m.maxVelocity  = 15;
+        	m.friction     = 0.1;     
+			m.airFriction  = 0.01;
+			m.gravity      = V2(0, 0.5);
+			m.jumpForce    = V2(0, -14);
+			m.fallingThreshold = 14;			// how fast the player should be falling when the isFalling flag is turned on
 		}
 		this._movementType = value;
 	}
@@ -253,20 +259,24 @@ class Player extends Actor {
 
 		m.isFalling = v.y > m.fallingThreshold;
 			
-		if (m.isAirborne) v.add(m.gravity);								// if airborne, apply gravity
-			else v.mulScalar(1 - m.friction); 							// if NOT airborne, apply movement friction
+		if (m.isAirborne) {
+			v.add(m.gravity);											// if airborne, apply gravity
+			v.mulScalar(1 - m.airFriction);
+		} else 
+			v.mulScalar(1 - m.friction); 								// if NOT airborne, apply movement friction
 
 		let dir = 0;													// movement left and right
 		if (keys.left)  dir = -1;
 		if (keys.right) dir = 1;
 		if (dir != 0) {
-			this.addImpulse(V2(m.acceleration * dir, 0));
-			if (v.x < -5) v.x = -5;
-			if (v.x >  5) v.x =  5;
+			if (m.isAirborne) this.addImpulse(V2(m.airAcceleration * dir, 0));
+				else this.addImpulse(V2(m.acceleration * dir, 0));
+			if (v.x < -m.maxVelocity) v.x = -m.maxVelocity;
+			if (v.x >  m.maxVelocity) v.x =  m.maxVelocity;
 		}
 
 		if (keys.up) {													// jump
-			if (m.isAirborne == false && m.isJumping == false) {
+			if (m.isKeyUpJump && m.isAirborne == false && m.isJumping == false) {
 				v.add(m.jumpForce);
 				m.isAirborne = true;
 				m.isJumping  = true;

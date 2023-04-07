@@ -69,6 +69,7 @@ class TileMapRenderer extends CustomLayer {
 	 * @param {Vector2} params.offset Offset in pixels
 	 * @param {TileMap} params.tileMap TileMap reference
 	 * @param {Actor} params.target Actor whose coordinates the rendered should follow
+	 * @param {number} params.objectZLayer Actor whose coordinates the rendered should follow
 	 */
 	constructor(params = {}) {		
 		super(Object.assign(params, { addLayer:true }));
@@ -76,6 +77,7 @@ class TileMapRenderer extends CustomLayer {
 		this.engine    		= ('engine' in params) ? params.engine : Engine;                    			// implementing it this way makes it easier to change the Engine reference if needed 		
 		this.world.offset   = ('offset' in params) ? params.offset : this.engine.dims.mulScalar(0.5);
 		this.world.renderer = this;
+		this.target         = params.target;
 		
 		this.params    = params;
 		this.map       = new TileMap(params.tileMap);
@@ -94,8 +96,9 @@ class TileMapRenderer extends CustomLayer {
 		this.objectZLayer       = ('objectZLayer' in params) ? params.objectZLayer : this.zIndex;	// on which layer the objects should be rendered on?
 		this.staticActors       = [];		
 		this.projectionMode     = 'angle';															// "zigzag", "angle"
-		this._aspectRatio       = 0.5;
+		this._aspectRatio       = 1;
 		this.tileSize           = 256;
+		this.onBeforeDraw       = null;																// fire a callback before drawing a frame
 				
 		this.updateViewport();																		// acquire canvasSurface
 		this.buffer.name        = 'TileMapRenderingBuffer';
@@ -138,8 +141,8 @@ class TileMapRenderer extends CustomLayer {
 		this.staticActors.length = 0;		
 	}
 
-	update() {		
-		if (this.flags.isometric) this.renderIsometric(); else this.renderAxisAligned();
+	update() {				
+		if (this.flags.isometric) this.renderIsometric(); else this.renderAxisAligned();		
 	}
 
 	get renderPosition() {
@@ -367,6 +370,7 @@ class TileMapRenderer extends CustomLayer {
 		
 		const ctx    = this.buffer.ctx;		
 		const size   = this.tileSize;
+		const height = size * this.aspectRatio;																				// tile height
 		const camPos = (world == null) ? position : world.camPos;
 
 		ctx.resetTransform();
@@ -386,13 +390,25 @@ class TileMapRenderer extends CustomLayer {
 				const left = x * size - ~~camPos.x;
 				
 				if (!((left + size) < 0 || left > canvas.width)) {	
-					const tileId = map.tileAt(x, y);
-					const tex    = map.textures[tileId];
-					if (tex.canvas.width == 0 || tex.canvas.height == 0) imageDataPending++;
-						else {
-							if (this.flags.ownerDraw) ctx.drawImage(tex.canvas, left, top);
-							if (isCustomDraw) this.events.fire('customdraw', { renderer:this, x, y, ctx, tileId:tile, drawPos:V2(x * size - camPos.x, y * size - camPos.y) });
+					const id  = map.tileAt(x, y);
+
+					const tileId    = id & 255;
+					const hasOverlay = id > 255;
+					const overlayId  = (id >> 8) - 1;				
+					const tex        = map.textures[tileId];
+
+					if (this.flags.ownerDraw && tex) {
+						if (tex.canvas.width == 0 || tex.canvas.height == 0) imageDataPending++;
+							else ctx.drawImage(tex.canvas, left, top);				
+						
+						if (hasOverlay && map.overlays[overlayId]) {							
+							const overlayImg = map.overlays[overlayId];
+							if (overlayImg.canvas.width == 0 || overlayImg.canvas.height == 0) imageDataPending++;
+								else ctx.drawImage(overlayImg.canvas, left, top + height - overlayImg.canvas.height);
 						}
+					}						
+
+					if (isCustomDraw) this.events.fire('customdraw', { renderer:this, x, y, ctx, tileId:tile, drawPos:V2(x * size - camPos.x, y * size - camPos.y) });
 				}
 			}						
 		}
@@ -598,11 +614,11 @@ class TileMapRenderer extends CustomLayer {
 		}
 		for (const a of s) a.isVisible = true;		
 		
-		if ('target' in this.params) {	
-			this.rotation = this.params.target.rotation;
+		if (this.target) {	
+			this.rotation = this.target.rotation;
 
 			// offset is used to fix the player at a certain position on the screen (the default is in middle of the viewport)			
-			this.params.target.offset = this.engine.world.offset.clone().sub(this.params.target.position);			
+			this.target.offset = this.engine.world.offset.clone().sub(this.target.position);			
 		}		
 
 		this.optimizedColliders.length = 0;

@@ -70,9 +70,13 @@ class CustomLayer extends Root {
         
 	}
 
-	update() {   
+	flip() {
 		if (this.resetTransform) this.surface.resetTransform();     
-		this.surface.drawImage(Vec2.Zero(), this._buffer.canvas)
+		this.surface.drawImage(Vec2.Zero(), this._buffer.canvas);
+	}
+
+	update() {   
+		this.flip();
 	}
 }
 
