@@ -40,19 +40,21 @@ class Collider {
 	}
 
 	/**
-	 * Deserializes colliders from array
+	 * Deserializes colliders from array. 
+	 * The SerializedCollider may contain an array of array of Colliders (every object can have multiple colliders), or just an array of Colliders (every object has one collider)
+	 * 
 	 * @param {[SerializedCollider]} arr 
 	 * @returns {[array]} Contains an array of arrays
 	 */
 	static Parse(data) {
 		const result = [];
 
-		for (const c of data) {
+		const parseCollider = (c) => {
 			if (c.type == null) {
 				var obj = null;
 			} else
 			if (c.type == 'box') {
-				var obj = new Box(V2(c.points[0], c.points[1]), V2(c.points[2], c.points[3]));
+				var obj = new Box(V2(c.points[0], c.points[1]), V2(c.points[2], c.points[3]));				
 			} else
 			if (c.type == 'poly') {				
 				var obj = new Poly(V2(c.position.x, c.position.y));
@@ -62,9 +64,21 @@ class Collider {
 				var obj = new Circle(V2(c.position.x, c.position.y), c.radius);
 			} else throw new Error('Unsupported collider type ' + c.type);
 
-			if ('angle' in c) obj.angle = c.angle;
+			if ('angle' in c) obj.angle = c.angle;				
 
-			result.push(obj);
+			return obj;
+		}
+
+		for (const o of data) {	
+			if (Array.isArray(o)) {
+				const subColliders = [];		
+				for (const c of o) {							
+					subColliders.push(parseCollider(c));					
+				}
+				result.push(subColliders);
+			} else {
+				result.push(parseCollider(o));					
+			}	
 		}					
 		return result;
 	}
@@ -100,14 +114,14 @@ class Collider {
 	/**
 	 * Updates the collider visualizations. If required HTML and SVG elements do not exist, they will be created.		
 	*/
-	update() {				
+	update() {	
 		const actor     = this.actor;
 		const colliders = ('optimizedColliders' in actor) ? actor.optimizedColliders : actor.colliders.objects;
 		
 		const gameLoop  = actor.owner;
 		const ctx 		= Engine.renderingSurface.ctx;
 		const scale     = this.scale * this.actor.scale;
-		
+
 		for (var i = 0; i < colliders.length; i++) {
 			var c   = colliders[i];			
 			var cp  = actor.renderPosition;
@@ -142,7 +156,7 @@ class Collider {
 	 * @param {Actor} otherActor
 	 * Checks whether this Actor's colliders overlap with otherActor's colliders
 	 */
-	resolveOverlap(otherActor) {			
+	resolveOverlap(otherActor) {				
 		// can we get any optimization?
 		const otherColliders = ('optimizedColliders' in otherActor) ? otherActor.optimizedColliders : otherActor.colliders.objects;
 		

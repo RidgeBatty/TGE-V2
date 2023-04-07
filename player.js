@@ -21,6 +21,7 @@ const Enum_PlayerMovement = {
 	FPS				   : 2,
 	SpaceShip		   : 3,		// Freely rotate around z-axis, accelerate towards nose direction
 	Car				   : 4,		// Rotation is relative of movement speed. Accelerate towards nose direction
+	Platformer         : 5,		// Side scrolling platformer: Movement easing, gravity, jumping
 	Custom			   : 99,	// Do not apply any controls automatically on the player actor.
 }
 
@@ -119,6 +120,17 @@ class Player extends Actor {
 			this._movementType         = value;
 			return;
 		}		
+		if (value == Enum_PlayerMovement.Platformer) {	
+			this.movement.isAirborne   = true;
+			this.movement.isJumping    = false;
+        	this.movement.isFalling    = false;		
+        	this.movement.acceleration = 0.7;
+        	this.movement.maxVelocity  = 15;
+        	this.movement.friction     = 0.15;     
+			this.movement.gravity      = V2(0, 0.6);
+			this.movement.jumpForce    = V2(0, -14);
+			this.movement.fallingThreshold = 14;			// how fast the player should be falling when the isFalling flag is turned on
+		}
 		this._movementType = value;
 	}
 	
@@ -159,7 +171,7 @@ class Player extends Actor {
 	
 	updateMovement() {
 		const p    = this;
-		const keys = p.controllers['keyboard'];	
+		const keys = p.controllers.keyboard;	
 		
 		if (keys == null || p._movementType == Enum_PlayerMovement.None || this._isMovementCancelled) return;
 		
@@ -226,9 +238,41 @@ class Player extends Actor {
 			if (ks.left)  	  p.velocity.add(V2(-p.movement.acceleration,  0));
 			if (ks.right)  	  p.velocity.add(V2(p.movement.acceleration, 0));
 			break;
+		case Enum_PlayerMovement.Platformer: 
+			this.platformerMovement();
+			break;
 		case Enum_PlayerMovement.Custom:
 			if (this.customMovement) this.customMovement(ks);
 		}		
+	}
+
+	platformerMovement() {	
+		const keys = this.controllers.keyboard.keyState;	
+		const v    = this.velocity;
+		const m    = this.movement;
+
+		m.isFalling = v.y > m.fallingThreshold;
+			
+		if (m.isAirborne) v.add(m.gravity);								// if airborne, apply gravity
+			else v.mulScalar(1 - m.friction); 							// if NOT airborne, apply movement friction
+
+		let dir = 0;													// movement left and right
+		if (keys.left)  dir = -1;
+		if (keys.right) dir = 1;
+		if (dir != 0) {
+			this.addImpulse(V2(m.acceleration * dir, 0));
+			if (v.x < -5) v.x = -5;
+			if (v.x >  5) v.x =  5;
+		}
+
+		if (keys.up) {													// jump
+			if (m.isAirborne == false && m.isJumping == false) {
+				v.add(m.jumpForce);
+				m.isAirborne = true;
+				m.isJumping  = true;
+			}	
+		}
+		   
 	}
 }
 

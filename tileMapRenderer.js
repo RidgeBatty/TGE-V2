@@ -1,6 +1,7 @@
 /*
 
 	Renders and maintains a 2D tile based game map
+
 	Note!
 	By default, tileMapRenderer does not check for collisions. In typical retro arcade games the collision checks are very minimal.
 	You can simply say "player.overlapsWith(renderer)" in player's tick event to check if the player overlaps with any obstacles.
@@ -9,6 +10,9 @@
 	Meaning that tile number 1 will always have the same colliders, no matter how many times or where on the map an instance of the tile is placed.
 
 	The colliders must be static, as in permanently "attached" to the tile.
+
+	Visualizing Colliders is not happening automatically, because tileMapRendered renders in a backbuffer. Collider class renders always on EngineRenderingSurface.
+	To visualize the colliders, simply do "renderer.colliders.update();" after the tileMapRenderer's backbuffer has been flipped on EngineRenderingSurface.
 
 	Built-in strategies for generating optimizedColliders
 	- optViewport 				This is the default method. Loop through the tiles which are currently in the viewport to generate the collider information.
@@ -370,6 +374,10 @@ class TileMapRenderer extends CustomLayer {
 
 		this.events.fire('beforedraw', { renderer:this, ctx });
 
+		const isCustomDraw = this.events.names.includes('customdraw');
+
+		let imageDataPending = 0;
+
 		for (let y = 0; y < map.height; y++) {			
 			const top  = y * size - ~~camPos.y;
 
@@ -378,12 +386,18 @@ class TileMapRenderer extends CustomLayer {
 				const left = x * size - ~~camPos.x;
 				
 				if (!((left + size) < 0 || left > canvas.width)) {	
-					const tile = map.tileAt(x, y);
-					if (this.flags.ownerDraw) ctx.drawImage(map.textures[tile].canvas, left, top);
-					this.events.fire('customdraw', { renderer:this, x, y, ctx, tileId:tile, drawPos:V2(x * size - camPos.x, y * size - camPos.y) });
+					const tileId = map.tileAt(x, y);
+					const tex    = map.textures[tileId];
+					if (tex.canvas.width == 0 || tex.canvas.height == 0) imageDataPending++;
+						else {
+							if (this.flags.ownerDraw) ctx.drawImage(tex.canvas, left, top);
+							if (isCustomDraw) this.events.fire('customdraw', { renderer:this, x, y, ctx, tileId:tile, drawPos:V2(x * size - camPos.x, y * size - camPos.y) });
+						}
 				}
 			}						
 		}
+
+		if (imageDataPending > 0) console.log(imageDataPending + ' images pending!'); // this happens when tiles are not yet loaded (flipped tiles are reloaded, flipped but not awaited!)
 
 		this.events.fire('afterdraw', { renderer:this, ctx });
 	}
@@ -530,7 +544,7 @@ class TileMapRenderer extends CustomLayer {
 					this.optimizedColliders.push(collider);					
 				}
 			}		
-		}
+		}		
 	}
 
 	_generateIsometricColliders() {

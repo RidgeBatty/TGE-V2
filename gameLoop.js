@@ -230,6 +230,12 @@ class GameLoop {
 	 */
 	showColliders() { this.flags.showColliders = true; }
 
+	renderColliders() {
+		this.zLayers.forEach(f => { 
+			f.forEach(e => { if (e.colliders) e.colliders.update(); } )
+		});
+	}
+
 	/**
 	 * 	Set multiple flags at once by providing an object, for example: 
 	 *	engine.setFlags({ hasWorld:true, hasEdges:true });

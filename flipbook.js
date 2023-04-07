@@ -326,6 +326,30 @@ class Flipbook {
 		}
 	}
 
+	async parseFromAtlas(fb, flipbook) {
+		await flipbook.loadAsAtlas(fb.url, fb.dims, fb.order);								
+
+		for (const s of fb.sequences) {										
+			const seq = flipbook.addSequence({ name:s.name, startFrame : s.frames.from, endFrame : s.frames.to, loop:s.loop });
+			if ('direction' in fb) seq.direction = fb.direction;					// flipbook direction is "global" for all sequences...
+			if ('direction' in s) seq.direction = s.direction;						// ...but you can override it on ever sequence individually
+
+			if ('loop' in fb) seq.loop = fb.loop;									// flipbook wide default...
+			if ('loop' in s) seq.loop = s.loop;										// ... and again, sequence override
+			
+			if ('zOrder' in s) seq.zOrder = s.zOrder;
+
+			if ('frames' in s && Array.isArray(s.frames)) {
+				seq.start  = 0;
+				seq.end    = s.frames.length - 1;
+				seq.frames = s.frames;						
+			}
+
+			if ('ofs' in s) seq.ofs = s.ofs;					
+			if ('rot' in s) seq.rot = s.rot;
+		}
+	}
+
 	/**
 	 * Parses flipbook information from (serialized) object
 	 * @param {object} data 
@@ -341,34 +365,9 @@ class Flipbook {
 			if ('autoplay' in fb) flipbook.autoplay = fb.autoplay;
 			if ('filter' in fb)   flipbook.filter = fb.filter;			
 
-			if (fb.type == 'video') await flipbook.createSequencesFromVideo(fb.sequences);
-				else
-			if (fb.type == 'images') await flipbook.parseFromImages(fb, flipbook);
-				else
-			if (fb.type == 'atlas') {
-				const atlas = await flipbook.loadAsAtlas(fb.url, fb.dims, fb.order);								
-
-				for (const s of fb.sequences) {										
-					const seq = flipbook.addSequence({ name:s.name, startFrame : s.frames.from, endFrame : s.frames.to, loop:s.loop });
-					if ('direction' in fb) seq.direction = fb.direction;					// flipbook direction is "global" for all sequences...
-					if ('direction' in s) seq.direction = s.direction;						// ...but you can override it on ever sequence individually
-
-					if ('loop' in fb) seq.loop = fb.loop;									// flipbook wide default...
-					if ('loop' in s) seq.loop = s.loop;										// ... and again, sequence override
-					
-					if ('zOrder' in s) seq.zOrder = s.zOrder;
-
-					if ('frames' in s && Array.isArray(s.frames)) {
-						seq.start  = 0;
-						seq.end    = s.frames.length - 1;
-						seq.frames = s.frames;						
-					}
-
-					if ('ofs' in s) seq.ofs = s.ofs;					
-					if ('rot' in s) seq.rot = s.rot;
-				}
-			}
-				else throw 'Unknown Flipbook type in asset file';			
+			if (fb.type == 'video')  await flipbook.createSequencesFromVideo(fb.sequences); else
+			if (fb.type == 'images') await flipbook.parseFromImages(fb, flipbook); else
+			if (fb.type == 'atlas')  await flipbook.parseFromAtlas(fb, flipbook);				
 			
 			flipbooks.push(flipbook);
 		}
@@ -384,7 +383,6 @@ class Flipbook {
 	assignTo(actor, autoPlaySequence) {				
 		this.actor = actor;		
 		if (autoPlaySequence && this.sequences[autoPlaySequence]) this.sequences[autoPlaySequence].play();		
-		console.log(this)			
 	}	
 	
 	set FPS(value) {		

@@ -48,7 +48,7 @@ class Texture extends Picture {
 
 	createCanvas(w, h) {
 		try {			
-			this.canvas = new OffscreenCanvas(w, h);					
+			this.canvas = new OffscreenCanvas(w, h);				
 		} catch(e) {
 			this.canvas = document.createElement('canvas');
 			this.canvas.width  = w;
@@ -86,10 +86,10 @@ class Texture extends Picture {
 	get height() { return this.canvas.height; }
 	get size()   { return V2(this.width, this.height) }
 
-	rescale(w, h) {
+	rescale(w, h) {				
 		this.canvas.width  = w;
 		this.canvas.height = h;
-		this.ctx.drawImage(this.image, 0, 0, w, h);
+		this.ctx.drawImage(this.image, 0, 0, w, h);		
 	}
 	
     walk(f) {		

@@ -9,7 +9,7 @@
         hasEdges:false
         hasRenderingSurface:true
         hasWorld:false 
-        hasUI:true
+        hasUI:true        
         developmentMode:false
     }
 

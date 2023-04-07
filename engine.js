@@ -19,7 +19,7 @@
 * For example a space invaders, tetris, pong, asteroids, etc. might have no use of container for static World but a platformer game definitely has.
 *
 */
-const VersionNumber = '2.8.2';
+const VersionNumber = '2.8.3';
 
 import * as Types from "./types.js";
 import { Root, Enum_HitTestMode } from "./root.js";
@@ -50,6 +50,7 @@ const DefaultFlags = {
 	'hasUI' : false,
 	'connection' : false,
 	'developmentMode' : false,
+	'hasAssetManager' : false,
 }
 
 const die = (msg) => {
@@ -626,6 +627,10 @@ class TinyGameEngine {
 					this.#GUI = await import('./ui/ui-html.js');				
 				}
 			}		
+			if (o.flags.hasAssetManager) {
+				const mgr = await import('./assetManager.js');
+				this.assetManager = new mgr.AssetManager(this);    				
+			}
 			this.flags.some(o.flags);		
 		}
 		if ('gameLoop' in o) {

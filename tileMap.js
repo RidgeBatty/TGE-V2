@@ -92,35 +92,42 @@ class TileMap {
 	 * @param {string=} ext Append file extension
 	 */
 	async loadTextures(list, path = '', ext = '') {
-		const p   = [];																				// load textures
+		const p   = [];															// load textures
 		const arr = [];
 				
 		for (const t of list) {
-			const tex = new Texture(t.name, true);					// give it a name (image filename as it is in the hjson file, usually without extension)			
+			let isString = (typeof t == 'string') ? true : false;
+			let name     = isString ? t : t.name;
 
-			tex.load(path + t.name + ext, (ctx, img) => { 
+			const tex = new Texture(name, true);								// give it a name (image filename as it is in the hjson file, usually without extension)			
+
+			const loadResult = tex.load(path + name + ext, (ctx, img) => { 
 				ctx.scale(1, 1);
-				if (tex.meta?.mirrorY) {
+				if (!isString && tex.meta?.mirrorY) {
 					ctx.translate(0, tex.height);
 					ctx.scale(1, -1);					
 				}
-				if (tex.meta?.mirrorX) {
+				if (!isString && tex.meta?.mirrorX) {
 					ctx.translate(tex.width, 0);
 					ctx.scale(-1, 1);					
 				}
 				ctx.drawImage(img, 0, 0);				
-			})
+				console.log('Loaded')
+			});
 
-			p.push(tex);
+			p.push(loadResult);
 
-			tex.meta = {};
-			for (const [k, v] of Object.entries(t)) {
-				if (k != 'name') tex.meta[k] = v;				
+			if (!isString) {
+				tex.meta = {};
+				for (const [k, v] of Object.entries(t)) {
+					if (k != 'name') tex.meta[k] = v;				
+				}
 			}
 
 			arr.push(tex);
 		}
 		await Promise.all(p);				
+
 		return arr;
 	}
 
@@ -141,9 +148,12 @@ class TileMap {
 			try {				
 				if ('tiles' in data && data.tiles.length > 0) {		
 					let rowLen = 0;
-					map.resize(data.tiles.length, data.tiles[0].split(' ').length);							// create the buffer				
+					let height = data.tiles.length;
+					let width  = data.tiles[0].split(' ').length;
 					
-					for (const row of data.tiles) {															// parse map tiles
+					map.resize(width, height);									// create the buffer				
+					
+					for (const row of data.tiles) {								// parse map tiles
 						const cells = row.split(' ');
 						const r     = cells.map(e => +e);						
 						map.tiles.set(r, rowLen);
@@ -151,12 +161,14 @@ class TileMap {
 					}					
 				}
 
-				map.textures = await map.loadTextures(data.textures, data.texturePath, data.textureExt);	//  load textures				
-				map.overlays = await map.loadTextures(data.overlays, data.texturePath, data.textureExt);	//  load overlays				
+				if ('textures' in data) map.textures = await map.loadTextures(data.textures, data.texturePath, data.textureExt);	//  load textures				
+				if ('overlays' in data) map.overlays = await map.loadTextures(data.overlays, data.texturePath, data.textureExt);	//  load overlays				
+
+				if ('colliders' in data) map.colliders = Collider.Parse(data.colliders);
 			} catch (e) {
 				console.warn('Unable to parse tilemap!');				
 				reject(e);
-			}								
+			}				
 			resolve(map);
 		});
 	}
