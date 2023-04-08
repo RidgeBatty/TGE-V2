@@ -540,8 +540,7 @@ class TileMapRenderer extends CustomLayer {
 
 			if (!((top + size) < 0 || top > ch)) for (let x = 0; x < map.width; x++) {				
 				const left   = x * size - ~~camPos.x;
-				const tileId = map.tileAt(x, y);
-				
+				const tileId = map.tileAt(x, y) & 255;				
 				const cList  = map.colliders[tileId];
 				
 				if (cList) for (const c of cList) {					
@@ -583,7 +582,7 @@ class TileMapRenderer extends CustomLayer {
 				
 				if ((p.y + size) < 0 || p.y > cH || (p.x + size) < 0 || p.x > cW) continue;
 				
-				const tileId = map.tileAt(x, y);					
+				const tileId = map.tileAt(x, y) & 255;					
 				const tex    = map.textures[tileId];				
 				const shift  = tex?.meta.shift || Vec2.Zero();							// texture shift (not fully implemented)
 				const cList  = map.colliders[tileId];

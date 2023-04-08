@@ -82,7 +82,8 @@ class TileMap {
 	}
 
 	setOverlayAt(x, y, o) {
-		this.setTileAt(x, y, (this.tileAt(x, y) & 0x000000FF) + (o << 8));
+		const tile = this.tileAt(x, y);		
+		this.setTileAt(x, y, (tile & 0x000000FF) + (o << 8));
 	}
 
 	/**
