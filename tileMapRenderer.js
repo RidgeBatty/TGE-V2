@@ -29,7 +29,7 @@ import { TileMap } from './tileMap.js';
 import { Box, Circle, Poly } from './physics.js';
 import { Flipbook } from './flipbook.js';
 
-const { V2, Vector2 : Vec2, LineSegment, Rect } = Types;
+const { V2, Vector2 : Vec2, LineSegment, Rect, RECT } = Types;
 
 const ImplementsEvents = 'beginoverlap endoverlap createprop resize';
 
@@ -92,6 +92,7 @@ class TileMapRenderer extends CustomLayer {
 		});		
 		this.cursor    = V2(-1, -1);																// x/y coordinates of last selected map tile		
 		this.optimizedColliders = [];
+		this.optimizerMargins   = new Rect(0,0,0,0);
 		this.objectType         = 'renderer';
 		this.objectZLayer       = ('objectZLayer' in params) ? params.objectZLayer : this.zIndex;	// on which layer the objects should be rendered on?
 		this.staticActors       = [];		
@@ -533,12 +534,18 @@ class TileMapRenderer extends CustomLayer {
 		const camPos = 'world' in engine ? engine.world.camPos : this.position;		
 		const cw     = canvas.width;
 		const ch     = canvas.height;
+
 		this.optimizedColliders.length = 0;
 
-		for (let y = 0; y < map.height; y++) {
+		const firstRow = ~~(camPos.y / size) + this.optimizerMargins.top;
+		const lastRow  = ~~((camPos.y + engine.edges.height) / size) - this.optimizerMargins.bottom;
+		const firstCol = ~~(camPos.x / size) + this.optimizerMargins.left;
+		const lastCol  = ~~((camPos.x + engine.edges.width) / size) - this.optimizerMargins.right;
+
+		for (let y = firstRow; y < lastRow; y++) {
 			const top = y * size - ~~camPos.y;
 
-			if (!((top + size) < 0 || top > ch)) for (let x = 0; x < map.width; x++) {				
+			if (!((top + size) < 0 || top > ch)) for (let x = firstCol; x < lastCol; x++) {				
 				const left   = x * size - ~~camPos.x;
 				const tileId = map.tileAt(x, y) & 255;				
 				const cList  = map.colliders[tileId];

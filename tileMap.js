@@ -133,11 +133,11 @@ class TileMap {
 	}
 
 	rescaleTextures(w, h) {
-		for (const t of this.textures) t.rescale(w, h);
+		for (const t of this.textures) t.rescale(t.width * w, t.height * h);
 	}
 
 	rescaleOverlays(w, h) {
-		for (const t of this.overlays) t.rescale(w, h);
+		for (const t of this.overlays) t.rescale(t.width * w, t.height * h);
 	}
 
 	clear(options = {}) {

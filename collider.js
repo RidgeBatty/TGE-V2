@@ -39,6 +39,14 @@ class Collider {
 		AE.sealProp(this, 'objects', []);
 	}
 
+	disable() {
+		this.objects.forEach(f => f.isEnabled = false);
+	}
+
+	enable() {
+		this.objects.forEach(f => f.isEnabled = true);
+	}
+
 	/**
 	 * Deserializes colliders from array. 
 	 * The SerializedCollider may contain an array of array of Colliders (every object can have multiple colliders), or just an array of Colliders (every object has one collider)
@@ -169,7 +177,17 @@ class Collider {
 		let   result         = false;																	// final result of the actor vs. otherActor collision, assume they won't be colliding
 				
 		if (aResp == 2 && bResp == 2) {																	// BLOCK: If and only if both actors have "block" flag set against each other.					
-			for (const a of colliders) for (const b of otherColliders) PhysicsShape.Collide(a, b);				
+			for (const a of colliders) if (a.isEnabled) for (const b of otherColliders) if (b.isEnabled) {
+				if (PhysicsShape.Overlaps(a, b)) {
+					const av = actor.velocity.negate();
+					const bv = otherActor.velocity.negate();
+					
+					while (PhysicsShape.Overlaps(a, b)) {										
+						actor.position.add(av);
+						otherActor.position.add(bv);
+					}
+				}
+			}
 		} else {											
 			if (aResp > 0 && bResp > 0) {																// OVERLAP								
 				for (const c of colliders)      c.isOverlapped = false;

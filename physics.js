@@ -323,9 +323,10 @@ class Box extends AABB {
 	 * Returns the rotation of the box relative to screen. The returned angle is between 0..2PI
 	 */
 	get screenAngle() {	// return:number
+		if ((this.ignoreParentRotation || this.owner.rotation == 0) && this.rotation == 0) return 0;
 		var v1 = this.project(this.points[0]);
 		var v2 = this.project(this.points[3]);
-		v1.sub(v2);
+		v1.sub(v2);		
 		return Math.PI - Math.atan2(v1.x, v1.y);
 	}
 	
@@ -344,7 +345,7 @@ class Box extends AABB {
 		
 		var fromCenterToPoint = new LineSegment(center, p);
 		for (var i = 0; i < lines.length; i++) {
-			if (lines[i].intersectsLine(fromCenterToPoint)) return false;
+			if (lines[i].intersectsLineSegment(fromCenterToPoint)) return false;
 		}
 		return true;
 	}
@@ -403,7 +404,7 @@ class Box extends AABB {
 		/*
 			Any line intersections between the boxes?
 		*/
-		for (const la of linesA) for (const lb of linesB) if (la.intersectsLine(lb)) return true;			
+		for (const la of linesA) for (const lb of linesB) if (la.intersectsLineSegment(lb)) return true;			
 						
 		return false;
 	}
@@ -521,7 +522,7 @@ class Poly extends PhysicsShape {
 		function test() {
 			for (var i = 0; i < boxLines.length; i++) {
 				for (var j = 0; j < polyLines.length; j++) {
-					if (boxLines[i].intersectsLine(polyLines[j])) return true;
+					if (boxLines[i].intersectsLineSegment(polyLines[j])) return true;
 				}
 			}
 			return false;

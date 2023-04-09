@@ -127,6 +127,7 @@ class Player extends Actor {
 			m.isAirborne   = true;
 			m.isJumping    = false;
         	m.isFalling    = false;		
+			m.isGravity    = true;
 
         	m.acceleration = 0.7;
 			m.airAcceleration = 0.1;
@@ -260,7 +261,7 @@ class Player extends Actor {
 		m.isFalling = v.y > m.fallingThreshold;
 			
 		if (m.isAirborne) {
-			v.add(m.gravity);											// if airborne, apply gravity
+			if (m.isGravity) v.add(m.gravity); 							// if airborne, apply gravity
 			v.mulScalar(1 - m.airFriction);
 		} else 
 			v.mulScalar(1 - m.friction); 								// if NOT airborne, apply movement friction

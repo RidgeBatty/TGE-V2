@@ -591,6 +591,7 @@ class CanvasSurface {
 	 * @param {object} params Optional parameters object
 	 * @param {string=} params.font
 	 * @param {string=} params.color
+	 * @param {string=} params.stroke
 	 * @param {string=} params.textAlign
 	 * @param {string=} params.textBaseline ("top","hanging","middle","alphabetic","ideographic","bottom")
 	 * @param {string=} params.shadow ofsx ofsy shadowlength shadowcolor ("1px 1px 2px black")

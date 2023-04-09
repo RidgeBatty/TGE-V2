@@ -61,6 +61,12 @@ class Actor extends Root {
 		this.position;
 
 		/**
+		 * Position of the actor before collision test (done automatically by the gameLoop)
+		 * @type {Vector2}
+		 */
+		this.lastPosition;				
+
+		/**
 		 * @type {number}
 		 */
  		this.rotation;
@@ -73,13 +79,13 @@ class Actor extends Root {
 		/** 
 		 * @member {Object} 
 		 */
-		this.renderHints = Object.assign(this.renderHints, { showBoundingBox:false, fixedScale:false, fixedRotation:false, isStatic:false, mirrorY:false, mirrorX:false });
+		this.renderHints = Object.assign(this.renderHints, { showBoundingBox:false, fixedScale:false, fixedRotation:false, mirrorY:false, mirrorX:false });
 
 		/**
 		 * @member {Object} 
 		 * 
 		*/
-		this.flags = Object.assign(this.flags,{ isDestroyed:false, isFlipbookEnabled:false, hasEdges:true, mouseEnabled:false, boundingBoxEnabled:false });
+		this.flags = Object.assign(this.flags,{ isStatic:false, isDestroyed:false, isFlipbookEnabled:false, hasEdges:true, mouseEnabled:false, boundingBoxEnabled:false, optimizeCollisionChecks:true });
 
 		/**
 		 * @member {number}
@@ -431,6 +437,10 @@ class Actor extends Root {
 
 		this.events.fire('tick');
 
+		if (this.flags.optimizeCollisionChecks && this.colliders && this.colliders.objects.length > 0 && this.owner.engine.edges.isPointInside(this.renderPosition)) {			
+			this.optimizedColliders = this.colliders.objects;
+		} else this.optimizedColliders = [];				
+
 		for (const [k, v] of Object.entries(this.counters)) if (v > 0) this.counters[k]--;
 		
 		if (this.flags.boundingBoxEnabled) this._updateBoundingBox();										// calculate bounding box for the actor?
@@ -467,8 +477,8 @@ class Actor extends Root {
 
 			
 			if (this.path) {
-				const direction = this.updatePath();
-				if (direction) this.velocity.set(Vec2.FromAngle(direction).mulScalar(this.movement.speed / this.owner.tickRate));
+				const direction = this.updatePath();				
+				if (direction) this.velocity.set(Vec2.FromAngle(direction).mulScalar(this.movement.speed / this.owner.tickRate));				
 			}
 
 			this.moveBy(this.velocity);				
@@ -537,12 +547,13 @@ class Actor extends Root {
 
 					other.overlaps.push(this);			
 					if (other.owner) other.owner.overlaps.push(other);
-					const b = { otherActor:other };
+					const b = { otherActor:this };
 					if (other.onBeginOverlap) other.onBeginOverlap(b);
 					other.events.fire('beginoverlap', b);			
 				}										
-			} else {										// not currently overlapped
-				if (this.overlaps.indexOf(other) > -1) {	// check if they WERE overlapping?										
+			} else {																		// actores are NOT currently overlapped
+				this.lastPosition = this.position.clone();									// continuously store the last position when there is no overlap to catch the last non-colliding location
+				if (this.overlaps.indexOf(other) > -1) {									// check if they WERE overlapping?										
 					const a = { otherActor:other };
 					if (this.onEndOverlap) this.onEndOverlap(a);
 					this.events.fire('endoverlap', a);
@@ -602,12 +613,12 @@ class Actor extends Root {
 		const { path, data } = this;
 			
 		if (path) {
-			if (!this.pathTarget) this.pathTarget = 0;
+			if (!('pathTarget' in this)) this.pathTarget = 0;
 	
 			const point = path.points[this.pathTarget];
 			const delay = path.delay ? path.delay[this.pathTarget] : 0;
 	
-			if (Vec2.IsEqual(this.position, point, 0.1)) {
+			if (Vec2.IsEqual(this.position, point, this.movement.pathPointEpsilon ? this.movement.pathPointEpsilon : 0.1)) {
 				if (delay > 0 && data.pathDelay == null) data.pathDelay = delay;
 				if (data.pathDelay > 0) {
 					data.pathDelay -= 1/60;
@@ -616,7 +627,7 @@ class Actor extends Root {
 				}
 	
 				this.pathTarget++;
-				if (this.pathTarget >= path.points.length) this.pathTarget = 0;                
+				if (this.pathTarget >= path.points.length) this.pathTarget = 0;                				
 			} else {
 				const angle = Vec2.Sub(this.position, point).normalize().toAngle();				
 				return angle;

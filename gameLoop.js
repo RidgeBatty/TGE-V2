@@ -126,6 +126,7 @@ class GameLoop {
 	 * 
 	 * @param {object} o 
 	 * @param {string=} o.name User defined name
+	 * @param {*} o.data arbitrary data (optional)
 	 * @param {Actor=} o.actor Ties timer to an actor. When the actor is destroyed, the timer is also removed
 	 * @param {number} o.duration How many ticks between 
 	 * @param {number} o.repeat How many times the timer should repeat?
@@ -447,11 +448,11 @@ class GameLoop {
 		if (this.engine.audio) this.engine.audio.tick();
 		if (this.engine.world) this.engine.world.tick();			
 		for (const t of this.tickables) t.tick();
-		for (const t of this.zLayers) for (const o of t) if (o.tick) o.tick();	
+		for (const t of this.zLayers) for (const o of t) if (o.tick) o.tick();									// tick actors and everything in z-layers
 		
 		// temp constants
 		const actorsArray = this.actors;				
-		const destroyed   = [];					// list for destroyed actors, collected during actor.tick() 
+		const destroyed   = [];																					// list for destroyed actors, collected during actor.tick() 
 
 		/* 
 			Hit testing: The idea is to reduce number of hit test by looping though actors once and putting them in their respective hit test group arrays
@@ -459,25 +460,28 @@ class GameLoop {
 		*/
 		this.overlapTests = 0;
 		if (this.flags.collisionsEnabled) {						
-			groups.clear();																													// clear hit test groups
-			for (const actor of actorsArray) if (actor.hasColliders && !actor.flags.isDestroyed) groups[actor.colliderType].push(actor);	// put all actors in their respective groups
+			groups.clear();																						// clear hit test groups
+			for (const actor of actorsArray) {
+				if (actor.hasColliders && !actor.flags.isDestroyed) {
+					if (!actor.optimizedColliders || actor.optimizedColliders.length > 0) groups[actor.colliderType].push(actor);		// put all actors in their respective groups
+				}
+			}
 			this.overlaps.length = 0;														
 		}
 
 		// loop all actors in the gameloop		
-		this.collisionCheckTime = 0;
+		const collisionCheckTime = performance.now();
+
 		for (let i = 0; i < actorsArray.length; i++) {			
 			const actor = actorsArray[i];
-			
-			// check for collisions and overlaps:
-			const collisionCheckTime = performance.now();
-
+						
 			if (this.flags.collisionsEnabled && actor.flags.hasColliders && !actor.flags.isDestroyed) {
+				if (actor.optimizedColliders?.length == 0) continue;
 				for (const g of Object.keys(groups)) {															// loop through every hit test group
 					if (actor._hitTestFlag[g] != Enum_HitTestMode.Ignore) {										// can we ignore the whole group?
 						for (const o of groups[g]) {
-							if (o != actor && !o.flags.isDestroyed) {				// do not test against self and destroyed actors
-								this.overlapTests++;
+							if (o != actor && !o.flags.isDestroyed) {											// do not test against self and destroyed actors																
+								this.overlapTests++;								
 								actor._testOverlaps(o);
 								if (o.flags.isDestroyed) destroyed.push(o);
 							}
@@ -486,10 +490,10 @@ class GameLoop {
 				}
 			}
 			
-			this.collisionCheckTime += performance.now() - collisionCheckTime;
-			
 			if (actor.flags.isDestroyed) destroyed.push(actor);						
 		} 	
+
+		this.collisionCheckTime = performance.now() - collisionCheckTime;
 
 		// take care of destroying all actors with "isDestroyed" flag set AFTER checking for collisions, because typically actors get destroyed in collisions/overlaps			
 		// but the dev might have set the flag too.
