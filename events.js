@@ -1,3 +1,5 @@
+
+let _stopPropagation = '';
 class Events {
     /**
      * Provide a list of event handler names upon construction. It can be either a space separated string OR an object
@@ -10,8 +12,7 @@ class Events {
         for (const e of o) this.#list[e] = [];
 
         this.isActive = true;
-        this.owner = owner;
-        this._stopPropagation = '';
+        this.owner = owner;        
     }
 
     get names() {
@@ -65,7 +66,7 @@ class Events {
         if (typeof o == 'object') {                                 
             for (const [k, v] of Object.entries(o)) {
                 if (!this.#list[k]) throw 'Handler named "' + k + '" not found';
-                const eObj = { dispatcher, isActive, handler:v };
+                const eObj = { dispatcher, isActive, handler:v, name:k };
                 this.#list[k].push(eObj);                
             }         
         }
@@ -116,12 +117,18 @@ class Events {
     fire(name, args) {       
         const e = this.#list[name];        
         if (!e || !this.isActive) return;
-        const o = Object.assign({ instigator:this.owner, name }, args);
-        for (const evt of e) {             
+        const o = Object.assign({ instigator:this.owner, name }, args);        
+
+        let i = 0;
+        for (const evt of e) {                 
             if (evt.dispatcher && evt.dispatcher.active === false) continue;
-            if (evt.isActive && name != this._stopPropagation) evt.handler(o);
-        }
-        this._stopPropagation = '';
+            if (evt.isActive && name != _stopPropagation) evt.handler(o);                   // stop propagation may be set here!
+            if (_stopPropagation == name) {
+                _stopPropagation = '';                                                      // clear stop propagation                
+                break;                                                                      // braking out of this event handling stack is actually stopping the propagation!
+            }
+            i++;
+        }       
     }
 
     findByHandler(handler) {
@@ -151,8 +158,8 @@ class Events {
         return null;
     }
 
-    stopPropagation(eventName) {
-        this._stopPropagation = eventName;
+    stopPropagation(eventName) {        
+        _stopPropagation = eventName;
     }
 }
 

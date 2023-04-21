@@ -21,19 +21,19 @@ export class AnimationPlayer {
             const animation = this.animationPlayer.current;
 
             animation.frames.length = 0;
-            for (const fb of animation.flipbooks) {
-                const n = fb.customRender;		
-                
+            for (const fb of animation.flipbooks) {                                         // loop all currently active sequences in all flipbooks into an array to collect the current frame from each sequence.
+                const n = fb.customRender;		                
                 if (n.img) {
+                    const s = fb.sequence;
                     let z = 0;
-                    z = fb.sequence?.zOrder && Array.isArray(fb.sequence.zOrder) ? fb.sequence.zOrder[~~fb.sequence.frameIndex] : fb.sequence.zOrder;
-                    
-                    animation.frames.push({ fb, n, z, index:~~fb.sequence.frameIndex, seq:fb.sequence });                
+                    z = (s?.zOrder && Array.isArray(s.zOrder)) ? s.zOrder[~~s.frameIndex] : s.zOrder;                    
+                    animation.frames.push({ fb, n, z, index:~~s.frameIndex, seq:s });
                 }
             }
 
-            animation.frames.sort((a, b) => a.z - b.z);
+            animation.frames.sort((a, b) => a.z - b.z);                                     // sort all overlaid frames (to form the final composite) according to their z-value
             
+            c.filter = 'none';            
             for (const frame of animation.frames) {
                 const { n, fb, index, seq } = frame;
                 const { rotation, scale, origin, size, offset, renderHints, renderPosition } = this;			
@@ -43,19 +43,13 @@ export class AnimationPlayer {
 
                 const x  = (seq.ofs.length > 0) ? seq.ofs[index * 2 + 0] : 0;
                 const y  = (seq.ofs.length > 0) ? seq.ofs[index * 2 + 1] : 0;
-
-                const rx = (seq.rot.length > 0) ? seq.rot[index * 3 + 0] : 0;
-                const ry = (seq.rot.length > 0) ? seq.rot[index * 3 + 1] : 0;
-                const r  = (seq.rot.length > 0) ? seq.rot[index * 3 + 2] : 0;
-/*
-                if (fb.name == 'male-mining-head') c.filter = 'hue-rotate(-30deg) saturate(2.5) brightness(2)';    
-                    else
-                if (fb.name == 'mine-head-original') c.filter = 'hue-rotate(30deg) saturate(2.5) brightness(2)';
-                    else c.globalAlpha = 0.5;
-  */              
+                
                 c.setTransform((renderHints.mirrorX ? -1 : 1) * scale, 0, 0, (renderHints.mirrorY ? -1 : 1) * scale, renderPosition.x + offset.x + x, renderPosition.y + offset.y + y);
                 c.rotate(rotation);
                 if (seq.rot.length > 0) {
+                    const rx = (seq.rot.length > 0) ? seq.rot[index * 3 + 0] : 0;
+                    const ry = (seq.rot.length > 0) ? seq.rot[index * 3 + 1] : 0;
+                    const r  = (seq.rot.length > 0) ? seq.rot[index * 3 + 2] : 0;
                     c.translate(rx, ry);
                     c.rotate(r);
                     c.translate(-rx, -ry);
@@ -65,18 +59,11 @@ export class AnimationPlayer {
                 if (fb.filter) c.filter = fb.filter;
                 if (fb.isAtlas) {						                                        // atlas
                     c.drawImage(n.img, n.a * n.w, n.b * n.h, n.w, n.h, 0, 0, n.w, n.h);                    
-                    /*
-                    if (fb.name == 'male-mining-head') {
-                        c.font = '20px arial';
-                        c.fillText(index, 0, 0);
-                    }
-                    */                
                 } else {                                                                        // NOT Atlas - the flipbook contains an array of images
                     if (n.img.isCanvasSurface) c.drawImage(n.img.canvas, 0, 0);							
                         else c.drawImage(n.img, 0, 0);                
                 }
-    //            c.globalAlpha = 1;
-                c.filter = 'none';
+                if (fb.filter) c.filter = 'none';
             }
         }
 	}

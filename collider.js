@@ -179,15 +179,28 @@ class Collider {
 		if (aResp == 2 && bResp == 2) {																	// BLOCK: If and only if both actors have "block" flag set against each other.					
 			for (const a of colliders) if (a.isEnabled) for (const b of otherColliders) if (b.isEnabled) {
 				if (PhysicsShape.Overlaps(a, b)) {
+
+					const oc = otherActor.velocity.clone();												// make objects bounce off from each other
+					otherActor.velocity.sub(actor.velocity.clone().mulScalar(1.0));
+					actor.velocity.add(oc.mulScalar(0.5));
+
 					const av = actor.velocity.negate();
 					const bv = otherActor.velocity.negate();
+
+					if (av.length == 0 && bv.length == 0) {
+						//console.log('No velocity, but still overlapping!')																	
+					}
 					
+					let attempts = 5;
 					while (PhysicsShape.Overlaps(a, b)) {										
 						actor.position.add(av);
 						otherActor.position.add(bv);
-					}
+						attempts--;
+						if (attempts == 0) break;							
+					}					
 				}
-			}
+			}			
+			
 		} else {											
 			if (aResp > 0 && bResp > 0) {																// OVERLAP								
 				for (const c of colliders)      c.isOverlapped = false;

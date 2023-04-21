@@ -786,6 +786,14 @@ class VectorBase {
 		}
 	}
 
+	static Round(v) {
+		switch (Object.keys(v).length) {
+			case 2: return new Vector2(Math.round(v.x), Math.round(v.y));
+			case 3: return new Vector(Math.round(v.x), Math.round(v.y), Math.round(v.z));
+			case 4: return new Vector4(Math.round(v.x), Math.round(v.y), Math.round(v.z), Math.round(v.w));
+		}
+	}
+
 	/**
 	 * @desc Returns a random vector with each component set to a number in 0>=n<1 range
 	 * @param {number} components 

@@ -20,211 +20,10 @@ import { Events } from "./events.js";
 import { preloadImages } from './utils.js';
 import { VideoStream } from "./videoStream.js";
 import { V2 } from "./types.js";
+import { Sequence } from "./sequence.js";
 
 const ImplementsEvents = 'end';
 const FlipbookTypes = ['images', 'atlas', 'video'];
-
-class Sequence {
-	constructor(flipbook, name, start, end, loop = true) {
-		if ( !(flipbook instanceof Flipbook)) throw 'Sequence must have an owning Flipbook';
-		this.flipbook    = flipbook;
-		this.name        = name;
-		this.start       = start;
-		this.end         = end;
-		
-		this.playHead    = start;	
-		this.direction   = 'forward';								// forward, backward, forward-reverse, backward-reverse
-		this.zOrder      = 0;
-		this.frames      = [];
-		this.ofs         = [];
-		this.rot         = [];
-				
-		this._iterationCount = (loop === true) ? Infinity : 1;
-		this._iterations = 0;
-		this._dir   	 = 1;
-		this._cycle		 = 'normal';
-		this._isPaused   = true;
-		this._isPausing  = false;		
-	}
-	
-	clone(ownerFlipbook) {
-		const s = new Sequence(ownerFlipbook, this.name, this.start, this.end, this._iterationCount == Infinity);
-		
-		s.playHead        = this.playHead;
-		s.direction       = this.direction;
-		s.zOrder          = this.zOrder;
-		s.frames          = this.frames;			// by reference
-		s.ofs             = this.ofs;				// by reference
-		s.rot             = this.rot;				// by reference
-		
-		s._iterationCount = this._iterationCount;
-		s._iterations     = this._iterations;
-		s._dir            = this._dir;		
-		s._cycle	 	  = this._cycle;
-		s._isPaused		  = this._isPaused;
-
-		return s;
-	}
-
-	/**
-	 * Zero based frame number
-	 */
-	get frameIndex() {		
-		return Math.floor(this.playHead / 64) - this.start;
-	}
-	
-	set loop(value) {
-		if (typeof value === 'boolean') {
-			this._iterationCount = (value === true) ? Infinity : 1;
-		} else {
-			this._iterationCount = value;
-		}
-	}
-	
-	get loop() {
-		return this._iterationCount;
-	}
-
-	get isPaused() {
-		return this._isPaused;
-	}
-
-	set isPaused(v) {
-		if (v === false) {
-			this.play();
-			return;
-		} 
-		if (v === true) {
-			this.stop();
-		}
-	}
-	
-	set FPS(value) {
-		this._fps = !isNaN(value) ? AE.clamp(value, 0, 60) : 60;
-	}
-	
-	get FPS() {
-		return this._fps;
-	}	
-	
-	get frame() {
-		return Math.floor(this.playHead / 64);	
-	}
-	
-	/**
-	 * Return the length of the animation as number of frames (integer)
-	 */
-	get length() {
-		return Math.abs(this.end - this.start);
-	}
-	
-	/**
-	 * Starts the animation from beginning, except when "doNotRestart" is set to "true". 
-	 * This feature can be useful for example when animation does not need to restart if the player is already walking in the desired direction.
-	 * @param {*} doNotRestart 
-	 * @returns 
-	 */
-	play(doNotRestart) {			
-		return new Promise(resolve => {
-			if (doNotRestart && this.flipbook.sequence == this && !this._isPaused) return resolve();
-			
-			this.resetCycle();
-					
-			if (this.flipbook._fps > 0) this.frameIncrement = Math.round(this._dir * this.flipbook._fps / 60 * 64);
-				else if (this._fps > 0) this.frameIncrement = Math.round(this._dir * this._fps / 60 * 64);				
-
-			this._iterations = 0;		
-			this._cycle      = 'normal';
-			this._isPaused   = false;
-			this.flipbook.sequence = this;		
-			
-			if (this.length > 0 && this._iterationCount > 0 && this._iterationCount != Infinity) {				
-				this.onComplete = () => resolve();
-			} 
-			resolve();
-		});
-	}
-	
-	stop(playThrough) {					
-		if (playThrough) return this._isPausing = true;
-		this._isPaused = true;			
-	}
-	
-	/*
-		Resets the animation cycle to starting condition:
-		If animation direction includes keyword 'forward',  set dir =  1, and go to first frame
-		If animation direction includes keyword 'backward', set dir = -1, and go to last frame
-	*/
-	resetCycle() {
-		this._cycle = 'normal';		
-		if (this.direction.includes('forward')) {
-			this.playHead = this.start * 64;
-			this._dir     = 1;
-		} else {
-			this.playHead = this.end * 64;
-			this._dir     = -1;
-		}		
-	}
-	
-	/*
-		Calculates the pointer position in the sequence
-		
-		Animation can loop "this._iterationCount" times.
-		It can progress forward or backward "this.direction".
-		Optional callback may be added, which is executed when animation ends.
-	*/		
-	next() {	
-		if (this._cycle == 'ended' || this._isPaused) return Math.floor(this.playHead / 64);
-		if (this.length == 0) return this.start;											// return 1st frame if animation consists of only a single frame
-
-		const start = this.start * 64;
-		const end   = this.end * 64 + 63;
-
-		this.playHead += this.frameIncrement;
-					
-		// If the animation has hit either end (first frame for reversed animation, or last frame for forward animation)
-		const n = this.playHead;
-		
-		const outOfBounds = (this._dir == 1 && n > end) || (this._dir == -1 && n < start);				
-		if (outOfBounds) {
-			if (this._isPausing) return this._isPaused = true;
-			this.playHead = (n > end) ? end : start;				
-			if (this._cycle == 'normal') {
-				if (this.direction.includes('reverse')) {
-					this._dir   *= -1;	
-					this._cycle  = 'returning';					
-				} else 
-					this._nextIteration();				
-			} else 		
-				if (this._cycle == 'returning') this._nextIteration();												
-		}
-
-		return Math.floor(this.playHead / 64);			
-	}
-	
-	_nextIteration() {
-		this._iterations++;		
-		if (this._iterations < this._iterationCount) this.resetCycle();		// check if we have more loops to go?
-			else {
-				this._cycle = 'ended';			
-				if (AE.isFunction(this.onComplete)) this.onComplete(this);
-				this._isPaused = true;
-				this.flipbook.events.fire('end', { sequence:this });														
-			} 
-	}		
-	
-	/**
-	 * Seeks to the given frame number in this sequence and sets this sequence as the flipbook's active sequence.
-	 * i.e. the image becomes visible to the actor rendering function.
-	 * @param {*} frame 
-	 * @returns 
-	 */
-	seek(frame) {		
-		if (isNaN(frame)) return;				
-		this.playHead = AE.clamp(this.start + frame, this.start, this.end) * 64;				
-		this.flipbook.sequence = this;
-	}
-}
 
 class Flipbook {
 	/**
@@ -603,6 +402,14 @@ class Flipbook {
 		
 		if (this.isVisible == false) return { a, b, w, h };		
 		return { img, a, b, w, h };		
+	}
+
+	/**
+	 * Called by sequence when it hits the end and is about to stop playing
+	 * @param {*} sequence 
+	 */
+	onSequenceEnd(sequence) {
+		this.events.fire('end', { sequence });
 	}
 }
 

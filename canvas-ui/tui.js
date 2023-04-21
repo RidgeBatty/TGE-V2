@@ -31,6 +31,8 @@ export class TUI extends TControl {
         this.hoverCursor     = 'pointer';
 
         this.installEventHandlers();
+
+        console.log(this);
     }
 
     installEventHandlers() {
@@ -40,6 +42,8 @@ export class TUI extends TControl {
             while (node) {                                                                  // propagate click through the stack of controls under the mouse
                 node = node.getTopmostChildAt(e.position);
                 if (node == null) break;
+                
+                this.engine.events.stopPropagation('mousedown');                            // stop mousedown propagation if UI element has been hit!
                 
                 node.onMouseDown(e);                        
                 this.mbDownControls.push(node);
@@ -65,28 +69,41 @@ export class TUI extends TControl {
                 if (d.onDrag) d.onDrag(e);
             }       
 
+            const isInsideClipRect = (node) => {
+                if (node.clipRect == null) return true;                                                                // test if node has a cliprect: if it does, use it to determine if the mouse handling should proceed
+                const clipArea = node.clipRect.clone();
+                clipArea.moveBy(node.absoluteRect.position);
+                
+                return clipArea.isPointInside(e.position);
+            }
+
             // Simulate mouse over (Note! this MUST BE simulated because there are no HTMLElements to launch the real mouseover event!)                  
             const check = (node) => {
-                if (!node.isEnabled || !node.isVisible) return;                    
-                let isInside = node.absoluteRect.isPointInside(e.position);                    
-                if (isInside) {
-                    node.onMouseMove(e);
+                if (!node.isEnabled || !node.isVisible) return;
 
-                    if (this.hoveredControls.find(f => f.control == node) == null) {
-                        this.hoveredControls.push({ hovered:true, control:node });
-                        node.onMouseOver(e);
-                        node._isHovered = true;                                                
-                        if (node.hoverCursor) document.body.style.cursor = node.hoverCursor;
-                            else document.body.style.cursor = this.hoverCursor;
-                    }
-                }           
+                if (node.parent != null) {                    
+                    let isInside = node.absoluteRect.isPointInside(e.position);    
+                    if (!isInside || !isInsideClipRect(node)) return;                    
+                } 
+
+                node.onMouseMove(e);
+                if (this.hoveredControls.find(f => f.control == node) == null) {
+                    this.hoveredControls.push({ hovered:true, control:node });
+                    const event = Object.assign({ control:node }, e);
+                    event.name = 'mouseover';
+                    node.onMouseOver(event);
+                    node._isHovered = true;                                                
+                    if (node.hoverCursor) document.body.style.cursor = node.hoverCursor;
+                        else document.body.style.cursor = this.hoverCursor;
+                }                    
+                
                 for (const child of node.children) check(child);
             }                                                                       
             check(this);            
                 
             this.hoveredControls.forEach(item => {                    
                 let isInside = item.control.absoluteRect.isPointInside(e.position);
-                if (!isInside) {
+                if (!isInside) {                
                     item.control.onMouseOut(e);
                     item.control._isHovered = false;
                     item.hovered = false;                                            
@@ -111,7 +128,7 @@ export class TUI extends TControl {
                 node = node.getTopmostChildAt(e.position);        
                 if (node == null) break;
             
-                //this.engine.events.stopPropagation('mouseup');                                                      // prevent propagation if a window was hit (i.e. click doesn't go "through" the window)           
+                this.engine.events.stopPropagation('mouseup');                                                  // prevent propagation if a window was hit (i.e. click doesn't go "through" the window)                                                       
                 node.onMouseUp(e);
 
                 const c = this.mbDownControls.shift();

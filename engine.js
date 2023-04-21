@@ -19,7 +19,7 @@
 * For example a space invaders, tetris, pong, asteroids, etc. might have no use of container for static World but a platformer game definitely has.
 *
 */
-const VersionNumber = '2.8.5';
+const VersionNumber = '2.8.6';
 
 import * as Types from "./types.js";
 import { Root, Enum_HitTestMode } from "./root.js";
@@ -182,7 +182,7 @@ class TinyGameEngine {
 			m.right      = e.button == 2;
 			m.dragging   = true;			
 			
-			const eventInfo = { event:e, downPos: m.dragStart.clone(), position: m.position.clone(), button:e.button, target: e.target };			
+			const eventInfo = { event:e, downPos: m.dragStart.clone(), position: m.position.clone(), button:e.button, target: e.target };		
 			this.events.fire('mousedown', eventInfo);
 		}
 	

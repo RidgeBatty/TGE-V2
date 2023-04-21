@@ -99,6 +99,8 @@ export class TControl extends TComponent {
     draw() {     
         if (!this.isVisible) return;    
         
+        if (this.parent == null) this.surface.resetTransform();        
+
         for (const c of this.children) {
             if (!c.isVisible) continue;
             this.surface.ctx.save();

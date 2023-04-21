@@ -39,7 +39,7 @@ class Flags {
 	constructor(owner, o = {}) {
 		this.#owner = owner;	
 		for (const [k, v] of Object.entries(o)) {
-			if (k == 'isometric') this.#isometric = v;
+			if (k == 'isometric') this.isometric = v;
 				else this[k] = v;
 		}
 
@@ -70,6 +70,7 @@ class TileMapRenderer extends CustomLayer {
 	 * @param {TileMap} params.tileMap TileMap reference
 	 * @param {Actor} params.target Actor whose coordinates the rendered should follow
 	 * @param {number} params.objectZLayer Actor whose coordinates the rendered should follow
+	 * @param {number} params.aspectRatio Tile aspect ratio: scale of tile Y-axis relative to tile X axis.
 	 */
 	constructor(params = {}) {		
 		super(Object.assign(params, { addLayer:true }));
@@ -97,7 +98,7 @@ class TileMapRenderer extends CustomLayer {
 		this.objectZLayer       = ('objectZLayer' in params) ? params.objectZLayer : this.zIndex;	// on which layer the objects should be rendered on?
 		this.staticActors       = [];		
 		this.projectionMode     = 'angle';															// "zigzag", "angle"
-		this._aspectRatio       = 1;
+		this._aspectRatio       = ('aspectRatio' in params) ? params.aspectRatio : 1;
 		this.tileSize           = 256;
 		this.onBeforeDraw       = null;																// fire a callback before drawing a frame
 				
@@ -467,9 +468,8 @@ class TileMapRenderer extends CustomLayer {
 		
 		const ctx    = this.buffer.ctx;		
 		const size   = this.tileSize;
-		const height = size * this.aspectRatio;																				// tile height
-		const camPos = (world == null) ? position : world.camPos;
-		
+		const height = size * this.aspectRatio;														// tile height
+
 		ctx.resetTransform();
 		if (this.flags.clearBuffer) ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -487,6 +487,7 @@ class TileMapRenderer extends CustomLayer {
 		const isCustomDraw = this.events.names.includes('customdraw');
 
 		let imageDataPending = 0;
+		const canvasHeights = map.textures.map(f => f.canvas.height);
 		
 		for (let y = sY; y < eY; y++) {			
 			for (let x = sX; x < eX; x++) {								
@@ -494,26 +495,26 @@ class TileMapRenderer extends CustomLayer {
 				
 				if ((p.y + size) < 0 || p.y > cH || (p.x + size) < 0 || p.x > cW) continue;
 
-				const id = map.tileAt(x, y);
-				const s  = map.textures[id]?.meta.shift || Vec2.Zero();				
-				p.add(s);
-
+				const id         = map.tileAt(x, y);				
 				const tileId     = id & 255;
 				const hasOverlay = id > 255;
 				const overlayId  = (id >> 8) - 1;
 				const tex        = map.textures[tileId];
+
+				if (tex.meta.shift) p.add(tex.meta.shift);				
 										
 				// NOTE! offset images upwards in y-direction if the height of the texture is greater than width * aspectRatio
 				
 				if (this.flags.ownerDraw && tex) {		
-					if (tex.canvas.width == 0 || tex.canvas.height == 0) imageDataPending++;
-						else
-					ctx.drawImage(tex.canvas, p.x, p.y + height - tex.canvas.height);
+					//if (tex.canvas.width == 0 || tex.canvas.height == 0) imageDataPending++;
+					//	else
+					ctx.drawImage(tex.canvas, p.x, p.y + height - canvasHeights[tileId]);
 
 					if (hasOverlay && map.overlays[overlayId]) {							
 						const overlayImg = map.overlays[overlayId];
-						if (overlayImg.canvas.width == 0 || overlayImg.canvas.height == 0) imageDataPending++;
-							else ctx.drawImage(overlayImg.canvas, p.x, p.y + height - overlayImg.canvas.height);
+						//if (overlayImg.canvas.width == 0 || overlayImg.canvas.height == 0) imageDataPending++;
+						//	else 
+						ctx.drawImage(overlayImg.canvas, p.x, p.y + height - overlayImg.canvas.height);
 					}
 				}				
 				if (isCustomDraw) this.events.fire('customdraw', { renderer:this, x, y, ctx, tileId, overlayId, drawPos:p });				

@@ -551,8 +551,7 @@ class Actor extends Root {
 					if (other.onBeginOverlap) other.onBeginOverlap(b);
 					other.events.fire('beginoverlap', b);			
 				}										
-			} else {																		// actores are NOT currently overlapped
-				this.lastPosition = this.position.clone();									// continuously store the last position when there is no overlap to catch the last non-colliding location
+			} else {																		// actores are NOT currently overlapped				
 				if (this.overlaps.indexOf(other) > -1) {									// check if they WERE overlapping?										
 					const a = { otherActor:other };
 					if (this.onEndOverlap) this.onEndOverlap(a);

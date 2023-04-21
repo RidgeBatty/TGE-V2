@@ -85,9 +85,9 @@ class GameLoop {
 	/**
 	 * Clears all actors and objects from zLayers, calling the object's .destroy() method if one exists.
 	 */
-	clear() {
-		this.forActors(a => this.removeActor(a));
-		for (const layer of this.zLayers) {						
+	clear(options = {}) {
+		if (!options.keepActors) this.forActors(a => this.removeActor(a));
+		if (!options.keepLayers) for (const layer of this.zLayers) {						
 			for (let i = 0; i < layer.length; i++) {
 				if ('destroy' in layer[i]) layer[i].destroy();				
 			}
@@ -608,7 +608,7 @@ class GameLoop {
 		this.flags.doubleBuffering = true;
 		this._frontBuffer  = ('front' in o) ? o.front : this.engine.renderingSurface;
 		this.surface       = o.back;
-		this.onFlipBuffers = o.onRender;
+		if ('onRender' in o) this.onFlipBuffers = o.onRender;
 	}
 
 	/**

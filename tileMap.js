@@ -78,7 +78,7 @@ class TileMap {
 
 	overlayAt(x, y) {
 		const t = this.tileAt(x, y);
-		return (t >> 8) - 1;
+		return ((t & 0x0000FF00) >> 8);
 	}
 
 	setOverlayAt(x, y, o) {

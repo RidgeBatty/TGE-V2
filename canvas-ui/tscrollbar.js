@@ -84,14 +84,14 @@ export class TScrollbar extends TFocusControl {
 
     get thumbLength() {
         if (this.targetControl == null) return this.trackLength;
-        const len = this.trackLength - this.targetControl.overflow[this.orientation] / this.targetControl.itemAreaSize[this.orientation] * this.trackLength;        
+        const len = this.trackLength - this.targetControl.overflow[this.orientation] / this.targetControl.itemAreaSize[this.orientation] * this.trackLength;          
         return len;
     }
 
     draw() {    
         const s = this.surface;
      
-        const { settings, clipRect } = this;
+        const { settings } = this;
         const p = this.position;
         s.ctx.translate(p.x, p.y);
         

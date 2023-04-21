@@ -304,6 +304,8 @@ const wrapBounds = (x, min, max) => {
 	return min + wrapMax(x - min, max - min);
 }
 
+const clamp = (num, a, b) => Math.max(Math.min(num, Math.max(a, b)), Math.min(a, b));
+
 /**
  * Call inside the constructor of 'target' object
  * @param {Object} target Object instance to be extended
@@ -332,13 +334,27 @@ const Mixin = (target, source, createParams) => {
 
 /**
  * Attaches a bunch of methods into the mainClasses prototype
- * @param {Class} mainClass The class that is about to get new methods attached
- * @param {Module|Object} methods Object which contains the methods that need to be attached to the mainClass
+ * @param {Class|Object} target The class that is about to get new methods attached
+ * @param {Module|Object} source Object which contains the methods that need to be attached to the mainClass
  */
-const addMethods = (mainClass, methods) => {
-	for (const [name, method] of Object.entries(methods)) mainClass.prototype[name] = method;            
+const addMethods = (target, source) => {	
+	if (source == null) {
+		var source = target.from;
+		var target = target.to;		
+	}
+	for (const [name, method] of Object.entries(source)) target.prototype[name] = method;            
 }
 
+/**
+ * Creates a new HTML element
+ * @param {object} o Parameters object
+ * @param {string|HTMLElement} o.parent Either a reference to the parent HTMLElement or an ID of the parent element
+ * @param {string=} o.text Optional. Textcontent for the created element
+ * @param {string=} o.id Optional. ID for the created element
+ * @param {string=} o.class Optional. Space separated list of CSS class names to be added in the created element
+ * @param {string=} o.type Optional. Type of the created HTML Element. Defaults to "div".
+ * @returns {HTMLElement}
+ */
 const addElem = (o) => {
     const el = document.createElement('type' in o ? o.type : 'div');
     if ('text' in o)  el.textContent = o.text;
@@ -430,6 +446,7 @@ export {
 	wrapBounds,
 	shortAngleDist,
 	angleLerp,
+	clamp,
 
 	removeDuplicates, 
 	arraysEqual,
