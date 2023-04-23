@@ -21,7 +21,7 @@ export class TUI extends TControl {
         this.windows    = {};
 
         this.draggedControl = null;
-        this.activeWindow   = null;
+        this._activeWindow  = null;
         this.dragStartPos   = null;
         this.hoveredControl = null;
         this.activeControl  = null;
@@ -31,8 +31,34 @@ export class TUI extends TControl {
         this.hoverCursor     = 'pointer';
 
         this.installEventHandlers();
+    }
 
-        console.log(this);
+    get activeWindow() { return this._activeWindow }
+    set activeWindow(w) {        
+        if (this._activeWindow != null && this._activeWindow.isActive) {
+            // console.log('Active window already exists, we need to set the old active window to deactivated.')
+            this._activeWindow._isActive = false;            
+        }
+        
+        if (w != null && w.isWindow && !w.isActive) {
+            //console.log('New active window:', w.caption)            
+            this._activeWindow    = w;
+
+            // bring window to front:
+            const index = w.parent.children.findIndex(f => f == w);
+            w.parent.children.splice(index, 1);
+            w.parent.children.push(w);
+        }
+
+        if (w == null) {
+            // console.log('CustomWindow onDeactivate call sets the UI activeWindow to null. Now we need to figure out if there is any window which can be activated instead')
+            const topmostWindow = this.children.findLast(f => f != this._activeWindow && f.isWindow && f.isVisible && f.isEnabled);                        
+            if (topmostWindow != null) {                            
+                // console.log('New topmost window:', topmostWindow.caption)
+                topmostWindow.isActive = true;
+            }            
+        }
+
     }
 
     installEventHandlers() {
@@ -42,6 +68,8 @@ export class TUI extends TControl {
             while (node) {                                                                  // propagate click through the stack of controls under the mouse
                 node = node.getTopmostChildAt(e.position);
                 if (node == null) break;
+
+                if (node.isWindow) node.isActive = true;                                    // activate window on mousedown
                 
                 this.engine.events.stopPropagation('mousedown');                            // stop mousedown propagation if UI element has been hit!
                 
@@ -138,7 +166,7 @@ export class TUI extends TControl {
             this.mbDownControls.length = 0;
         }
         
-        const keydown   = e => { if (this.activeWindow != null) this.activeWindow.onKeyDown(e); }
+        const keydown   = e => { if (this._activeWindow != null) this._activeWindow.onKeyDown(e); }
         const wheel     = e => {}
         this.engine.events.register(this, { mousemove, mouseup, mousedown, keydown, wheel });
     }  

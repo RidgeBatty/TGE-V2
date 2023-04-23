@@ -72,51 +72,22 @@ export class TCustomWindow extends TFocusControl {
         this.btClose.position.x  = this.titlebar.size.x - this.titlebar.settings.height + 4;
     }
 
-    /**
-     * This event is fired whenever a window is activated either upon creation, or when clicked on/tabbed to by TWindow.bringToFront() method.
-     * Note! If window is already active, this should not be called!
-     */
-    onActivate() {
-        if (this.ui.activeWindow != this) {
-            if (this.ui.activeWindow != null) this.ui.activeWindow.isActive = false;                // deactivate previously active window
-            this.ui.activeWindow = this;             
-        }        
+    onActivate() { this.ui.activeWindow = this; }
+    onDeactivate() { this.ui.activeWindow = null; }
+                                                                                // called when Window is deactivated
+    onShow() { this._opacity = 0; this.isActive = true; }
+    onHide() { 
+        this.forAllChildren(f => { f._isHovered = false; }, false); 
+        this.isActive = false;    
     }
-
-    onDeactivate() { }   
-                                                                               // called when Window is deactivated
-    onShow() { this.bringToFront(); this._opacity = 0; }
-    onHide() { this.forAllChildren(f => { f._isHovered = false; }, false); }
 
     onClose() {
-        this.isActive = false;
-        if (this.ui.activeWindow != null && this.ui.findParentWindow(this.ui.activeWindow) == this) {            
-            this.ui.activeWindow = null;    
-        }        
+        this.onHide();
     }
     
-    close() { this.isVisible = false; this.onClose(); }
+    close() { this.onClose(); this.isVisible = false; }
     show() { this.isVisible = true; }
-    
-    bringToFront() {
-        if (!this.isActive) this.isActive = true;
-
-        const prevTopControl = this.parent.lastChild;
-
-        if (prevTopControl != this) {            
-            const indexOfThis    = this.parent.children.indexOf(this);
-            this.parent.lastChild = this;
-            this.parent.children[indexOfThis] = prevTopControl;
-
-            this.ui.activeWindow = this.parent.lastChild;                                           // make the last window in the draw stack active
-        }
-    }
-
-    onMouseDown(e) {
-        if (this.ui.activeWindow != this) this.bringToFront();
-        super.onMouseDown(e);
-    }
-    
+        
     onKeyDown(e) {        
         if (e.code == 'Tab') {                                                                      // activate next child FocusControl if 'tab' is pressed            
             if (!(this.ui.activeControl && this.isParentOf(this.ui.activeControl))) return;

@@ -59,6 +59,13 @@ export class Sequence {
 		return Math.floor(this.playHead / 64) - this.start;
 	}
 	
+	/**
+	 * Frame number within the context of the flipbook
+	 */
+	get frame() {
+		return Math.floor(this.playHead / 64);	
+	}
+	
 	set loop(value) {
 		if (typeof value === 'boolean') {
 			this._iterationCount = (value === true) ? Infinity : 1;
@@ -92,10 +99,6 @@ export class Sequence {
 	get FPS() {
 		return this._fps;
 	}	
-	
-	get frame() {
-		return Math.floor(this.playHead / 64);	
-	}
 	
 	/**
 	 * Return the length of the animation as number of frames (integer)
@@ -153,13 +156,13 @@ export class Sequence {
 	}
 	
 	/*
-		Calculates the playhead position in the sequence
+		Updates the playhead position within the sequence
 		
 		Animation can loop "this._iterationCount" times.
 		It can progress forward or backward "this.direction".
 		Optional callback may be added, which is executed when animation ends.
 	*/		
-	next() {	
+	tick() {	
 		if (this._cycle == 'ended' || this._isPaused) return Math.floor(this.playHead / 64);
 		if (this.length == 0) return this.start;											// return 1st frame if animation consists of only a single frame
 

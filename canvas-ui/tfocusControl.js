@@ -20,7 +20,7 @@ export class TFocusControl extends TControl {
         this.background  = {};
         this.settings    = {};
         this._tabIndex   = TabIndex++;
-        this._isActive   = false;          
+        this._isActive   = false;                  
         
         addMethods(TFocusControl, { drawGridPattern });
 
@@ -53,7 +53,7 @@ export class TFocusControl extends TControl {
     onKeyDown(e) {}
     
     onMouseDown(e) {        
-        this.ui.activeControl = this;                        
+        this.ui.activeControl = this;
         super.onMouseDown(e);
     }
 }

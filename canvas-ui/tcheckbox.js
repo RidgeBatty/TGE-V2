@@ -1,4 +1,4 @@
-import { Vector2 as Vec2, V2, Rect, RECT } from '../../types.js';
+import { Vector2 as Vec2, V2, Rect, RECT } from '../types.js';
 import { TFocusControl } from './tfocusControl.js';
 
 const ImplementsEvents = 'change';
@@ -12,7 +12,7 @@ export class TCheckbox extends TFocusControl {
         this._checked     = false;
         
         this.settings.boxAlign      = 'left';
-        this.settings.checkMark     = '🍆';
+        this.settings.checkMark     = '✓';
         this.settings.labelOffset   = V2(5, 0);
         this.settings.labelAlign    = 'left';
         this.settings.labelBaseline = 'middle';
@@ -60,6 +60,8 @@ export class TCheckbox extends TFocusControl {
         
         s.ctx.save();
         s.ctx.translate(this.position.x, this.position.y);
+
+        // s.drawRect(this.clientRect, { stroke:settings.clBtnHighlight });                // control's frame            
         
         const textAlign    = settings.labelAlign;                                                                                       // checkbox label
         const textBaseline = settings.labelBaseline;        

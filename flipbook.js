@@ -176,6 +176,11 @@ class Flipbook {
 	get sequenceCount() {
 		return Object.keys(this.sequences).length;
 	}
+	
+	get sequenceList() {
+		return Object.values(this.sequences);
+	}
+
 	/*
 		Link this Flipbook with an Actor or ChildActor. Optionally start any animation sequence by providing its name (second parameter)		
 	*/
@@ -354,7 +359,7 @@ class Flipbook {
 		const seq   = this.sequence;
 		if (seq == null || seq._cycle == 'ended') return;
 				
-		const index = seq.next();				
+		const index = seq.tick();				
 
 		let image;
 		if (this.type == 'images') {
