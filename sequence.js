@@ -18,7 +18,7 @@ export class Sequence {
 		this.start       = start;
 		this.end         = end;
 		
-		this.playHead    = start;	
+		this.playhead    = start;	
 		this.direction   = 'forward';								// forward, backward, forward-reverse, backward-reverse
 		this.zOrder      = 0;
 		this.frames      = [];
@@ -36,7 +36,7 @@ export class Sequence {
 	clone(owner) {
 		const s = new Sequence(owner, this.name, this.start, this.end, this._iterationCount == Infinity);
 		
-		s.playHead        = this.playHead;
+		s.playhead        = this.playhead;
 		s.direction       = this.direction;
 		s.zOrder          = this.zOrder;
 		s.frames          = this.frames;			// by reference
@@ -56,14 +56,14 @@ export class Sequence {
 	 * Zero based frame number
 	 */
 	get frameIndex() {		
-		return Math.floor(this.playHead / 64) - this.start;
+		return Math.floor(this.playhead / 64) - this.start;
 	}
 	
 	/**
 	 * Frame number within the context of the flipbook
 	 */
 	get frame() {
-		return Math.floor(this.playHead / 64);	
+		return Math.floor(this.playhead / 64);	
 	}
 	
 	set loop(value) {
@@ -147,10 +147,10 @@ export class Sequence {
 	resetCycle() {
 		this._cycle = 'normal';		
 		if (this.direction.includes('forward')) {
-			this.playHead = this.start * 64;
+			this.playhead = this.start * 64;
 			this._dir     = 1;
 		} else {
-			this.playHead = this.end * 64;
+			this.playhead = this.end * 64;
 			this._dir     = -1;
 		}		
 	}
@@ -163,21 +163,21 @@ export class Sequence {
 		Optional callback may be added, which is executed when animation ends.
 	*/		
 	tick() {	
-		if (this._cycle == 'ended' || this._isPaused) return Math.floor(this.playHead / 64);
+		if (this._cycle == 'ended' || this._isPaused) return Math.floor(this.playhead / 64);
 		if (this.length == 0) return this.start;											// return 1st frame if animation consists of only a single frame
 
 		const start = this.start * 64;
 		const end   = this.end * 64 + 63;
 
-		this.playHead += this.frameIncrement;
+		this.playhead += this.frameIncrement;
 					
 		// If the animation has hit either end (first frame for reversed animation, or last frame for forward animation)
-		const n = this.playHead;
+		const n = this.playhead;
 		
 		const outOfBounds = (this._dir == 1 && n > end) || (this._dir == -1 && n < start);				
 		if (outOfBounds) {
 			if (this._isPausing) return this._isPaused = true;
-			this.playHead = (n > end) ? end : start;				
+			this.playhead = (n > end) ? end : start;				
 			if (this._cycle == 'normal') {
 				if (this.direction.includes('reverse')) {
 					this._dir   *= -1;	
@@ -188,7 +188,7 @@ export class Sequence {
 				if (this._cycle == 'returning') this._nextIteration();												
 		}
 
-		return Math.floor(this.playHead / 64);			
+		return Math.floor(this.playhead / 64);			
 	}
 	
 	_nextIteration() {
@@ -210,7 +210,7 @@ export class Sequence {
 	 */
 	seek(frame) {		
 		if (isNaN(frame)) return;				
-		this.playHead       = AE.clamp(this.start + frame, this.start, this.end) * 64;				
+		this.playhead       = AE.clamp(this.start + frame, this.start, this.end) * 64;				
 		this.owner.sequence = this;
 	}
 }

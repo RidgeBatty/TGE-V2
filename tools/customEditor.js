@@ -126,28 +126,24 @@ export class CustomEditor extends CustomLayer {
         const hLines = Math.round(vy / gy);
         const vLines = Math.round(vx / gx);
 
-        const pos   = Vec2.Add(this.position, this.offset);
+        const pos    = Vec2.Add(this.position, this.offset);
+        
+        for (let x = 0; x <= vLines; x++) {
+            const px = x * gx - (pos.x % gx);
+            const vertLineNum = x + Math.floor(pos.x / gx) + 1;            
+            let cx = (Math.round(pos.x + px) % (gx * 4) == 0) ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.25)';            
+            s.drawLine(V2(px, 0), V2(px, vy), cx);            
+            if (this.grid.showCoordinates && vLines < 50 && x > 0) s.textOut(V2(px, vy - 4), vertLineNum, this.grid.text);            
+        }                
         
         for (let y = 0; y <= hLines; y++) {
-            for (let x = 0; x <= vLines; x++) {
-                const py = y * gy - (pos.y % gy);
-                const px = x * gx - (pos.x % gx);
-                const vertLineNum = x + Math.floor(pos.x / gx) + 1;
-                const horzLineNum = y + Math.floor(pos.y / gx) + 1;
+            const py = y * gy - (pos.y % gy);
+            const horzLineNum = y + Math.floor(pos.y / gx) + 1;
+            let cy = (Math.round(pos.y + py) % (gy * 4) == 0) ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.25)';
+            s.drawLine(V2(0, py), V2(vx, py), cy);
+            if (this.grid.showCoordinates && hLines < 30 && y < hLines - 1) s.textOut(V2(0, py - 4), horzLineNum, this.grid.text);                
+        }      
 
-                let cx = (Math.round(pos.x + px) % (gx * 4) == 0) ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.025)';
-                let cy = (Math.round(pos.y + py) % (gy * 4) == 0) ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.025)';
-
-                s.drawLine(V2(px, 0), V2(px, vy), cx);
-                s.drawLine(V2(0, py), V2(vx, py), cy);
-
-                if (this.grid.showCoordinates) {
-                    if (vLines < 50 && x > 0) s.textOut(V2(px, vy - 4), vertLineNum, this.grid.text);
-                    if (hLines < 30 && x == 0 && y < hLines - 1) s.textOut(V2(0, py - 4), horzLineNum, this.grid.text);
-                }
-            }                
-        }
-        
         s.ctx.lineWidth = 3;
         s.ctx.setLineDash([5, 5]);
         s.drawLine(V2(-pos.x, 0), V2(-pos.x, vy), 'rgba(0,0,0,1)');

@@ -120,9 +120,9 @@ export class AnimationPlayer {
         for (const fb of this.current.flipbooks) if (fb.sequence) {
             const s = fb.sequence;
             const delta = s.frame - s.start;
-            if (s.start + delta + frames < s.start) return s.playHead = s.start * 64;
-            if (s.start + delta + frames > s.end) return s.playHead = s.end * 64;
-            s.playHead = s.start * 64 + (delta + frames) * 64;
+            if (s.start + delta + frames < s.start) return s.playhead = s.start * 64;
+            if (s.start + delta + frames > s.end) return s.playhead = s.end * 64;
+            s.playhead = s.start * 64 + (delta + frames) * 64;
         }
     }
 

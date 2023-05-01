@@ -30,12 +30,12 @@ export class TFocusControl extends TControl {
     get isActive() { return this._isActive; }
     set isActive(v) {
         if (v === true) {
-            if (this._isActive == false) this.onActivate();
+            if (this._isActive == false && this.onActivate) this.onActivate();
             this._isActive = true;
             return;
         }
         if (v === false) {
-            if (this._isActive == true) this.onDeactivate();
+            if (this._isActive == true && this.onDeactivate) this.onDeactivate();
             this._isActive = false;            
             return;
         }

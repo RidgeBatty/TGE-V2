@@ -21,6 +21,7 @@ export class TCheckbox extends TFocusControl {
 
         if ('settings' in o) Object.assign(this.settings, o.settings);
         if ('caption' in o)  this._caption = o.caption;   
+        if ('checked' in o && (o.checked === true || o.checked === false)) this._checked = o.checked;
         
         this.events.create(ImplementsEvents);        
     }   
@@ -46,7 +47,11 @@ export class TCheckbox extends TFocusControl {
 
     onMouseUp(e) {
         this.toggle();
-        this.events.fire('change', { value:this.checked });
+
+        const data = { value:this.checked };
+        this.events.fire('change', data);
+        if (this.onChange) this.onChange(data);
+        
         super.onMouseUp(e);        
         this.isButtonDown = false;
         this.events.fire('mouseup', { event:e, button:e.button, position:e.position });

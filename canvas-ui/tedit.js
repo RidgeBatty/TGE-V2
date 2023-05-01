@@ -18,19 +18,25 @@ export class TEdit extends TFocusControl {
         this.params      = o;
         this.settings    = {};   
         this._caretPos   = 0;
+
         this.fetchDefaults('edit');
+        if ('settings' in o) Object.assign(this.settings, o.settings);
 
         this.type        = ('type' in o && TEditTypes.includes(o.type)) ? o.type : 'text';
         this._value      = ('value' in o) ? String(o.value) : '';                                                       // string representation of the edit's value (for editing purposes)
         this.min         = ('min' in o) && isNumeric(o.min) ? o.min : -Infinity;
         this.max         = ('max' in o) && isNumeric(o.max) ? o.max : Infinity;        
+        this.textMargin  = ('textMargin' in o) ? o.textMargin : V2(2, 2);
         if (this.min > this.max) throw new Error('Minimum must be less than or equal to maximum!');
+
+        this.events.create(ImplementsEvents);        
     }
 
     get value() { 
         if (this.type == 'number') return parseFloat(this._value);
         return this._value; 
     }
+    
     set value(v) {         
         this._value = String(v); 
     }
@@ -69,6 +75,10 @@ export class TEdit extends TFocusControl {
             this._value   = String(num);
             this.caretPos = this.caretPos;                          // make sure caret is not out of bounds
         }
+
+        const data = { value:this._value };
+        this.events.fire('change', data);
+        if (this.onChange) this.onChange(data);
     }
        
     onKeyDown(e) {          
@@ -104,9 +114,11 @@ export class TEdit extends TFocusControl {
         const { surface, settings } = this;
         surface.ctx.font = settings.font;
         const charWidths = this.displayValue.split('').map((f, i, a) => surface.ctx.measureText(a[i]).width);         // get the widths of all characters
+        const textWidth  = surface.ctx.measureText(this.displayValue).width;
 
-        const xofs = e.position.x - this.absoluteOffset.x;                                                            // distance from left edge of the control to the mouse click x-position
-
+        const rightAlignFix = (settings.textAlign == 'right') ? (this.clientRect.width - textWidth - this.textMargin.x) : 0;
+        const xofs = e.position.x - this.absoluteOffset.x - rightAlignFix;                                            // distance from left edge of the control to the mouse click x-position
+        
         this._caretPos = this.displayValue.length > 0 ? this.displayValue.length : 0;
         for (let i = 0, acc = 0; i < charWidths.length; i++) {                                                        // calculate which character was clicked
             if (xofs < acc + charWidths[i] * 0.5) { this._caretPos = i; break; }
@@ -131,18 +143,26 @@ export class TEdit extends TFocusControl {
 
         const text = this.displayValue;
         s.ctx.font = this.settings.font;
-        const m    = s.ctx.measureText(text.substring(0, this.caretPos));
+        const m    = s.ctx.measureText(text.substring(0, this.caretPos));                                   // measure the text width from the beginning of the text up to the caret position
         
-        const cr          = this.clientRect;
-        const caretOrigin = cr.position.add(V2(2, cr.size.y - m.fontBoundingBoxDescent));        
-        const caretPos    = Vec2.Add(V2(m.width, 0), caretOrigin);
+        const cr   = this.clientRect;                                                                       
+        if (settings.textAlign == 'right') {                                                                // calculate caret and text position based on alignment settings
+            const tm        = s.ctx.measureText(text);                                                      // measure the full length of the text
+            const ofs       = V2(cr.size.x - this.textMargin.x - tm.width, cr.size.y - m.fontBoundingBoxDescent);
+            var caretOrigin = cr.position.add(ofs);                    
+        }
+        if (settings.textAlign == 'left' || settings.textAlign == null) {
+            var caretOrigin = cr.position.add(V2(this.textMargin.x, cr.size.y - m.fontBoundingBoxDescent));                    
+        }        
+
+        const caretPos    = Vec2.Add(V2(m.width, 0), caretOrigin);        
         const caretHeight = m.fontBoundingBoxAscent + m.fontBoundingBoxDescent;
 
         if (this.ui.activeControl == this && this.ui.engine.gameLoop.tickCount % 30 < 15) {
-            s.drawLine(caretPos, Vec2.Add(caretPos, V2(0, -caretHeight)), settings.clCaret);                          // caret            
+            s.drawLine(caretPos, Vec2.Add(caretPos, V2(0, -caretHeight)), settings.clCaret);                // caret            
         }
         
-        s.textOut(caretOrigin, text, { color:settings.clCaret });
+        s.textOut(caretOrigin, text, { color:settings.clCaret });                                           // print text content of the edit box
         
         s.ctx.restore();        
     }

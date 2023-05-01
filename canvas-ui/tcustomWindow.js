@@ -45,6 +45,10 @@ export class TCustomWindow extends TFocusControl {
         return this.titlebar?.caption;
     }
 
+    set caption(v) {
+        if (this.titlebar) this.titlebar.caption = v;        
+    }
+
     get dragActivationCtrl() {                                                  // returns the control which defines the active drag area
         return this.titlebar;
     }

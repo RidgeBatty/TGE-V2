@@ -15,6 +15,7 @@ export class TUI extends TControl {
 
         this.engine     = engine;                   // used to determine the viewport dimensions and attach event handlers
         this.surface    = engine.renderingSurface;
+        this.size       = this.surface.size;
         this.components = [];
         this.isCanvasUI = true;
         this.defaults   = {};                       // defaults are loaded from "default.styles.hjson"
@@ -26,7 +27,7 @@ export class TUI extends TControl {
         this.hoveredControl = null;
         this.activeControl  = null;
         
-        this.mbDownControls  = [];                 // mouse down control (needs to be saved to complete click event)
+        this.mbDownControls  = [];                                                         // mouse down control (needs to be saved to complete click event)
         this.hoveredControls = [];
         this.hoverCursor     = 'pointer';
 
@@ -35,28 +36,30 @@ export class TUI extends TControl {
 
     get activeWindow() { return this._activeWindow }
     set activeWindow(w) {        
-        if (this._activeWindow != null && this._activeWindow.isActive) {
-            // console.log('Active window already exists, we need to set the old active window to deactivated.')
-            this._activeWindow._isActive = false;            
+        if (this._activeWindow != null && this._activeWindow.isActive) {                   // Active window already exists, we need to set the old active windows active status to false
+            this._activeWindow._isActive = false;
         }
         
-        if (w != null && w.isWindow && !w.isActive) {
-            //console.log('New active window:', w.caption)            
+        if (w != null && w.isWindow && !w.isActive) {                                      // we have a new active window
             this._activeWindow    = w;
 
             // bring window to front:
             const index = w.parent.children.findIndex(f => f == w);
             w.parent.children.splice(index, 1);
             w.parent.children.push(w);
+            this.activeControl = w;                                                        // make the active window also the currently active control
         }
 
-        if (w == null) {
-            // console.log('CustomWindow onDeactivate call sets the UI activeWindow to null. Now we need to figure out if there is any window which can be activated instead')
+        if (w == null) {                                                                   // CustomWindow onDeactivate call has set the UI activeWindow to null. Now we need to figure out if there is any window which can be activated instead
             const topmostWindow = this.children.findLast(f => f != this._activeWindow && f.isWindow && f.isVisible && f.isEnabled);                        
             if (topmostWindow != null) {                            
                 // console.log('New topmost window:', topmostWindow.caption)
                 topmostWindow.isActive = true;
-            }            
+                this.activeControl     = topmostWindow;
+            } else {                
+                this.activeControl     = null;                                             // all windows have been closed
+                this._activeWindow     = null;
+            }
         }
 
     }
@@ -160,7 +163,11 @@ export class TUI extends TControl {
                 node.onMouseUp(e);
 
                 const c = this.mbDownControls.shift();
-                if (node == c) node.onClick(Object.assign({}, e, { name:'click', control:node }));
+                if (node == c) {
+                    const event = { name:'click', control:node };
+                    node.onClick(Object.assign({}, e, event));
+                    node.events.fire('click', event);
+                }
             }
 
             this.mbDownControls.length = 0;

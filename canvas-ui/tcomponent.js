@@ -12,7 +12,7 @@ export class TComponent {
     /**
      * 
      * @param {object} o params
-     * @param {CBaseControl|CUI} o.parent parent component
+     * @param {TControl|TUI} o.parent parent component
      * @param {Vector2} o.position position of the components top left corner
      * @param {Vector2} o.size width and height of the component
      */

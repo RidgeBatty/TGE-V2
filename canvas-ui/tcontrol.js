@@ -15,9 +15,13 @@ export class TControl extends TComponent {
     constructor(o) {
         super(o);
 
-        if (o.align == 'x') {
+        if ('align' in o) {
             const pc = this.parent.clientRect.center;
-            o.position = V2(pc.x - o.size.x * 0.5 + o.position.x, o.position.y);
+
+            if (!('size' in o)) throw 'TControl size must be explicitly defined if "align" property is specified';
+            const x = o.align.includes('x') ? (pc.x - o.size.x * 0.5 + o.position.x) : o.position.x;
+            const y = o.align.includes('y') ? (pc.y - o.size.y * 0.5 + o.position.y) : o.position.y;
+            o.position = V2(x, y);
         }
 
         this.position   = 'position' in o ? o.position : V2(0, 0);

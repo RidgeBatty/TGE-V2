@@ -31,6 +31,8 @@ export class TListbox extends TFocusControl {
     add(item) {          
         let items = Array.isArray(item) ? item : [item];
         
+        const itemCount = this.children.length;                                                             // save the number already existing items
+
         for (let i = 0; i < items.length; i++) {
             let caption, data;
             if (typeof items[i] == 'object') {
@@ -41,7 +43,8 @@ export class TListbox extends TFocusControl {
                 caption = items[i];
             }
             
-            const c = super.add(TListitem, { size:V2(this.rect.width - 2, this.itemLength), position:V2(0, i * this.itemLength), caption, data });            
+            const yPos = (i + itemCount) * this.itemLength;
+            const c    = super.add(TListitem, { size:V2(this.rect.width - 2, this.itemLength), position:V2(0, yPos), caption, data });            
             c.settings.clInactiveBorder = '#111';   
 
             // get the scroll offset for all listitems by reading the Listbox.scroll property
@@ -67,11 +70,15 @@ export class TListbox extends TFocusControl {
     }        
 
     onClick = (e) => {
-        this.selectedItem = this.hoverItem;        
+        if (this.selectedItem) this.selectedItem.isSelected = false;                                                    // if we already had a selected item, deselect it
+
+        this.selectedItem = this.hoverItem; 
+        this.selectedItem.isSelected = true;       
+        
         this.events.fire('select', { event:e, button:e.button, position:e.position, selectedItem:this.selectedItem });
     }    
 
-    recalculate() {
+    recalculate() {    
         this.itemAreaSize.y = this.children.length * this.itemLength;         
         this.overflow.y     = Math.max(0, this.itemAreaSize.y - this.size.y); 
     }
