@@ -1,48 +1,124 @@
 import { Vector2 as Vec2, V2, Rect, RECT } from '../types.js';
-import { getJSON, preloadImages } from '../utils.js';
+import { copyProps, getJSON, preloadImages } from '../utils.js';
 import { TControl } from './tcontrol.js';
 import { Picture } from '../picture.js';
+import { SwitchEditorAction } from '../../editor/pixelEditor/pixelEditorActions.js';
+
+const FieldsToCopy = 'name components windows children _activeWindow activeControl hoverCursor';
+class TDesktop {}
 
 export class TUI extends TControl {
     #isInitialized = false;
+    
 
     /**
      * Creates a new top level UI system overlay
      * @param {TinyGameEngine} engine 
      */
     constructor(engine) {
-        super({ parent:null });
+        super({ parent:null, name:'default' });
 
-        this.engine     = engine;                   // used to determine the viewport dimensions and attach event handlers
+        this.engine     = engine;                                                           // used to determine the viewport dimensions and attach event handlers
         this.surface    = engine.renderingSurface;
         this.size       = this.surface.size;
-        this.components = [];
         this.isCanvasUI = true;
-        this.defaults   = {};                       // defaults are loaded from "default.styles.hjson"
-        this.windows    = {};
+        this.desktops   = [];                                                               // optional system: desktop is a snapshot of GUI state. Having multiple desktops is useful especially in editors.        
+        this.defaults   = {};                                                               // defaults are loaded from "default.styles.hjson"
 
-        this.draggedControl = null;
-        this._activeWindow  = null;
-        this.dragStartPos   = null;
-        this.hoveredControl = null;
-        this.activeControl  = null;
+        this.initDesktop();
+        this.installEventHandlers();  
+        this.createDesktop(this.name);
+    }
+
+    initDesktop() {
+        this.components      = [];
+        this.children        = [];
+        this.windows         = {};        
+
+        this.draggedControl  = null;
+        this._activeWindow   = null;
+        this.dragStartPos    = null;
+        this.hoveredControl  = null;
+        this.activeControl   = null;
         
         this.mbDownControls  = [];                                                         // mouse down control (needs to be saved to complete click event)
         this.hoveredControls = [];
-        this.hoverCursor     = 'pointer';
+        this.hoverCursor     = 'auto';
+    }
 
-        this.installEventHandlers();
+    /**
+     * Creates a new empty desktop 
+     */
+    createDesktop(name, switchToCreatedDesktop) {
+        const d = new TDesktop();
+        this.initDesktop.apply(d);     
+        d.name = name;           
+
+        if (this.desktops.find(f => f.name == name) == null) this.desktops.push(d);       // if the created desktop is not found in the desktops collection, add it there            
+        if (switchToCreatedDesktop) this.switchDesktop(name);
+
+        return d;
+    }
+
+    /**
+     * Saves the desktop state 
+     */
+    _saveDesktopState(name) {        
+        let target  = this.desktops.find(f => f.name == name);                           
+        if (target == null) throw new Error(`Desktop with name "${name}" does not exists!`)
+
+        copyProps(target, this, FieldsToCopy);
+        target.components = [...this.components];
+        target.children   = [...this.children];
+        copyProps(target.windows, this.windows, Object.keys(this.windows));
+    }
+
+    /**
+     * Loads the desktop state 
+     */
+    _loadDesktopState(name) {        
+        let t  = this.desktops.find(f => f.name == name);                           
+        if (t == null) throw new Error(`Desktop with name "${name}" does not exists!`)
+
+        copyProps(this, t, FieldsToCopy);
+        this.components = [...t.components];
+        this.children   = [...t.children];
+        copyProps(this.windows, t.windows, Object.keys(t.windows));
+    }
+
+    /**
+     * Switches to desktop "name" by storing the current GUI state and then replacing it. 
+     * Replacing includes all windows, components, etc.
+     * @param {string} name 
+     */
+    switchDesktop(name) {        
+        let target  = this.desktops.find(f => f.name == name);                             // we're going to switch to this desktop
+        if (target == null) {
+            throw new Error(`Desktop with name "${name}" does not exists!`)
+        }
+
+        let current = this.desktops.find(f => f.name == this.name);                        // find the current desktop
+        if (current == null) {
+            console.warn('Cannot find desktop:', this.name)
+            return this.createDesktop(this.name, true);
+        } 
+
+        this._saveDesktopState(this.name);                                                 // save the current state
+        this._loadDesktopState(name);
     }
 
     get activeWindow() { return this._activeWindow }
     set activeWindow(w) {        
         if (this._activeWindow != null && this._activeWindow.isActive) {                   // Active window already exists, we need to set the old active windows active status to false
             this._activeWindow._isActive = false;
+            //console.log('Active window already exists:', this._activeWindow.caption)
         }
         
         if (w != null && w.isWindow && !w.isActive) {                                      // we have a new active window
-            this._activeWindow    = w;
 
+            //console.log('We have a new active window:', w.caption)
+            this._activeWindow    = w;
+            
             // bring window to front:
             const index = w.parent.children.findIndex(f => f == w);
             w.parent.children.splice(index, 1);
@@ -51,17 +127,20 @@ export class TUI extends TControl {
         }
 
         if (w == null) {                                                                   // CustomWindow onDeactivate call has set the UI activeWindow to null. Now we need to figure out if there is any window which can be activated instead
+            //console.log('Deactivating:', this.activeWindow.caption)
             const topmostWindow = this.children.findLast(f => f != this._activeWindow && f.isWindow && f.isVisible && f.isEnabled);                        
+
+            //console.log('Topmost window:', topmostWindow.caption);
+
             if (topmostWindow != null) {                            
                 // console.log('New topmost window:', topmostWindow.caption)
-                topmostWindow.isActive = true;
+                topmostWindow.onActivate();
                 this.activeControl     = topmostWindow;
-            } else {                
-                this.activeControl     = null;                                             // all windows have been closed
-                this._activeWindow     = null;
+            } else {                                                                       // all windows have been closed
+                this._activeWindow     = null;                      
+                this._activeControl    = null;
             }
-        }
-
+        }        
     }
 
     installEventHandlers() {
@@ -124,7 +203,9 @@ export class TUI extends TControl {
                     event.name = 'mouseover';
                     node.onMouseOver(event);
                     node._isHovered = true;                                                
-                    if (node.hoverCursor) document.body.style.cursor = node.hoverCursor;
+                    if (node.hoverCursor) {
+                        document.body.style.cursor = node.hoverCursor;
+                    }
                         else document.body.style.cursor = this.hoverCursor;
                 }                    
                 

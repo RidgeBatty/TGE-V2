@@ -107,7 +107,7 @@ class TileMapRenderer extends CustomLayer {
 
 		this.engine.events.add('resize', _ => { 
 			this.buffer.setCanvasSize(this.engine.screen.width, this.engine.screen.height);
-		});
+		});		
 	}
 
 	/**

@@ -346,6 +346,19 @@ const addMethods = (target, source) => {
 }
 
 /**
+ * Copies some "properties" of "source" object into the "target" object
+ * @param {object} target 
+ * @param {object} source 
+ * @param {[*]|string} properties Can be either an array of strings or a string (space separated list of properties)
+ */
+const copyProps = (target, source, properties) => {
+	if (typeof properties == 'string') properties = properties.split(' ');
+	for (const [k, v] of Object.entries(source)) {
+		if (properties.includes(k)) target[k] = v;
+	}
+}
+
+/**
  * Creates a new HTML element
  * @param {object} o Parameters object
  * @param {string|HTMLElement} o.parent Either a reference to the parent HTMLElement or an ID of the parent element
@@ -458,4 +471,5 @@ export {
 	Mixin,
 	addMethods,
 	addPropertyListener,
+	copyProps
 }

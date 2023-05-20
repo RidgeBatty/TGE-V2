@@ -30,16 +30,17 @@ export class TFocusControl extends TControl {
     get isActive() { return this._isActive; }
     set isActive(v) {
         if (v === true) {
-            if (this._isActive == false && this.onActivate) this.onActivate();
-            this._isActive = true;
+            if (this._isActive == false) this.onActivate();            
             return;
         }
         if (v === false) {
-            if (this._isActive == true && this.onDeactivate) this.onDeactivate();
-            this._isActive = false;            
+            if (this._isActive == true) this.onDeactivate();            
             return;
         }
     }
+
+    onActivate() { this.ui.activeControl = this; this._isActive = true; }
+    onDeactivate() { this.ui.activeControl = null; this._isActive = false; }
     
     async loadFrames(o) {
         if (o.ext) for (let i = 0; i < o.urls.length; i++) o.urls[i] = o.urls[i] += '.' + o.ext;

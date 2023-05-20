@@ -76,18 +76,16 @@ export class TCustomWindow extends TFocusControl {
         this.btClose.position.x  = this.titlebar.size.x - this.titlebar.settings.height + 4;
     }
 
-    onActivate() { this.ui.activeWindow = this; }
-    onDeactivate() { this.ui.activeWindow = null; }
-                                                                                // called when Window is deactivated
-    onShow() { this._opacity = 0; this.isActive = true; }
+    onActivate() { this.ui.activeWindow = this; this._isActive = true; }
+    onDeactivate() { this._isActive = false; this.ui.activeWindow = null; }                         // called when Window is deactivated
+                                                                       
+    onShow() { this._opacity = 0; this.onActivate(); }
     onHide() { 
-        this.forAllChildren(f => { f._isHovered = false; }, false); 
-        this.isActive = false;    
+        this.forAllChildren(f => { f._isHovered = false; if ('_isActive' in f) f._isActive = false; }, true);
+        this.onDeactivate();     
     }
 
-    onClose() {
-        this.onHide();
-    }
+    onClose() {}                                                                                    // called when the window is about to close; before "isVisible" is set to false and before onHide() is called
     
     close() { this.onClose(); this.isVisible = false; }
     show() { this.isVisible = true; }

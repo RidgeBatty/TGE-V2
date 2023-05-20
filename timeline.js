@@ -15,13 +15,14 @@ import { Deserializer, DATATYPES } from './deserializer.js';
 
 export class Keyframe {
     constructor(o) {
+        this.index     = 0;                                                                 // frame index (could be pointing to a Flipbook, Atlas, or custom image source)
         this.timeline  = o.timeline;
         this.translate = Vec2.Zero();
         this.pivot     = Vec2.Zero();
         this.angle     = 0;
         this.scale     = 1;
         this.opacity   = 1;
-        this.filter    = 'none';    
+        this.filter    = 'none';            
     }
 }
 
@@ -32,17 +33,19 @@ export class Timeline {
      * @param {boolean|number} o.loop
      */
     constructor(o) {
-        this.track      = [];
-        this._playhead  = 0;
-        this.loop       = ('loop' in o) ? o.loop : false;
-        this.name       = ('name' in o) ? o.name : 'Noname';
-        this.zLayersMax = 5;
+        this.track       = [];
+        this._playhead   = 0;
+        this.loop        = ('loop' in o) ? o.loop : false;
+        this.name        = ('name' in o) ? o.name : 'Noname';
+        this.zLayersMax  = 5;
+        this.sourceType  = 'flipbook';                                                      // where the frames are pulled? currently only accepted value is "flipbook"
+        this.sourceId    = '';
 
-        this.FPS        = 1;
-        this.lengthMax  = 300;
-        this.start      = 0;
-        this.end        = 9;
-        this.precision  = 1;                                                                // keyframe multiplier for increased precision (playhead is always moved using integer values)
+        this.FPS         = 1;
+        this.lengthMax   = 300;
+        this.start       = 0;
+        this.end         = 9;
+        this.precision   = 128;                                                             // keyframe multiplier for increased precision (playhead is always moved using integer values)
     }
 
     set playhead(v) {
@@ -128,6 +131,15 @@ export class Timeline {
         this.playhead = this.end * this.precision;
     }
 
+    eachKeyframe(f) {
+        for (let i = 0; i < this.track.length; i++) {
+            const zLayers = this.track[i];
+            for (let z = 0; z < zLayers.length; z++) {
+                f(i, z, zLayers[z]);
+            }
+        }
+    }
+
     static async Parse(data) {
         const t = new Timeline({});
         const d = new Deserializer({ data });
@@ -169,6 +181,10 @@ export class Timeline {
                     opacity   : d.decode().data,
                     filter    : d.decode().data,
                 }
+
+                const isCustomKeyframeData = d.decode().data;                               // custom data block?
+                if (isCustomKeyframeData) keyframe.data = d.decode().data;                  // custom data is always a medium text string (up to 65k bytes)
+
                 t.addKeyframe(i, z, keyframe);                
             }
         }        
