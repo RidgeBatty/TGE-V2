@@ -55,6 +55,13 @@ background : {
     }
 }
 
+toolWindow : {
+    titleBar : {
+        textOffset : { x:4, y:0 }
+        height : 24
+    }
+}
+
 window : {
     closeButton : { 
         font: 'bold 14px arial'

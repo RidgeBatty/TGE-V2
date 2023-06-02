@@ -289,6 +289,10 @@ export class TUI extends TControl {
      */
     applyProps(target, source) {
         for (const [k, v] of Object.entries(source)) {
+            if (Array.isArray(v)) {
+                target[k] = [];
+                this.applyProps(target[k], v);
+            }
             if (typeof v == 'object') {
                 if (!(k in target)) target[k] = {};
                 this.applyProps(target[k], v);             

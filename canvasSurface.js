@@ -630,9 +630,13 @@ class CanvasSurface {
 		return new Rect(m.actualBoundingBoxLeft, m.fontBoundingBoxAscent, m.actualBoundingBoxRight, m.fontBoundingBoxDescent);
 	}
 
-	clipRect(r) {
+	clipRect(r, cornerRadius = 0) {
 		this.ctx.beginPath();
-        this.ctx.rect(r.x, r.y, r.width, r.height);
+		if (cornerRadius) {
+			this.ctx.roundRect(r.x, r.y, r.width, r.height, cornerRadius);	
+		} else {
+        	this.ctx.rect(r.x, r.y, r.width, r.height);
+		}
         this.ctx.clip();
 	}
 	

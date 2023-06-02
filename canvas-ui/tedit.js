@@ -5,7 +5,6 @@
  */
  
 import { Vector2 as Vec2, V2, Rect, RECT } from '../types.js';
-import { addMethods, preloadImages } from '../utils.js';
 import { TFocusControl } from './tfocusControl.js';
 
 const ImplementsEvents = 'change';

@@ -10,6 +10,7 @@ import './ext/hjson.min.js';
 import * as Types from './types.js';
 
 const Vec2 = Types.Vector2;
+const InputTypes = 'button checkbox color date datetime-local email file hidden image month number password radio range reset search submit tel text time url week'.split(' ');
 
 /**
  * Halts execution of current Javascript context for n milliseconds without blocking other asynchronous tasks.
@@ -366,13 +367,27 @@ const copyProps = (target, source, properties) => {
  * @param {string=} o.id Optional. ID for the created element
  * @param {string=} o.class Optional. Space separated list of CSS class names to be added in the created element
  * @param {string=} o.type Optional. Type of the created HTML Element. Defaults to "div".
+ * 	NOTE! If the type is any of InputTypes constants, the type of the element is set to "input" and the type field becomes the value of <input type=""> 
  * @returns {HTMLElement}
  */
-const addElem = (o) => {
-    const el = document.createElement('type' in o ? o.type : 'div');
+const addElem = (o) => {		
+	let kind = ('type' in o) ? o.type : 'div';	
+	if (InputTypes.includes(kind)) kind = 'input';													// check if the given "type" is any of InputTypes constants
+	
+    const el = document.createElement(kind);
+
+	if (kind == 'input') el.type = o.type;
+
     if ('text' in o)  el.textContent = o.text;
     if ('class' in o) el.className = o.class;
     if ('id' in o)    el.id = o.id;
+
+	for (const [k, v] of Object.entries(o)) {
+		if (!['text', 'class', 'id', 'parent', 'type'].includes(k)) {
+			el.setAttribute(k, v);
+		}
+	}
+
     const parent = ('parent' in o) ? ((typeof o.parent == 'string') ? document.getElementById(o.parent) : o.parent) : document.body;
     parent.appendChild(el);
     return el;

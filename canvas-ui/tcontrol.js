@@ -89,6 +89,7 @@ export class TControl extends TComponent {
     set lastChild(v)   { if (this.children.length > 0) { this.children[this.children.length - 1] = v; v.parent = this; } }
 
     onCreate() {
+        super.onCreate();
         if (this._createVisible) this.isVisible = true;
     }
 

@@ -84,9 +84,7 @@ export class TComponent {
         }
     }
 
-    onCreate() {
-        console.log('On Create')
-    }
+    onCreate() {}
     onDestroy() {}
 
     /**
