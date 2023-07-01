@@ -450,7 +450,16 @@ const smap = (url, query) => {
     document.head.appendChild(script);
     script.remove(); 
 }
-	
+
+/**
+ * 
+ * @param {HTMLElement|string} elem 
+ * @returns Returns HTMLElement 
+ */
+export const ID = (elem) => { 
+	return (typeof elem == 'string') ? document.getElementById(elem) : elem; 
+}
+
 export { 
 	loadedJsonMap,
 	preloadImages, 
@@ -481,6 +490,7 @@ export {
 	remove,
 	
 	addElem,
+	ID,
 	waitClick, 
 
 	Mixin,
