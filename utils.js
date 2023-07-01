@@ -461,7 +461,7 @@ const ID = (elem) => {
 }
 
 const addEvent = (elem, evnt, func, params = false) => {
-	const elem = ID(elem);	
+	var elem = ID(elem);	
 	if (elem && 'addEventListener' in elem) {				
 		elem.addEventListener(evnt, func, params);		
 		return func;
