@@ -456,7 +456,7 @@ const smap = (url, query) => {
  * @param {HTMLElement|string} elem 
  * @returns Returns HTMLElement 
  */
-export const ID = (elem) => { 
+const ID = (elem) => { 
 	return (typeof elem == 'string') ? document.getElementById(elem) : elem; 
 }
 
