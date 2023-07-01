@@ -134,7 +134,7 @@ const rtByActorType = (o) => {
 const waitClick = async (elem) => {
 	let clickResolve = null;
 	
-	AE.addEvent(elem, 'click', e => {
+	addEvent(elem, 'click', e => {
 		if (clickResolve != null) clickResolve(e);
 	});		
 	
@@ -236,10 +236,10 @@ const makeHJSON = (data) => {
 const createFileDropZone = (HTMLElementOrID, handlers = {}) => {			
 	const elem = (ID(HTMLElementOrID) == null) ? HTMLElementOrID : ID(HTMLElementOrID);
 	
-	AE.addEvent(elem, 'drop', (e) => onDropFile(e));	
-	AE.addEvent(elem, 'dragover', (e) => e.preventDefault());	
-	AE.addEvent(elem, 'dragenter', (e) => { if ('dragenter' in handlers) handlers.dragenter(e); });
-	AE.addEvent(elem, 'dragleave', (e) => { if ('dragleave' in handlers) handlers.dragleave(e); });
+	addEvent(elem, 'drop', (e) => onDropFile(e));	
+	addEvent(elem, 'dragover', (e) => e.preventDefault());	
+	addEvent(elem, 'dragenter', (e) => { if ('dragenter' in handlers) handlers.dragenter(e); });
+	addEvent(elem, 'dragleave', (e) => { if ('dragleave' in handlers) handlers.dragleave(e); });
 	
 	const onDropFile = (e) => {		
 		e.preventDefault();
