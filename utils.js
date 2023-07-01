@@ -460,6 +460,15 @@ const ID = (elem) => {
 	return (typeof elem == 'string') ? document.getElementById(elem) : elem; 
 }
 
+const addEvent = (elem, evnt, func, params = false) => {
+	const elem = ID(elem);	
+	if (elem && 'addEventListener' in elem) {				
+		elem.addEventListener(evnt, func, params);		
+		return func;
+	} 
+	throw 'Failed to set event listener';
+}
+
 export { 
 	loadedJsonMap,
 	preloadImages, 
@@ -490,6 +499,7 @@ export {
 	remove,
 	
 	addElem,
+	addEvent,
 	ID,
 	waitClick, 
 
