@@ -2,7 +2,6 @@ import { Vector2 as Vec2, V2, Rect, RECT } from '../types.js';
 import { copyProps, getJSON, preloadImages } from '../utils.js';
 import { TControl } from './tcontrol.js';
 import { Picture } from '../picture.js';
-import { SwitchEditorAction } from '../../editor/pixelEditor/pixelEditorActions.js';
 
 const FieldsToCopy = 'name components windows children _activeWindow activeControl hoverCursor';
 class TDesktop {}
