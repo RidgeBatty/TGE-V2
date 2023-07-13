@@ -19,7 +19,7 @@
 * For example a space invaders, tetris, pong, asteroids, etc. might have no use of container for static World but a platformer game definitely has.
 *
 */
-const VersionNumber = '2.8.10';
+const VersionNumber = '2.8.11';
 
 import * as Types from "./types.js";
 import { Root, Enum_HitTestMode } from "./root.js";
@@ -34,6 +34,7 @@ import { Events } from "./events.js";
 import { CustomLayer } from "./customLayer.js";
     
 const { Rect, Vector2, V2, LineSegment } = Types;
+const { addEvent } = Utils;
 
 const ImplementsEvents = 'resize contextmenu mousemove mouseup mousedown mouseover mouseout wheel keyup keydown';
 
@@ -134,12 +135,12 @@ class TinyGameEngine {
 		return Types.V2(x / this.zoom - this.screen.left, y / this.zoom - this.screen.top);		
 	}
 
-	#installEventHandlers() {		
-		AE.addEvent(window, 'dragstart', (e) => { e.preventDefault(); });
+	#installEventHandlers() {				
+		addEvent(window, 'dragstart', (e) => { e.preventDefault(); });
 		//window.addEventListener('touchmove', (e) => { e.preventDefault(); onMouseMove(e); }, { passive:false });
-		AE.addEvent(window, 'touchmove', (e) => { mousemove(e); }, { passive:false });
-		AE.addEvent(window, 'touchstart', (e) => { mousedown(e); });
-		AE.addEvent(window, 'touchend', (e) => { mouseup(e); });				
+		addEvent(window, 'touchmove', (e) => { mousemove(e); }, { passive:false });
+		addEvent(window, 'touchstart', (e) => { mousedown(e); });
+		addEvent(window, 'touchend', (e) => { mouseup(e); });				
 
 		//AE.addEvent(window, 'beforeunload', (e) => { e.preventDefault(); e.stopPropagation(); return e.returnValue = null; });
 
@@ -251,7 +252,7 @@ class TinyGameEngine {
 		// Install hardware initiated event handlers which the engine will control:
 		const evt = { keydown, keyup, resize, contextmenu, mousedown, mouseup, mousemove, mouseover, mouseout, wheel }
 		for (const evtName of this.events.names) {	
-			AE.addEvent(window, evtName, e => evt[evtName](e));
+			addEvent(window, evtName, e => evt[evtName](e));
 		}
 
 		// synthetic events:

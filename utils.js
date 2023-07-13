@@ -10,7 +10,7 @@ import './ext/hjson.min.js';
 import * as Types from './types.js';
 
 const Vec2 = Types.Vector2;
-const InputTypes = 'button checkbox color date datetime-local email file hidden image month number password radio range reset search submit tel text time url week'.split(' ');
+export const InputTypes = 'button checkbox color date datetime-local email file hidden image month number password radio range reset search submit tel text time url week'.split(' ');
 
 /**
  * Halts execution of current Javascript context for n milliseconds without blocking other asynchronous tasks.
@@ -372,7 +372,7 @@ const copyProps = (target, source, properties) => {
  */
 const addElem = (o) => {		
 	let kind = ('type' in o) ? o.type : 'div';	
-	if (InputTypes.includes(kind)) kind = 'input';													// check if the given "type" is any of InputTypes constants
+	if (!('override' in o) && InputTypes.includes(kind)) kind = 'input';													// check if the given "type" is any of InputTypes constants
 	
     const el = document.createElement(kind);
 
