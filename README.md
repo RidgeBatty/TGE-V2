@@ -20,3 +20,9 @@ V2 is based on 2D Canvas rendering with a overlay of HTML based UI components. I
 V3 is a planned upgrade with WebGL support. 
 
 # Using the engine
+
+# Collisions
+
+Actor need to have at least one collider attached for collisions to work. By default, 3 different types of colliders are provided: Box, Circle and Polygon. During development **showColliders** flag can be set which will visualize the colliders on an overlay layer.
+
+See the [colliders](/examples/index.html) example.
