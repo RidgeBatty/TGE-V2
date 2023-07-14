@@ -186,6 +186,7 @@ class Flipbook {
 	*/
 	assignTo(actor, autoPlaySequence) {				
 		this.actor = actor;		
+		this.actor.flipbooks.push(this);
 		if (autoPlaySequence && this.sequences[autoPlaySequence]) this.sequences[autoPlaySequence].play();		
 	}	
 	
@@ -217,12 +218,12 @@ class Flipbook {
 	/**
 	 * @async
 	 * @param {string} url 
-	 * @param {Vector2} dims Number of frames in the image (in vertical and horizontal direction)
+	 * @param {Vector2} dims (optional) Number of frames in the image (in vertical and horizontal direction)
 	 * @param {string} order Which order to read the images? Defaults to left-to-right, the other option is top-to-bottom
 	 * @returns {HTMLImageElement} <Promise>
 	 */
 	async loadAsAtlas(url, dims, order = 'left-to-right') {
-		this.dims        = dims;
+		this.dims        = dims || this.dims;
 		this._atlasOrder = order;
 		this._isAtlas    = true;		
 
@@ -353,12 +354,12 @@ class Flipbook {
 	/**
 	 * Automatically called from Actor.tick()
 	 */
-	tick() {				
+	tick() {		
 		if (this.sequence == null || this.actor == null) return;	
 				
 		const seq   = this.sequence;
 		if (seq == null || seq._cycle == 'ended') return;
-				
+
 		const index = seq.tick();				
 
 		let image;

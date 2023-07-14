@@ -17,7 +17,7 @@ class MissileInfo {
 			proximityFuze		: 0,			// distance to target which causes the missile to detonate
 			homingSpeed 		: 0,			// relative homing correction, fraction of 360 degrees corrected every tick (0..1)
 			acceleration		: 0.1, 			// acceleration (pixels per tick)
-			initialVelocity     : 2,			// initial speed (pixels per tick)
+			initialVelocity     : 3,			// initial speed (pixels per tick)
 			maxSpeed			: 3,			// maximum speed (pixels per tick)
 		});
 		Object.assign(this, fields);
@@ -41,12 +41,14 @@ class Projectile extends Actor {
 		this._speed         = 0;
 		this._homingTarget  = null;		
 
-		this._isHoming      = false;
+		this._isHoming      = false;				
+
+		console.log(this)
 	}
 	
 	get isProjectile() { return true; }
 	
-	tick() {						
+	tick() {				
 		const t = this._homingTarget;
 
 		if (t && t.flags.isDestroyed) { 
@@ -62,24 +64,24 @@ class Projectile extends Actor {
 		}
 		
 		const m = this._info;
-		if (!this._isHoming || !m || !t) return super.tick();
-		
+		this.movement.maxVelocity = m.maxSpeed;
+
+		if (!this._isHoming || !m || !t) return super.tick();													// if projectile is not homing, get out
+
 		// go with the homing code				
-		const ab  = Vector2.AngleBetween(Vector2.FromAngle(this.rotation), Vector2.Sub( t.position, this.position));						
-			
+		const ab  = Vector2.AngleBetween(Vector2.FromAngle(this.rotation), Vector2.Sub(t.position, this.position));									
 		if (this._initialFlight == 0) {
-			if (Vector2.Distance(this.position, t.position) < m.targetSeekDistance) {		// homing 
+			console.log('g')
+			if (Vector2.Distance(this.position, t.position) < m.targetSeekDistance) {							// homing 
 				if (ab > 0) this.rotation += Math.abs(m.homingSpeed);
 						else this.rotation += -Math.abs(m.homingSpeed);
 			}
-
 			this._speed += m.acceleration;
 		} 
 
 		if (this._initialFlight > 0) this._initialFlight--;
 		
-		this.velocity = Vector2.FromAngle(this.rotation, this._speed);						
-		if (this.velocity.length > m.maxSpeed) this.velocity.mulScalar(m.maxSpeed / this.velocity.length);	// handle speed cap			
+		this.velocity = Vector2.FromAngle(this.rotation, this._speed);								
 
 		super.tick();			
 	}

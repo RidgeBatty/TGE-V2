@@ -11,6 +11,8 @@ import { Weapon } from "./weapon.js";
 import { ActorMovement } from "./actorMovement.js";
 import { GameLoop } from "./gameLoop.js";
 import { V2 } from "./types.js";
+import { addPropertyListener } from "./utils.js";
+import { defaultFlipbookPlayer } from "./flipbookPlayer.js";
 
 const { Vector2:Vec2, Rect } = Types;
 const ImplementsEvents = 'click tick beginoverlap endoverlap collide destroy';
@@ -85,7 +87,17 @@ class Actor extends Root {
 		 * @member {Object} 
 		 * 
 		*/
-		this.flags = Object.assign(this.flags,{ isStatic:false, isDestroyed:false, isFlipbookEnabled:false, hasEdges:true, mouseEnabled:false, boundingBoxEnabled:false, optimizeCollisionChecks:true });
+		Object.assign(this.flags, { isStatic:false, isDestroyed:false, isFlipbookEnabled:false, hasEdges:true, mouseEnabled:false, boundingBoxEnabled:false, optimizeCollisionChecks:true });
+
+		addPropertyListener(this.flags, 'isFlipbookEnabled', e => {
+			if (e == true) {
+				if (!('flipbooks' in this))         this.flipbooks         = [];
+				if (!('_renderAnimations' in this)) this._renderAnimations = defaultFlipbookPlayer;
+			} else {
+				delete this.flipbooks;
+				delete this._renderAnimations;				
+			}
+		})
 
 		/**
 		 * @member {number}

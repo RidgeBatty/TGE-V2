@@ -66,9 +66,9 @@ class Root extends TNode {
 		this.createParams = Object.assign({}, o);
 		this.createParams.toString = function(){ return '[ActorCreateParams]' };
 						
-		this.data         = ('data' in o) ? o.data : {}; // user data	
-		this.flags        = { hasColliders:false };
+		this.data         = ('data' in o) ? o.data : {}; // user data			
 		this.renderHints  = { showColliders:false };
+		this.flags        = { hasColliders:false };
 
 		/**
 		 * @type {Collider} Collider object

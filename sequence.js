@@ -113,7 +113,7 @@ export class Sequence {
 	 * @param {*} doNotRestart 
 	 * @returns 
 	 */
-	play(doNotRestart) {			
+	play(doNotRestart) {		
 		return new Promise(resolve => {
 			if (doNotRestart && this.owner.sequence == this && !this._isPaused) return resolve();
 			
@@ -162,7 +162,7 @@ export class Sequence {
 		It can progress forward or backward "this.direction".
 		Optional callback may be added, which is executed when animation ends.
 	*/		
-	tick() {	
+	tick() {			
 		if (this._cycle == 'ended' || this._isPaused) return Math.floor(this.playhead / 64);
 		if (this.length == 0) return this.start;											// return 1st frame if animation consists of only a single frame
 
