@@ -41,9 +41,7 @@ class Projectile extends Actor {
 		this._speed         = 0;
 		this._homingTarget  = null;		
 
-		this._isHoming      = false;				
-
-		console.log(this)
+		this._isHoming      = false;
 	}
 	
 	get isProjectile() { return true; }
@@ -68,10 +66,9 @@ class Projectile extends Actor {
 
 		if (!this._isHoming || !m || !t) return super.tick();													// if projectile is not homing, get out
 
-		// go with the homing code				
+		// homing code				
 		const ab  = Vector2.AngleBetween(Vector2.FromAngle(this.rotation), Vector2.Sub(t.position, this.position));									
 		if (this._initialFlight == 0) {
-			console.log('g')
 			if (Vector2.Distance(this.position, t.position) < m.targetSeekDistance) {							// homing 
 				if (ab > 0) this.rotation += Math.abs(m.homingSpeed);
 						else this.rotation += -Math.abs(m.homingSpeed);
