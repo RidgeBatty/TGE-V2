@@ -1,6 +1,11 @@
 class ActorMovement {
-	constructor() {	
+	constructor(actor) {	
+		this.actor = actor;
 		Object.assign(this, ActorMovement.DefaultProperties);
+	}
+
+	copy(o) {
+		for (const [k, v] of Object.entries(o)) if (k in this) this[k] = v;		
 	}
 
 	static get DefaultProperties() {
@@ -24,13 +29,14 @@ class ActorMovement {
 
 	set angularSpeed(value) {
 		let v = 0;
+		
 		if (typeof value == 'string') {
 			const tmp = parseFloat(value);
 			if (value.endsWith('/s')) {
-				if (!isNaN(tmp)) v = Math.PI / (1000 / this._actor.owner._tickRate) * tmp;				
+				if (!isNaN(tmp)) v = Math.PI / (1000 / this.actor.owner.tickRate) * tmp;				
 			} else
 			if (value.endsWith('s')) {
-				if (!isNaN(tmp)) v = Math.PI / (1000 / this._actor.owner._tickRate) * (1 / tmp);
+				if (!isNaN(tmp)) v = Math.PI / (1000 / this.actor.owner.tickRate) * (1 / tmp);
 			} 
 		} else
 		if (typeof value == 'number') {

@@ -286,15 +286,17 @@ const downloadFile = (filename, data, type = 'application/json') => {
  * Creates an open file dialog
  * @param {string} acceptedFiles ".doc,.docx,.xml,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
  * @param {boolean} multiple allow multiple files to be selected
- * @param {function} onAccept callback to be excuted when the file dialog is closed
+ * @return {Promise} array of files
  */
-const openFileDialog = (acceptedFiles = '*', multiple = false, onAccept) => {
-	var i = document.createElement('input');
-	i.setAttribute('type', 'file');
-	if (multiple == true) i.setAttribute('multiple', multiple);
-	i.setAttribute('accept', acceptedFiles);
-	if (typeof onAccept == 'function') i.addEventListener('change', e => onAccept(e, i.files));
-	i.click();	
+const openFileDialog = (acceptedFiles = '*', multiple = false) => {
+	return new Promise(resolve => {
+		var i = document.createElement('input');
+		i.setAttribute('type', 'file');
+		if (multiple == true) i.setAttribute('multiple', multiple);
+		i.setAttribute('accept', acceptedFiles);
+		i.addEventListener('change', e => resolve(i.files));
+		i.click();	
+	});
 }
 
 const wrapMax = (x, max) => {

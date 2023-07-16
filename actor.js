@@ -119,7 +119,7 @@ class Actor extends Root {
 		 *  @memberof Actor
 		 *  @type {Actor#movement}
 		 */
-		AE.sealProp(this, 'movement', new ActorMovement());								// movement object (TO-DO: might need a Class?)
+		AE.sealProp(this, 'movement', new ActorMovement(this));								// movement object (TO-DO: might need a Class?)
 		AE.sealProp(this, 'data', ('data' in o) ? o.data : {});								// Container for custom user data
 		AE.sealProp(this, 'surface');
 		AE.sealProp(this, 'counters', {});
@@ -410,7 +410,7 @@ class Actor extends Root {
 			
 			if (!('_offset' in this.movement)) this.movement._offset = 0;
 
-			const ang     = this.movement.orbitOffset + this.owner.seconds * Math.PI * 2 * this.movement.orbitDuration;
+			const ang     = this.movement.orbitOffset + this.owner.runningTime * Math.PI * 2 * this.movement.orbitDuration;
 			const offset  = Vec2.Up().rotate(ang).mulScalar(radius);			
 			const dir     = Vec2.Sub(this._target.position, Vec2.Add(offset.clone().rotate(Math.PI), this.position)).normalize();		
 			
@@ -429,10 +429,8 @@ class Actor extends Root {
 		if (this.movement.isEnabled) {																		// apply movement parameters, velocity and velocity cap
 			this.rotation += this.movement._angularSpeed;
 
-
 			var len = this.velocity.length;			
 			if (len > this.movement.maxVelocity) this.velocity.normalize().mulScalar(this.movement.maxVelocity);	
-
 			
 			if (this.path) {
 				const direction = this.updatePath();				
