@@ -482,6 +482,8 @@ const addEvent = (elem, evnt, func, params = false) => {
 	throw 'Failed to set event listener';
 }
 
+const isBoolean = (n) => { return typeof n === 'boolean'; }
+
 export { 
 	loadedJsonMap,
 	preloadImages, 
@@ -515,6 +517,7 @@ export {
 	addEvent,
 	ID,
 	waitClick, 
+	isBoolean,
 
 	Mixin,
 	addMethods,

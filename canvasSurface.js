@@ -6,6 +6,7 @@
 	
 */
 import { Rect, RECT, Vector2, Color } from "./types.js";
+import { isBoolean } from "./utils.js";
 class CanvasSurface {
 	/**
 	 * 
@@ -88,8 +89,8 @@ class CanvasSurface {
 		Otherwise the images may have sharp pixels edges. Depending on game type either effect may be desirable.
 		Note that these are browser specific render hints and may not produce the desided effect on all platforms.
 	*/	
-	set pixelSmooth(value) {
-		if (!AE.isBoolean(value)) return;
+	set pixelSmooth(value) {		
+		if (!isBoolean(value)) return;
 		this._pixelSmooth = value;
 		this.setCanvasSize(this.canvas.width, this.canvas.height);
 	}
