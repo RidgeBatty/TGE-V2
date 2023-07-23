@@ -91,7 +91,7 @@ export class Pacman extends Player {
   }
 }
 ```
-However, there are situation when you specifially want to stop the engine from doing it's automatic game mechanics processing.
+However, there are situations where you specifially want to prevent the engine from doing it's automatic game mechanics processing.
 In this case simply overried the tick() method and do not call super.tick();
 
 ## Collisions
