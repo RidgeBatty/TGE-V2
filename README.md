@@ -69,6 +69,29 @@ export class Pacman extends Player {
 The most important class in the engine is probably the Actor. It represents entities you have in your game, for example players, enemies, projectiles, obstacles, powerups, etc.
 There are more sophisticated classes which derive from the basic Actor class, such as Player, Enemy and Projectile classes.
 
+All Actors (and actor class descendants) have to implement two important methods which are automatically called by the engine on every frame: 
+- tick() you should do your per-frame game logic/computations here
+- update() you should do your actor display stuff here
+
+By default, the Actor class already implements these methods, so every actor knows how to move and display itself.
+Be careful when extending Actor class or its descendants (such as Playe and Enemy). If you add your own tick() event, it will override the default handling.
+Usually you want to implement it like this:
+
+```
+pacman.js
+
+export class Pacman extends Player {
+  constructor() {
+    super();
+  }
+
+  tick() {
+    super.tick();       // let the engine process your actor first
+    // then do your own game mechanics stuff
+  }
+}
+```
+
 ## Collisions
 
 Actor need to have at least one collider attached for collisions to work. By default, 3 different types of colliders are provided: Box, Circle and Polygon. During development **showColliders** flag can be set which will visualize the colliders on an overlay layer.
