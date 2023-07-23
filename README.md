@@ -21,9 +21,48 @@ V3 is a planned upgrade with WebGL support.
 
 # Using the engine
 
+This section will provide full details on how you should organize your game files and how to use the engine in the way it's designed.
+
 ## Getting started
 
 Take a look at files in [primer](/primer/) folder for a barebones start up point for a TGE game.
+
+## Game project files and folders
+
+Make a folder for your game and create the subfolders as you do with any other game project. Clone the engine as another subfolder.
+The barebones template files main.js, index.html, default.css and settings.hjson are included in the engine. Expan on them to create your game.
+Take a look at the example:
+
+--> Pacman
+  --> js            (your game code, which may contain your .JS files and extended engine classes)
+  --> TGE-V2        (game engine in its own sub-folder)
+  --> images
+  --> sounds
+  --> music
+  main.js           
+  index.html        
+  default.css       
+  settings.hjson
+
+## Extending game classes
+
+TGE provides barebones classes from Player, Enemy, etc. Usually you never use these classes directly, but create your own extensions instead.
+For example:
+
+```
+pacman.js
+
+export class Pacman extends Player {
+  constructor() {
+    super();
+  }
+}
+```
+
+## Actors
+
+The most important class in the engine is probably the Actor. It represents entities you have in your game, for example players, enemies, projectiles, obstacles, powerups, etc.
+There are more sophisticated classes which derive from the basic Actor class, such as Player, Enemy and Projectile classes.
 
 ## Collisions
 
