@@ -19,8 +19,8 @@ V2 is based on 2D Canvas rendering with a overlay of HTML based UI components. I
 
 V3 is a planned upgrade with WebGL support. 
 
-
-
+<br>
+<br>
 # Using the engine
 
 This section will provide full details on how you should organize your game files and how to use the engine in the way it's designed.
