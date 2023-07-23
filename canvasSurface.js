@@ -6,7 +6,7 @@
 	
 */
 import { Rect, RECT, Vector2, Color } from "./types.js";
-import { isBoolean } from "./utils.js";
+import { downloadFile, isBoolean } from "./utils.js";
 class CanvasSurface {
 	/**
 	 * 
@@ -51,21 +51,30 @@ class CanvasSurface {
 
 	/**
 	 * Converts internal Canvas to HTMLImageElement and optionally downloads it (saves as an image)
-	 * @param {string} type Mime type ('image/png', 'image/bmp', 'image/gif', 'image/jpeg', 'image/tiff')
+	 * @param {string} type Mime type ('image/png', 'image/bmp', 'image/webp')
 	 * @param {number} [quality=1] Optional compression: 1 = no compression (default)
 	 * @param {string} [filename=''] Optional filename, if not given (default) file download will not initiate
 	 * @returns {HTMLImageElement}
 	 */
-	toImage(type = 'image/png', quality = 1, filename = '') {
+	async toImage(type = 'image/png', quality = 1, filename = '') {
+		if (!['image/png', 'image/webp', 'image/jpeg', 'png', 'webp', 'jpg'].includes(type)) throw new Error(`Unsupported image type: "${type}"`);
+
+		if (type == 'png')  var type = 'image/png';
+		if (type == 'jpg')  var type = 'image/jpeg';
+		if (type == 'webp') var type = 'image/webp';
+
 		const i = new Image();
-		i.src = this.canvas.toDataURL(type, quality);
-		if (filename != '') {
-			const e    = window.document.createElement('a');
-			e.href     = i.src;
-			e.download = filename;
-			e.click();  
+
+		if ('toDataURL' in this.canvas) {
+			i.src = this.canvas.toDataURL(type, quality);
+			if (filename != '') return downloadFile(filename, i.src, type);
+			return i;
 		}
-		return i;
+		
+		// offscreencanvas
+		const blob = await this.canvas.convertToBlob({ type, quality });		
+		if (filename != '') return downloadFile(filename, blob, type);
+		return blob;
 	}
 	
 	destroy() {
