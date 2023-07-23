@@ -33,6 +33,7 @@ Make a folder for your game and create the subfolders as you do with any other g
 The barebones template files main.js, index.html, default.css and settings.hjson are included in the engine. Expan on them to create your game.
 Take a look at the example:
 
+```
 --> Pacman
   --> js            (your game code, which may contain your .JS files and extended engine classes)
   --> TGE-V2        (game engine in its own sub-folder)
@@ -43,6 +44,7 @@ Take a look at the example:
   index.html        
   default.css       
   settings.hjson
+```
 
 ## Extending game classes
 
