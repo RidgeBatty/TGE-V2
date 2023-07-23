@@ -19,9 +19,82 @@ V2 is based on 2D Canvas rendering with a overlay of HTML based UI components. I
 
 V3 is a planned upgrade with WebGL support. 
 
+<br>
+<br>
+
 # Using the engine
 
-# Collisions
+This section will provide full details on how you should organize your game files and how to use the engine in the way it's designed.
+
+## Getting started
+
+Take a look at files in [primer](/primer/) folder for a barebones start up point for a TGE game.
+
+## Game project files and folders
+
+Make a folder for your game and create the subfolders as you do with any other game project. Clone the engine as another subfolder.
+The barebones template files main.js, index.html, default.css and settings.hjson are included in the engine. Expan on them to create your game.
+Take a look at the example:
+
+```
+--> Pacman
+  --> js            (your game code, which may contain your .JS files and extended engine classes)
+  --> TGE-V2        (game engine in its own sub-folder)
+  --> images
+  --> sounds
+  --> music
+  main.js           
+  index.html        
+  default.css       
+  settings.hjson
+```
+
+## Extending game classes
+
+TGE provides barebones classes from Player, Enemy, etc. Usually you never use these classes directly, but create your own extensions instead.
+For example:
+
+```
+pacman.js
+
+export class Pacman extends Player {
+  constructor() {
+    super();
+  }
+}
+```
+
+## Actors
+
+The most important class in the engine is probably the Actor. It represents entities you have in your game, for example players, enemies, projectiles, obstacles, powerups, etc.
+There are more sophisticated classes which derive from the basic Actor class, such as Player, Enemy and Projectile classes.
+
+All Actors (and actor class descendants) have to implement two important methods which are automatically called by the engine on every frame: 
+- tick() you should do your per-frame game logic/computations here
+- update() you should do your actor display stuff here
+
+By default, the Actor class already implements these methods, so every actor knows how to move and display itself.
+Be careful when extending Actor class or its descendants (such as Player and Enemy). If you add your own tick() handler in your class, it will override the default handling.
+Usually you want to implement it like this:
+
+```
+pacman.js
+
+export class Pacman extends Player {
+  constructor() {
+    super();
+  }
+
+  tick() {
+    super.tick();       // let the engine process your actor first
+    // then do your own game mechanics stuff
+  }
+}
+```
+However, there are situations where you specifially want to prevent the engine from doing it's automatic game mechanics processing.
+In this case simply override the tick() method and do not call super.tick();
+
+## Collisions
 
 Actor need to have at least one collider attached for collisions to work. By default, 3 different types of colliders are provided: Box, Circle and Polygon. During development **showColliders** flag can be set which will visualize the colliders on an overlay layer.
 
