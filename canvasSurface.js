@@ -5,11 +5,7 @@
 	Off-screen drawing surface
 	
 */
-import * as Engine from "./engine.js";
-import { Types } from "./physics.js";
-
-const { Rect, RECT, Vector2, Color } = Engine.Types;
-
+import { Rect, RECT, Vector2, Color } from "./types.js";
 class CanvasSurface {
 	/**
 	 * 

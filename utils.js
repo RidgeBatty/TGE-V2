@@ -368,13 +368,17 @@ const copyProps = (target, source, properties) => {
  * @param {string=} o.text Optional. Textcontent for the created element
  * @param {string=} o.id Optional. ID for the created element
  * @param {string=} o.class Optional. Space separated list of CSS class names to be added in the created element
- * @param {string=} o.type Optional. Type of the created HTML Element. Defaults to "div".
+ * @param {string=} o.type DEPRECATED. Optional. Type of the created HTML Element. Defaults to "div".
+ * @param {boolean} o.tagName Optional. Override automatic tag name assignment for <input> types (allows defining <button> tag) NEW!!!
  * 	NOTE! If the type is any of InputTypes constants, the type of the element is set to "input" and the type field becomes the value of <input type=""> 
  * @returns {HTMLElement}
  */
 const addElem = (o) => {		
 	let kind = ('type' in o) ? o.type : 'div';	
-	if (!('override' in o) && InputTypes.includes(kind)) kind = 'input';													// check if the given "type" is any of InputTypes constants
+	if ('tagName' in o) {
+		kind = o.tagName;
+	} else
+		if (InputTypes.includes(kind)) kind = 'input';													// check if the given "type" is any of InputTypes constants
 	
     const el = document.createElement(kind);
 
@@ -385,6 +389,13 @@ const addElem = (o) => {
     if ('id' in o)    el.id = o.id;
 
 	for (const [k, v] of Object.entries(o)) {
+		if (k == 'tagName') {
+			continue;
+		} else
+		if (k.substring(0, 2) == 'on') {
+			const evt = k.slice(2);
+			addEvent(el, evt, v);
+		} else
 		if (!['text', 'class', 'id', 'parent', 'type'].includes(k)) {
 			el.setAttribute(k, v);
 		}
