@@ -1,0 +1,22 @@
+{
+    rootElem:'game'                                                     # the root html element on the page which the engine can use (the id is "game" by default)
+    clearColor:'#111'                                                   # engine main rendering canvas clear color. Accepts all CSS color formats. Use keyword "erase" for no color
+    edgeAction:'wrap-around'                                            # how the engine should handle actors which cross the viewport edges. Options are "wrap-around" and "collide"
+    allowedKeys: { F11:true, F12:true },                                # list of allowed keys - all other keys will be blocked by default
+ // GUI: 'canvas'                                                       # enable this to include "canvas" or "html" based graphical user interface
+
+    flags:{ 
+        hasEdges:false
+        hasRenderingSurface:true
+        hasWorld:false 
+        hasUI:true        
+        developmentMode:false
+    }
+
+    gameLoop:{                                                      
+        flags: { 
+            collisionsEnabled:true
+            showColliders:false
+        } 
+    }    
+}
