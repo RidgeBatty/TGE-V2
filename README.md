@@ -74,7 +74,7 @@ All Actors (and actor class descendants) have to implement two important methods
 - update() you should do your actor display stuff here
 
 By default, the Actor class already implements these methods, so every actor knows how to move and display itself.
-Be careful when extending Actor class or its descendants (such as Playe and Enemy). If you add your own tick() event, it will override the default handling.
+Be careful when extending Actor class or its descendants (such as Player and Enemy). If you add your own tick() handler in your class, it will override the default handling.
 Usually you want to implement it like this:
 
 ```
