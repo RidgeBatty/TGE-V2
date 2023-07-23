@@ -21,11 +21,11 @@ V3 is a planned upgrade with WebGL support.
 
 # Using the engine
 
-# Getting started
+## Getting started
 
 Take a look at files in [primer](/primer/) folder for a barebones start up point for a TGE game.
 
-# Collisions
+## Collisions
 
 Actor need to have at least one collider attached for collisions to work. By default, 3 different types of colliders are provided: Box, Circle and Polygon. During development **showColliders** flag can be set which will visualize the colliders on an overlay layer.
 
