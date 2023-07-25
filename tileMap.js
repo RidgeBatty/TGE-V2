@@ -3,6 +3,10 @@ import { getJSON } from './utils.js';
 import { Collider } from './collider.js';
 import { V2 } from './types.js';
 class TileMap {
+	/**
+	 * Creates a new TileMap instance
+	 * @param {Vector2} size Optional. Desired size of the TileMap
+	 */
 	constructor(size) {	
 		this.textures  = [];
 		this.overlays  = [];
