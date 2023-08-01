@@ -84,7 +84,7 @@ class Actor extends Root {
 		this.renderHints = Object.assign(this.renderHints, { showBoundingBox:false, fixedScale:false, fixedRotation:false, mirrorY:false, mirrorX:false });
 
 		/**
-		 * @member {Object} 
+		 * Flags
 		 * 
 		*/
 		Object.assign(this.flags, { isStatic:false, isDestroyed:false, isFlipbookEnabled:false, hasEdges:true, mouseEnabled:false, boundingBoxEnabled:false, optimizeCollisionChecks:true });
@@ -97,7 +97,15 @@ class Actor extends Root {
 				delete this.flipbooks;
 				delete this._renderAnimations;				
 			}
-		})
+		});
+
+		addPropertyListener(this.flags, 'optimizeCollisionChecks', e => {
+			if (e == true) {
+				this.optimizedColliders = [];
+			} else {
+				delete this.optimizedColliders;
+			}			
+		});
 
 		/**
 		 * @member {number}
@@ -395,9 +403,11 @@ class Actor extends Root {
 
 		this.events.fire('tick');
 
-		if (this.flags.optimizeCollisionChecks && this.colliders && this.colliders.objects.length > 0 && this.owner.engine.edges.isPointInside(this.renderPosition)) {			
-			this.optimizedColliders = this.colliders.objects;
-		} else this.optimizedColliders = [];				
+		if (this.colliders) {			
+			if (this.flags.optimizeCollisionChecks) {
+				if (this.owner.engine.viewport.isPointInside(this.renderPosition)) this.optimizedColliders = this.colliders.objects;			
+			} 
+		}
 
 		for (const [k, v] of Object.entries(this.counters)) if (v > 0) this.counters[k]--;
 		

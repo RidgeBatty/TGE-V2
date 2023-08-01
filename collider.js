@@ -138,6 +138,7 @@ class Collider {
 			ctx.resetTransform();
 			ctx.translate(cp.x, cp.y);			
 			if (!c.ignoreParentRotation) ctx.rotate(actor.rotation);						
+			if ('offset' in actor) ctx.translate(actor.offset.x, actor.offset.y);
 			ctx.scale(scale, scale);
 			ctx.translate(c.position.x, c.position.y);			
 			ctx.rotate(c.angle);

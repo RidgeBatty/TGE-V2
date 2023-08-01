@@ -14,7 +14,7 @@ export class EditorTool {
     }
 
     clear() {
-        throw new Error('EditorTool descendatns nust be implement this method!');
+        throw new Error('EditorTool descendants must implement this method!');
     }
 
     onToolActivate() {
