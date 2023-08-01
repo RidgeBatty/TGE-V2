@@ -13,6 +13,7 @@
 import { Collider } from './collider.js';
 import * as Types from './types.js';	
 import { TNode } from './tnode.js';
+import { sealProp } from './utils.js';
 
 const Vec2 = Types.Vector2;
 
@@ -78,7 +79,7 @@ class Root extends TNode {
 		
 		this._defaultColliderType = o.colliderType ? o.colliderType : 'WorldDynamic';	// override in descendant class to change the default		
 
-		AE.sealProp(this, 'name', ('name' in o) ? o.name : '');			
+		sealProp(this, 'name', ('name' in o) ? o.name : '');			
 		
 		this._createCollisionChannels();
 	}
