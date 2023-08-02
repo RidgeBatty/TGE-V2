@@ -6,27 +6,28 @@
     Hosted on opengameart.org
 
 */
-import * as TGE from '../../engine.js';
+import { Engine, Types } from '../../engine.js';
 import { InitAudio } from '../../audio.js';
+import { ID } from '../../utils.js';
 
-const Engine = TGE.Engine;	
-const { Vector2:Vec2 } = TGE.Types;
+const { Vector2:Vec2 } = Types;
 
 let missileId = 0;
 let init      = false;
 
 const buttonPress = (id) => {
-    AE.addClass(ID(id), 'pressed');
-    Engine.gameLoop.addTimer({ duration:60, onComplete:_ => { AE.removeClass(ID(id), 'pressed'); } });
+    ID(id).classList.add('pressed');
+    Engine.gameLoop.addTimer({ duration:60, onComplete:_ => { ID(id).classList.remove('pressed'); } });
 }
 
 const launchRocket = () => {
     buttonPress('launch');
 
     const m = Engine.gameLoop.findActorByName(`missile_${missileId}`);
-    m.velocity.add(Vec2.Up());
+    m.velocity.add(Vec2.Up().mulScalar(2));
     m.data.pan = missileId / 5 - 1;
-
+    m.movement.maxVelocity = 2;
+    
     Engine.audio.spawn('launch', { pan:m.data.pan }).then(r => console.log(r));
 
     Engine.gameLoop.addTimer({ actor:m, duration:180, onComplete:(timerEvent) => { 
@@ -40,13 +41,12 @@ const launchRocket = () => {
 
 const onClick = async (e) => {    
     if (init == false) {                                                    // Initialize audio subsystem (reference is available through Engine.audio property)         
-        AE.addClass(ID('cover'), 'fold');
+        ID('cover').classList.add('fold');
         init = true;
         const audio = InitAudio(Engine);
         const data  = await audio.loadFromFile('./sfx/sounds.hjson');                              
         await audio.addBunch(data);     
-        const i = await audio.spawn('theme', true);                         // play theme music                
-
+        await audio.spawn('theme', true);                                   // play theme music
     }
     
     if (e.target.id == 'mute')        { buttonPress('mute'); Engine.audio.mute(); }
@@ -57,17 +57,16 @@ const onClick = async (e) => {
 
 const onTick = () => {
     if (Engine.audio) {
-        if (Engine.audio.isMuted) AE.addClass(ID('mute'), 'check-off');
-        if (!Engine.audio.isMuted) AE.removeClass(ID('mute'), 'check-off');        
+        if (Engine.audio.isMuted)  ID('mute').classList.add('check-off');
+        if (!Engine.audio.isMuted) ID('mute').classList.remove('check-off');        
 
-        if (Engine.audio.fadeVolume == 0) AE.addClass(ID('soft-mute'), 'check-off');
-        if (Engine.audio.fadeVolume == 1) AE.removeClass(ID('soft-mute'), 'check-off');        
+        if (Engine.audio.fadeVolume == 0) ID('soft-mute').classList.add('check-off');
+        if (Engine.audio.fadeVolume == 1) ID('soft-mute').classList.remove('check-off');        
     }
 }
 
 const main = async () => {        
-    Engine.setRootElement('game');                                      // First let's set up the engine               
-    Engine.setFlags({ hasEdges:false, hasRenderingSurface:true });    
+    await Engine.setup('./settings.hjson');
 
     try {                       
         Engine.addLayer({ imgUrl:'img/level1.jpg' });        
@@ -86,7 +85,7 @@ const main = async () => {
         return;
     }
 
-    Engine._mouse.cb_up = onClick;    
+    Engine.events.add('mouseup', onClick);
     Engine.start(onTick);                                                         // Start the engine
 }
 
