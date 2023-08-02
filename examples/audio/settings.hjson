@@ -1,0 +1,21 @@
+{
+    rootElem:'game'
+    clearColor:'#111'
+    edgeAction:'wrap-around'
+    allowedKeys: { F11:true, F12:true }
+
+    flags:{ 
+        hasEdges:false
+        hasRenderingSurface:true
+        hasWorld:false 
+        hasUI:false        
+        developmentMode:false
+    }
+
+    gameLoop:{                                                      
+        flags: { 
+            collisionsEnabled:true
+            showColliders:false
+        } 
+    }    
+}

@@ -45,11 +45,10 @@ class RangedVar {
 }
 class Track {	
 	/**
-	@param {AudioLib} audioLib - Owner of this Track, must be an instance on AudioLib object.
 	@param {Object} o - Parameter object.
+	@param {AudioLib} o.audio - Owner of this Track, must be an instance on AudioLib object.
 	@param {String} o.name - Name of the audio file. Names should be unique but no automatic checking is done.
-	@param {String} o.file - URL to the audio file.
-	@param {Function} o.onLoaded - Callback fired when the audio file is loaded.
+	@param {String} o.file - URL to the audio file.	
 	*/
 	constructor(o) {
 		if (!('audio' in o && o.audio instanceof AudioLib)) {
@@ -66,12 +65,26 @@ class Track {
 
 		this._mutedVolume = -1;
 		this.instances    = [];
-		
-		this.elem = new Audio(o.file);		
-		
-		AE.addEvent(this.elem, 'loadeddata', (track) => { if (AE.isFunction(o.onLoaded)) o.onLoaded(this, track) });		
+		this.file         = o.file;
+		this.buffer       = null;
+		this.audioLib     = o.audio;
+	}
 
-		this.elem.load();	// required by Safari mobile?		
+	load() {
+		return new Promise(async (resolve, reject) => {
+			fetch(this.file)
+				.then(r => r.arrayBuffer())
+				.then(b => this.audioLib.audioContext.decodeAudioData(b))
+				.then(buffer => {
+					this.buffer = buffer;					
+					resolve(this);
+				})				
+				.catch(e => {
+					console.warn('Failed to load file:', this.file);
+					console.log(e);
+					reject(e);
+				});
+		});		
 	}
 
 	/**
@@ -91,6 +104,7 @@ class SFX {
 		this.owner      = o.track;		
 		this.audioLib   = o.track.owner;
 		this.nodes      = {};
+		this.data       = {};															// user data
 		this._playState = 'initial';
 		this._fadeInfo  = null;
 		this._isMuted   = false;
@@ -101,23 +115,8 @@ class SFX {
 		this.audioParams  = new AudioParams(o, this.owner.audioParams);		
 		this.fadeVolume   = new RangedVar(1);
 	}
-
-	async init() {		
-		const audioContext = this.audioLib.audioContext;								// AudioLib
-						
-		await fetch(this.owner.elem.src)
-			.then(r => r.arrayBuffer())
-			.then(b => audioContext.decodeAudioData(b))
-			.then(buffer => {
-				this.createSound(audioContext, buffer);
-			})
-			.catch(e => {
-				console.warn('Failed to get the file.');
-				console.log(e);
-			});
-	}
-
-	createSound(audioContext, buffer) {
+	
+	createSound(audioContext, buffer) {		
 		const gain    = audioContext.createGain();										// Create gain node		
 		const pan     = new StereoPannerNode(audioContext, { pan: 0 });					// Create panner
 
@@ -127,7 +126,8 @@ class SFX {
 		
 		source.connect(gain).connect(pan).connect(audioContext.destination);
 
-		source.addEventListener('ended', () => {			
+		source.addEventListener('ended', () => {
+			if (this._playState == 'paused') return;									// if current status is paused, basically ignore this event (there is no way to actually stop the audio!)
 			this.stop();
 			this.audioLib.events.fire('ended', { sfx:this });
 			if (this._destroyOnComplete) this.destroy();
@@ -180,14 +180,14 @@ class SFX {
 	
 	stop() {		
 		this.nodes.source.stop();		
-		this._playState = 'stopped';
+		this._playState = 'stopped';		
 	}
 
 	pause() {
 		if (this._playState == 'playing') {
 			this.stop();
 			this._position  = this.nodes.source.context.currentTime;
-			this._playState = 'paused';
+			this._playState = 'paused';			
 		} else if (this._playState == 'paused') {
 			this.createSound(this.audioLib.audioContext, this.nodes.source.buffer);
 			this.play();			
@@ -293,7 +293,7 @@ class AudioLib {
 			if (!AE.isString(o.url))  reject('Url must be specified.');
 			if (!AE.isString(o.name)) reject('Name must be specified.');
 
-			this.tracks[o.name] = new Track({ 
+			const track = new Track({ 
 				audio: this, 
 				name: o.name, 
 				file: o.url, 
@@ -301,12 +301,14 @@ class AudioLib {
 				volume: 'volume' in o ? o.volume : 1, 				// TO-DO: replace with AudioParams
 				pan: 'pan' in o ? o.pan : 0, 
 				loop: 'loop' in o ? o.loop : false,
-				rate: 'rate' in o ? o.rate : 1,
-
-				onLoaded:(track) => { 								
-					resolve(track); 
-				} 
+				rate: 'rate' in o ? o.rate : 1,				
 			});
+
+			this.tracks[o.name] = track;
+
+			track.load()
+				.then(t => { resolve(t) })
+				.catch(e => { reject(e) });
 		});
 	}
 	
@@ -335,8 +337,8 @@ class AudioLib {
 			const track = this.tracks[name];
 			if (track) {
 				const sfx = new SFX({ track });
-				await sfx.init();
-				track.instances.push(sfx);			
+				track.instances.push(sfx);						
+				sfx.createSound(this.audioContext, sfx.owner.buffer);
 				if (playParams) sfx.play(playParams === true ? {} : playParams);
 				resolve(sfx);
 			}
