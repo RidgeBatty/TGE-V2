@@ -14,7 +14,7 @@ import { Events } from './events.js';
 
 import { Vector2 as Vec2 } from './types.js';
 import { HitTestFlag, Enum_HitTestMode } from './root.js';
-import { addEvent, clamp, isObject, isFunction } from './utils.js';
+import { addEvent, clamp, isObject, isFunction, sealProp } from './utils.js';
 
 const ImplementsEvents = 'addactor removeactor activate deactivate';
 
