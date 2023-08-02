@@ -14,6 +14,7 @@ import { Events } from './events.js';
 
 import { Vector2 as Vec2 } from './types.js';
 import { HitTestFlag, Enum_HitTestMode } from './root.js';
+import { addEvent, clamp, isObject } from './utils.js';
 
 const ImplementsEvents = 'addactor removeactor activate deactivate';
 
@@ -49,7 +50,7 @@ class GameLoop {
 		// other:
 		this._lastTick		= 0;
 		this._lastTickLen   = 0;
-		this._tickRate      = ('tickRate' in o) ? 1000 / AE.clamp(o.tickRate, 1, 1000) : 1000 / 60;	// ms
+		this._tickRate      = ('tickRate' in o) ? 1000 / clamp(o.tickRate, 1, 1000) : 1000 / 60;	// ms
 		this._tickQueue	    = 0;
 		this.tickCount      = 0;
 		
@@ -64,7 +65,7 @@ class GameLoop {
 		
 		// handle browser throttling
 		let wasRunningBeforeVisibilityChange = false;
-		AE.addEvent(document, 'visibilitychange', e => {
+		addEvent(document, 'visibilitychange', e => {
 			if (document.visibilityState == 'hidden') {
 				if (this.flags.isRunning) {
 					wasRunningBeforeVisibilityChange = true;
@@ -99,7 +100,7 @@ class GameLoop {
 	 * Set GameLoop tick rate as in frames per second (Default = 60)
 	 */
 	set tickRate(fps = 60) {		
-		this._tickRate = 1000 / AE.clamp(fps, 1, 1000);
+		this._tickRate = 1000 / clamp(fps, 1, 1000);
 	}
 
 	get tickRate() {
@@ -246,7 +247,7 @@ class GameLoop {
 	 */		
 	 setFlags(o) {
 		const _this = this;
-		if (AE.isObject(o)) Object.keys(o).forEach( key => { 
+		if (isObject(o)) Object.keys(o).forEach( key => { 
 			if (key in this.flags) {				
 				this.flags[key] = o[key];				// after the create functions are called!
 			}
@@ -320,9 +321,9 @@ class GameLoop {
 									
 		if (aType == 'custom') { 
 			if (!('zIndex' in o)) throw 'Custom GameLoop object must have zIndex property defined.';
-			if (!AE.isFunction(o.update)) throw 'Custom GameLoop object must have update() method defined.';
-			AE.sealProp(o, 'objectType', 'custom');
-			AE.sealProp(o, '_type', Enum_ActorTypes.Custom);
+			if (!isFunction(o.update)) throw 'Custom GameLoop object must have update() method defined.';
+			sealProp(o, 'objectType', 'custom');
+			sealProp(o, '_type', Enum_ActorTypes.Custom);
 			this.zLayers[o.zIndex].push(o); 
 			return o;
 		}

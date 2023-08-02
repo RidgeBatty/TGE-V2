@@ -482,7 +482,79 @@ const addEvent = (elem, evnt, func, params = false) => {
 	throw 'Failed to set event listener';
 }
 
-const isBoolean = (n) => { return typeof n === 'boolean'; }
+const isObject 	 = (o) => { return o === Object(o); }
+const isBoolean  = (o) => { return typeof o === 'boolean'; }
+const isFunction = (o) => { return typeof o == 'function'; }
+
+const sealProp = (obj, prop, /* optional */value) => {
+	if (value !== undefined) Object.defineProperty(obj, prop, { value, writable:true, configurable:false });
+		else Object.defineProperty(obj, prop, { writable:true, configurable:false });
+}
+
+/**
+ * 
+ * @param {string} url 
+ * @param {object} settings 
+ * @param {string} settings.fileType
+ * @param {boolean} settings.verbose
+ * @param {function} settings.callback
+ * @param {document} settings.HTMLDocument Optional. Reference to document where the dynamic download code is injected. If not provided, uses the current "document"
+ * @returns 
+ */
+const require = (url, settings = {}) => { 
+	var fileType = ('fileType' in settings) ? settings.fileType : 'auto'; 
+	var verbose  = ('verbose' in settings) ? settings.verbose : true; 
+	var callback = ('callback' in settings) ? settings.callback : null; 
+	var doc      = ('document' in settings) ? settings.document : document;
+	
+    let file = url.split('/').pop().split('?').shift();
+	if (fileType == 'auto') fileType = file.split('.').pop();
+    let addr = (fileType == 'js') ? 'src' : 'href';
+
+// check if requested URL is already in <head>, if not, load it:
+    let head = doc.head;
+    for (var i = 0; i < head.children.length; i++) { 
+        var tag = head.children[i];        
+        if (addr in tag && tag[addr].indexOf(url) != -1) { 
+			if (verbose) console.warn('Skipped file: ' + url); 
+			if (callback) callback(url, null);
+			return false; 
+		}         
+    }
+
+    switch (fileType) { 
+        case 'css':             
+            var tag   = doc.createElement('link');
+            tag.rel   = 'stylesheet';
+            tag.type  = 'text/css';
+            tag.href  = url;
+			tag.crossOrigin = 'anonymous';
+        break;
+        case 'js':            
+            var tag = doc.createElement('script');
+			if (settings.module) tag.type = 'module';
+            tag.src  = url;
+        break;
+		default:
+			console.warn('Filetype not detected:', url);
+    }
+    if (verbose)  console.log('Loading: ' + url);
+	if (callback) tag.onload = function() { callback(url, tag); }
+    head.appendChild(tag);
+	
+	return true;
+}
+
+const getPos = (elem, includeScrolling) => {
+	var cr = elem.getBoundingClientRect() || { left:0, top:0, right:0, bottom:0 }
+	if (includeScrolling) { 
+		const x = document.documentElement.scrollLeft;
+		const y = document.documentElement.scrollTop;
+		var  cr = { left:cr.left+x, top:cr.top+y, right:cr.right+x, bottom:cr.bottom+y };
+	}
+	return cr;
+}
+
 
 export { 
 	loadedJsonMap,
@@ -513,14 +585,18 @@ export {
 	arraysEqual,
 	remove,
 	
+	Mixin,
 	addElem,
 	addEvent,
 	ID,
 	waitClick, 
 	isBoolean,
-
-	Mixin,
+	isFunction,
+	isObject,
+	require,
 	addMethods,
 	addPropertyListener,
-	copyProps
+	copyProps,
+	sealProp,
+	getPos,
 }

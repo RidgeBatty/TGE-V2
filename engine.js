@@ -19,7 +19,7 @@
 * For example a space invaders, tetris, pong, asteroids, etc. might have no use of container for static World but a platformer game definitely has.
 *
 */
-const VersionNumber = '2.8.13';
+const VersionNumber = '2.8.14';
 
 import * as Types from "./types.js";
 import { Root, Enum_HitTestMode } from "./root.js";
@@ -34,7 +34,7 @@ import { Events } from "./events.js";
 import { CustomLayer } from "./customLayer.js";
     
 const { Rect, Vector2, V2, LineSegment } = Types;
-const { addEvent } = Utils;
+const { addEvent, sealProp, require, isBoolean, isFunction, getPos } = Utils;
 
 const ImplementsEvents = 'resize contextmenu mousemove mouseup mousedown mouseover mouseout wheel keyup keydown';
 
@@ -74,20 +74,21 @@ class TinyGameEngine {
 	*/	
 	#GUI
 	constructor (o) {		
-		AE.sealProp(this, 'flags', new Flags(DefaultFlags, (a, b) => this.onFlagChange(a, b))); 				// create default flags and make 'this.flags' immutable
-		AE.sealProp(this, 'url', import.meta ? new URL('./', import.meta.url).pathname : null);
+		sealProp(this, 'flags', new Flags(DefaultFlags, (a, b) => this.onFlagChange(a, b))); 				// create default flags and make 'this.flags' immutable
+		sealProp(this, 'url', import.meta ? new URL('./', import.meta.url).pathname : null);
 
+		
 		// line segments describing the current screen:
-		AE.sealProp(this, 'viewportLineSegments');
+		sealProp(this, 'viewportLineSegments');
 
 		// reserved names for optional modules:
-		AE.sealProp(this, 'assetManager');
-		AE.sealProp(this, 'audio');
-		AE.sealProp(this, 'net');
-		AE.sealProp(this, 'data', {});
+		sealProp(this, 'assetManager');
+		sealProp(this, 'audio');
+		sealProp(this, 'net');
+		sealProp(this, 'data', {});
 
 		// main rendering surface:
-		AE.sealProp(this, 'renderingSurface', null);
+		sealProp(this, 'renderingSurface', null);
 
 		this.gameLoop     = new GameLoop({ engine:this, name:'DefaultGameLoop' });		
 		this._zoom	      = 1;
@@ -387,7 +388,7 @@ class TinyGameEngine {
 	 * @param {Boolean} value 
 	 */
 	setFullscreen(value) { 
-		if (AE.isBoolean(value)) {
+		if (isBoolean(value)) {
 			if (value === true) {
 				if (!document.fullscreenElement) this._rootElem.requestFullscreen().catch(err => {
 					console.warn(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
@@ -412,7 +413,7 @@ class TinyGameEngine {
 	}
 
 	recalculateScreen() {	
-		const pos = AE.getPos(this._rootElem);
+		const pos = getPos(this._rootElem);
 		this.screen = new Rect(~~pos.left, ~~pos.top, ~~(pos.left + pos.width) + 1, ~~(pos.top + pos.height) + 1);
 		this.edges  = new Rect(0, 0, ~~pos.width, ~~pos.height);
 
@@ -582,7 +583,7 @@ class TinyGameEngine {
 	_setupComplete() {						// this function is called when engine has completed init() and setup()
 		this.recalculateScreen();
 		this.autoZoom();
-		if (AE.isFunction(this._mainFunction)) {
+		if (isFunction(this._mainFunction)) {
 			this._mainFunction();			
 		}
 	}
@@ -657,8 +658,8 @@ class TinyGameEngine {
 		if (this.flags.getFlag('developmentMode')) {
 			console.warn('Development mode enabled');
 			Object.assign(this.allowedKeys, { F5:true, F11:true, F12:true });
-			AE.require('engine/tools/development.js', { module:true });
-			AE.require('engine/css/devtools.css');			
+			require('engine/tools/development.js', { module:true });
+			require('engine/css/devtools.css');			
 		}
 		
 		if (!this.initCompleted) this._setupComplete();
