@@ -555,6 +555,32 @@ const getPos = (elem, includeScrolling) => {
 	return cr;
 }
 
+const style = (elem, properties, compute) => {	
+	if (properties == undefined) return;
+	var elem = ID(elem);
+	var propList = properties.split(';');
+	var property, value, obj;
+	for (var i = 0; i < propList.length; i++) {
+		/*
+		   obj      = propList[i].split(':'); 
+		   this isn't sufficient when we have --> background-image:url('http: <-- there is ANOTHER colon which will split the string in 3 parts!
+		   so instead of simple split ':' we split with colon, except when the colon in between open and close parenthesis!
+	    */
+	    obj = propList[i].match(/(?:[^:\(]+|\([^\)]*\))+/g); 
+	   
+	    if (obj != null) {
+		   if (obj.length == 2) {
+			   property = obj[0].trim();
+			   value    = obj[1].trim();
+			   elem.style[property] = value;
+			   if (compute) { var n = getComputedStyle(elem)[property]; }
+		   } else if (obj.length == 1) {
+			   property = obj[0].trim();
+			   elem.style[property] = '';
+		   }
+	    }
+	}
+}   
 
 export { 
 	loadedJsonMap,
@@ -599,4 +625,5 @@ export {
 	copyProps,
 	sealProp,
 	getPos,
+	style
 }

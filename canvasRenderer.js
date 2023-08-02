@@ -5,9 +5,10 @@
 	CanvasSurface wrapped inside class with helper methods
 
 */
-import { Engine, Events, Types } from "./engine.js";
+import { Engine, Events, Types, Utils } from "./engine.js";
 import { CanvasSurface } from "./canvasSurface.js";
 
+const { ID, style, getPos } = Utils;
 const { Rect, Vector2, Color } = Types;
 
 const ImplementsEvents = 'mousemove mouseup mousedown';
@@ -18,7 +19,7 @@ class CanvasRenderer extends CanvasSurface {
 		var HTMLContainer = (ID(HTMLContainer) == null) ? HTMLContainer : ID(HTMLContainer);
 		
 		HTMLContainer.appendChild(this.canvas);
-		AE.style(this.canvas, 'position:absolute; left:0; top:0; right:0; bottom:0; width:100%; height:100%');
+		style(this.canvas, 'position:absolute; left:0; top:0; right:0; bottom:0; width:100%; height:100%');
 	
 		this.canvas.width  = HTMLContainer.clientWidth;
 		this.canvas.height = HTMLContainer.clientHeight;		
@@ -33,7 +34,7 @@ class CanvasRenderer extends CanvasSurface {
 		this.events = new Events(this, ImplementsEvents);			
 
 		const mouseEvent = (name, e) => {
-			const p   = AE.getPos(this.canvas);
+			const p   = getPos(this.canvas);
 			const pos = new Vector2(Math.round(e.clientX - p.left), Math.round(e.clientY - p.top));
 			if (e.target == this.canvas) {
 				let maskHitResult = false;

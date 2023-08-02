@@ -34,7 +34,7 @@ import { Events } from "./events.js";
 import { CustomLayer } from "./customLayer.js";
     
 const { Rect, Vector2, V2, LineSegment } = Types;
-const { addEvent, sealProp, require, isBoolean, isFunction, getPos } = Utils;
+const { addEvent, sealProp, require, isBoolean, isFunction, getPos, ID } = Utils;
 
 const ImplementsEvents = 'resize contextmenu mousemove mouseup mousedown mouseover mouseout wheel keyup keydown';
 
@@ -143,7 +143,7 @@ class TinyGameEngine {
 		addEvent(window, 'touchstart', (e) => { mousedown(e); });
 		addEvent(window, 'touchend', (e) => { mouseup(e); });				
 
-		//AE.addEvent(window, 'beforeunload', (e) => { e.preventDefault(); e.stopPropagation(); return e.returnValue = null; });
+		//addEvent(window, 'beforeunload', (e) => { e.preventDefault(); e.stopPropagation(); return e.returnValue = null; });
 
 		// all internal event handlers:
 		const resize = (e) => {		

@@ -20,7 +20,7 @@ class CustomLayer extends Root {
 	constructor(o = {}) {		
         super(o);
 
-        this.owner   = o.owner || Engine.gameLoop;       
+		this.owner   = o.owner || Engine.gameLoop;       
 		this.engine  = o.engine || Engine;
         this.zIndex  = ('zIndex' in o) ? o.zIndex : 1;		
 		this.surface = ('surface' in o) ? o.surface : this.engine.renderingSurface;

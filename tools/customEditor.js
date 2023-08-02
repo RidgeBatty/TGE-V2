@@ -78,10 +78,10 @@ export class CustomEditor extends CustomLayer {
 
         const mousemove = (e) => {                           
             if (ui.active != null) return;
-            this.mouse.coords = this.snapToGrid(Vec2.ToInt(e.position));            
-
-            if (e.event.shiftKey && e.dragging) {
-                const diff  = Vec2.Sub(this.mouse.startPos, this.mouse.coords);                
+            this.mouse.coords = this.snapToGrid(Vec2.ToInt(e.position));      
+                        
+            if (e.event.shiftKey && e.dragging) {                
+                const diff  = Vec2.Sub(this.mouse.startPos, this.mouse.coords);                                
                 this.offset = Vec2.ToInt(diff);                 
             }
 

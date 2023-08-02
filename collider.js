@@ -9,8 +9,9 @@
 
 */
 import { Transform } from './root.js';
-import { Root, Actor, Engine, Types } from './engine.js';
+import { Engine, Root, Actor, Types, Utils } from './engine.js';
 import { PhysicsShape, Circle, AABB, Box, Enum_PhysicsShape, Poly } from './physics.js';
+import { sealProp } from './utils.js';
 
 const { Vector2:Vec2, Rect, V2 } = Types;
 
@@ -36,7 +37,8 @@ class Collider {
 		this.hilite       = 'rgba(255,0,0,0.5)'	// hilite color
 		this.color     	  = 'rgba(0,0,255,0.5)'	// normal draw color
 		this.overlapInfo  = null;		
-		AE.sealProp(this, 'objects', []);
+		
+		Utils.sealProp(this, 'objects', []);
 	}
 
 	disable() {
