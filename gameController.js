@@ -7,6 +7,8 @@
 <b>NOTE!</b> <span style="color:red">Typically you do NOT need to create gameControllers manually. Player class creates necessary instances automatically.</span>
 */
 import { Engine, Events, Types } from './engine.js';
+import { sealProp } from "./utils.js";
+
 const { Vector2:Vec2, V2 } = Types;
 
 const AllGamepads = [];				// list of gamepads detected in the system
@@ -136,7 +138,7 @@ class GamepadController {
 		this.index     = o.index || 0;
 		this.isActive  = true;
 		
-		AE.sealProp(this, '_isConnected', false);	
+		sealProp(this, '_isConnected', false);	
 		
 		AllGamepadControllers.push(this);
 

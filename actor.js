@@ -10,8 +10,7 @@ import { ManagedArray } from "./managedArray.js";
 import { Weapon } from "./weapon.js";
 import { ActorMovement } from "./actorMovement.js";
 import { GameLoop } from "./gameLoop.js";
-import { V2 } from "./types.js";
-import { addPropertyListener } from "./utils.js";
+import { addPropertyListener, sealProp } from "./utils.js";
 import { defaultFlipbookPlayer } from "./flipbookPlayer.js";
 
 const { Vector2:Vec2, Rect } = Types;
@@ -127,10 +126,10 @@ class Actor extends Root {
 		 *  @memberof Actor
 		 *  @type {Actor#movement}
 		 */
-		AE.sealProp(this, 'movement', new ActorMovement(this));								// movement object (TO-DO: might need a Class?)
-		AE.sealProp(this, 'data', ('data' in o) ? o.data : {});								// Container for custom user data
-		AE.sealProp(this, 'surface');
-		AE.sealProp(this, 'counters', {});
+		sealProp(this, 'movement', new ActorMovement(this));								// movement object (TO-DO: might need a Class?)
+		sealProp(this, 'data', ('data' in o) ? o.data : {});								// Container for custom user data
+		sealProp(this, 'surface');
+		sealProp(this, 'counters', {});
 
 		if ('surface' in o) this.surface = o.surface;
 			else

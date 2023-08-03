@@ -12,8 +12,9 @@
 import { Engine, Types } from "./engine.js";
 import { Layer } from "./layer.js";
 import { Camera, Mesh } from "./three.js";
+import { Vector } from "./types.js";
 
-const { Matrix4x4 : Mat4x4, Vector2 : Vec2 } = Types;
+const { Matrix4x4 : Mat4x4, V2 } = Types;
 
 class Rasterizer extends Layer {
     constructor(meshes) {
@@ -27,16 +28,19 @@ class Rasterizer extends Layer {
         this.xRot = 0;
         this.yRot = 0;
         this.zRot = 0;
+
+        console.log(this.camera)
     }
 
-    update = () => {
+    update() {                
         this.surface.resetTransform();                
         
         const rmx = Mat4x4.Identity().setRotationX(this.xRot);
         const rmy = Mat4x4.Identity().setRotationY(this.yRot);
         const rmz = Mat4x4.Identity().setRotationZ(this.zRot);
         
-        this.camera.viewMatrix = Mat4x4.Mul(rmx, rmy, rmz);                       // rotate camera        
+        this.camera.viewMatrix = rmx.mul(rmy).mul(rmz);                           // rotate camera        
+        this.camera.viewMatrix.addTranslation(new Vector(0,0,-5));                // translate camera
         
         for (const mesh of this.meshes) {
             const points  = this.camera.transform(mesh.vertices);
@@ -45,7 +49,7 @@ class Rasterizer extends Layer {
             for (const p of points) {
                 const vx = p.x * Engine.dims.x;
                 const vy = p.y * Engine.dims.y;
-                const proj = new Vec2(vx, vy).add(Engine.dims.mulScalar(0.5));            
+                const proj = V2(vx, vy).add(Engine.dims.mulScalar(0.5));            
                 projectedPoints.push(proj);            
             }
 

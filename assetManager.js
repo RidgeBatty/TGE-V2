@@ -20,7 +20,7 @@
 import { Engine, Actor, Enum_ActorTypes, Types } from './engine.js';
 import { Flipbook } from './flipbook.js';
 import { Box, Circle, Poly } from './physics.js';
-import { getJSON, preloadImages } from './utils.js';
+import { getJSON, preloadImages, sealProp } from './utils.js';
 
 const { V2 } = Types;
 
@@ -55,7 +55,7 @@ class AssetManager {
         this.engine        = engine;        
         this.onDeserialize = null;
 
-        AE.sealProp(this, 'flags', {
+        sealProp(this, 'flags', {
             addActorsToGameLoop : false,            
         });
 

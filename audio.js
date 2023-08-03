@@ -5,7 +5,7 @@
  Implements a simplified interface for using Web Audio API in games	
 */
 import { Events } from './events.js';
-import { getJSON } from './utils.js';
+import { getJSON, isNumeric, isBoolean } from './utils.js';
 
 const ImplementsEvents = 'ended';
 
@@ -17,23 +17,23 @@ const AudioContext = window.AudioContext || window.webkitAudioContext;
 
 class AudioParams {
 	constructor(o= {}, defaults= { loop:false, volume:1, pan:0, rate:1}) {
-		this.loop   = AE.isBoolean(o.loop) ? o.loop : defaults.loop;
-		this.volume = AE.isNumeric(o.volume) ? o.volume : defaults.volume;	
-		this.pan    = AE.isNumeric(o.pan) ? o.pan : defaults.pan;		
-		this.rate   = AE.isNumeric(o.rate) ? o.rate : defaults.rate;	
+		this.loop   = isBoolean(o.loop) ? o.loop : defaults.loop;
+		this.volume = isNumeric(o.volume) ? o.volume : defaults.volume;	
+		this.pan    = isNumeric(o.pan) ? o.pan : defaults.pan;		
+		this.rate   = isNumeric(o.rate) ? o.rate : defaults.rate;	
 	}
 }
 
 class RangedVar {
 	constructor(value, min = 0, max = 1, defaultValue = 0) {
-		if (!AE.isNumeric(value) || !AE.isNumeric(min) || !AE.isNumeric(max)|| !AE.isNumeric(defaultValue)) throw 'All parameters must be numeric';		
+		if (!isNumeric(value) || !isNumeric(min) || !isNumeric(max)|| !isNumeric(defaultValue)) throw 'All parameters must be numeric';		
 		this.min = min;
 		this.max = max;
 		this._value = value;
 	}
 
 	set value(v) {
-		if (!AE.isNumeric(v)) var v = this.defaultValue;
+		if (!isNumeric(v)) var v = this.defaultValue;
 		if (v < this.min) this.value = this.min;
 			else if (v > this.max) this.value = this.max;
 				else this._value = v;
@@ -290,8 +290,8 @@ class AudioLib {
 	 */
 	async add(o) {		
 		return new Promise((resolve, reject) => {			
-			if (!AE.isString(o.url))  reject('Url must be specified.');
-			if (!AE.isString(o.name)) reject('Name must be specified.');
+			if (typeof o.url != 'string')  reject('Url must be specified.');
+			if (typeof o.name != 'string') reject('Name must be specified.');
 
 			const track = new Track({ 
 				audio: this, 

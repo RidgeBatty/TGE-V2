@@ -6,19 +6,17 @@
     Hosted on opengameart.org
 
 */
-import * as TGE from '../../engine.js';
-import { InitAudio } from '../../audio.js';
-import { waitClick } from '../../utils.js';
-
-const Engine = TGE.Engine;	
+import { Engine } from '/engine.js';
+import { InitAudio } from '/audio.js';
+import { waitClick, ID } from '/utils.js';
 
 const listenForPause = async (sfx) => {
     await waitClick('game');    
 
     console.log(sfx.status);
         
-    if (sfx.status == 'playing') { AE.setText('cover', '⏸ Paused'); sfx.pause(); }   
-        else if (sfx.status == 'paused')  { AE.setText('cover', '▶️ Playing audio'); sfx.pause(); }
+    if (sfx.status == 'playing') { ID('cover').textContent = '⏸ Paused'; sfx.pause(); }   
+        else if (sfx.status == 'paused') { ID('cover').textContent = '▶️ Playing audio'; sfx.pause(); }
 
     requestAnimationFrame(_ => listenForPause(sfx));
 }
@@ -29,7 +27,7 @@ const main = async() => {
     await audio.addBunch(data);     
 
     await waitClick('game');
-    AE.setText('cover', '▶️ Playing audio');
+    ID('cover').textContent = '▶️ Playing audio';
 
     Engine.audio.spawn('theme', true).then(sfx => {         
         console.log(sfx);

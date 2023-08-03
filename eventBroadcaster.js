@@ -1,3 +1,5 @@
+import { sealProp } from "./utils.js";
+
 class EventBroadcaster {
     /**
      * 
@@ -8,13 +10,13 @@ class EventBroadcaster {
         // create sealed, private object "_events" for event handler arrays
 		const events = {};
 		for (const e of eventNames) events[e] = [];
-		AE.sealProp(this, '_events', events);
+		sealProp(this, '_events', events);
 
         if (o) this.installFromParams(o);
     }
 
     installFromParams(o) {
-        for (const name of Object.keys(this._events)) if (AE.hasProp(o, 'on' + name)) this.addEvent(name.toLowerCase(), o['on' + name]);		
+        for (const name of Object.keys(this._events)) if (o['on' + name] !== undefined) this.addEvent(name.toLowerCase(), o['on' + name]);		
     }
 
     addEvent(name, func) {

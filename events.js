@@ -1,3 +1,4 @@
+import { isFunction } from "./utils.js";
 
 let _stopPropagation = '';
 class Events {
@@ -48,7 +49,7 @@ class Events {
             return;
         }
 
-        if (AE.isFunction(o) && handler == null) {                                                                  // o = function
+        if (isFunction(o) && handler == null) {                                                                  // o = function
             if (handlerOrIsActive == null) handlerOrIsActive = true;
             return this.#list[o.name].push({ isActive:handlerOrIsActive, handler:o, id:this.#id++ }); 
         }

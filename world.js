@@ -5,6 +5,7 @@
  * 
  */
 import { Vector2 as Vec2, V2 } from './types.js';
+import { sealProp } from "./utils.js";
 
 class World {
     constructor(o) {
@@ -19,7 +20,7 @@ class World {
         this.engine.world = this;
         this.engine.flags.setFlag('hasWorld');
 
-        AE.sealProp(this, 'data', {});
+        sealProp(this, 'data', {});
     }
 
     tick() {

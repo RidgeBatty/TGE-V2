@@ -485,6 +485,7 @@ const addEvent = (elem, evnt, func, params = false) => {
 const isObject 	 = (o) => { return o === Object(o); }
 const isBoolean  = (o) => { return typeof o === 'boolean'; }
 const isFunction = (o) => { return typeof o == 'function'; }
+const isNumeric  = (o) => { return !isNaN(parseFloat(o)) && isFinite(o); }	// regardless of type...
 
 const sealProp = (obj, prop, /* optional */value) => {
 	if (value !== undefined) Object.defineProperty(obj, prop, { value, writable:true, configurable:false });
@@ -619,6 +620,7 @@ export {
 	isBoolean,
 	isFunction,
 	isObject,
+	isNumeric,
 	require,
 	addMethods,
 	addPropertyListener,

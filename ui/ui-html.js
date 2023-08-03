@@ -3,9 +3,8 @@
  * This file contains the basic setup for UI HTML system, but not the actual components
  * 
  */
-import { Engine } from "../engine.js";
 import { Vector2 as Vec2, V2 } from "../types.js";
-import { getJSON, addElem } from "../utils.js";
+import { getJSON, addElem, ID } from "../utils.js";
 import * as UIComponents from "./ui-html-components.js";
 
 class UI {

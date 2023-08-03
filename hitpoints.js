@@ -2,7 +2,7 @@
  * Hitpoints mixin.
  * Mixins should not have constructors. A create method (if defined) will be called instead. Use "this" to access all the shared properties with other mixed classes.
  */
-
+import { clamp } from "./utils.js";
 class Hitpoints {
     create(o) {     
         const hp = ('hp' in o) ? o.hp : 100;
@@ -15,7 +15,7 @@ class Hitpoints {
     }
 
     set hp(value) {
-        this._hp = AE.clamp(value, 0, this._hpMax); 
+        this._hp = clamp(value, 0, this._hpMax); 
     }
 
     get hp() {

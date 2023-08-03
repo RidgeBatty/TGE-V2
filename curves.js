@@ -7,6 +7,8 @@
 	
 */
 import * as Types from './types.js';
+import { clamp } from './utils.js';
+
 const Vec2 = Types.Vector2;
 
 const lerp = (start, end, n) => {
@@ -20,12 +22,12 @@ const lerp3 = (p0, p1, p2, t) => {
 }
 
 const smoothstep = (e0, e1, x) => {	
-	const n = AE.clamp((x - e0) / (e1 - e0), 0, 1); 	
+	const n = clamp((x - e0) / (e1 - e0), 0, 1); 	
 	return n ** 2 * (3 - 2 * n);
 }
 
 const smootherstep = (e0, e1, x) => {	
-	const n = AE.clamp((x - e0) / (e1 - e0), 0, 1); 	
+	const n = clamp((x - e0) / (e1 - e0), 0, 1); 	
 	return n ** 3 * (n * (6 - 15 * n) + 10);
 }
 

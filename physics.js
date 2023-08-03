@@ -1,4 +1,5 @@
 import { Engine, Types } from './engine.js';
+import { sealProp } from "./utils.js";
 
 const Vector2     = Types.Vector2;
 const Zero        = Vector2.Zero();
@@ -29,8 +30,8 @@ class PhysicsShape {
 		this.points      = [];
 		this.ignoreParentRotation = false;
 
-		AE.sealProp(this, 'isEnabled', true);
-		AE.sealProp(this, 'data', {});
+		sealProp(this, 'isEnabled', true);
+		sealProp(this, 'data', {});
 	}
 	
 	set angle(rad) {

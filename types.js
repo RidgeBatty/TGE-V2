@@ -1321,6 +1321,8 @@ class Matrix4x4 {
 			result2.x, result2.y, result2.z, result2.w,
 			result3.x, result3.y, result3.z, result3.w
 		];
+
+		return this;
 	}
 	
 	/*

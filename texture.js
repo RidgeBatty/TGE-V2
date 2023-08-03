@@ -6,6 +6,7 @@
 	let myTexture = new Texture('brickwall').load('img/wall01.jpg');	
 
 */
+import { isBoolean } from "./utils.js";
 import { Picture } from './picture.js';
 import * as Types from './types.js';
 const { Vector2 : Vec2, V2, Color } = Types;
@@ -36,7 +37,7 @@ class Texture extends Picture {
 	}
 
 	set pixelSmooth(value) {
-		if (!AE.isBoolean(value) || !this.ctx) return;	
+		if (!isBoolean(value) || !this.ctx) return;	
 		console.log('Smoothing:', value)	
 		this.ctx.imageSmoothingEnabled = value;
 	}

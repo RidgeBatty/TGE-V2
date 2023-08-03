@@ -17,7 +17,7 @@
 
 **/
 import { Events } from "./events.js";
-import { preloadImages } from './utils.js';
+import { preloadImages, clamp } from './utils.js';
 import { VideoStream } from "./videoStream.js";
 import { V2 } from "./types.js";
 import { Sequence } from "./sequence.js";
@@ -46,7 +46,7 @@ class Flipbook {
 		this._isVisible   = true;
 		this.filter       = null;
 		
-		this._fps         = ('fps' in o && !isNaN(o.fps)) ? AE.clamp(o.fps, 0, 60) : 60;
+		this._fps         = ('fps' in o && !isNaN(o.fps)) ? clamp(o.fps, 0, 60) : 60;
 		this._isAtlas     = true;		
 		this._atlasOrder  = 'left-to-right';			// frame ordering in atlas
 		this._lastFrame   = -1;
@@ -191,7 +191,7 @@ class Flipbook {
 	}	
 	
 	set FPS(value) {		
-		this._fps = !isNaN(value) ? AE.clamp(value, 0, 60) : 60;
+		this._fps = !isNaN(value) ? clamp(value, 0, 60) : 60;
 	}
 	
 	get FPS() {

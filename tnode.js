@@ -7,13 +7,14 @@
 */
 
 import * as Types from './types.js';	
+import { isNumeric } from './utils.js';	
 
 const Vec2 = Types.Vector2;
 
 class TNode {
     constructor(o) {        
-        if ('scale' in o && !AE.isNumeric(o.scale)) throw 'Parameter "scale" must be a Number';
-        if ('rotation' in o && !AE.isNumeric(o.rotation)) throw 'Parameter "rotation" must be a Number';
+        if ('scale' in o && !isNumeric(o.scale)) throw 'Parameter "scale" must be a Number';
+        if ('rotation' in o && !isNumeric(o.rotation)) throw 'Parameter "rotation" must be a Number';
 		
         this.offset       = ('offset' in o) ? o.offset : Vec2.Zero();		
         this.position     = ('position' in o) ? o.position : Vec2.Zero();

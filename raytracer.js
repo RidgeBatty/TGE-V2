@@ -6,6 +6,7 @@
 import { Engine, Types } from './engine.js';	
 import { CustomLayer } from './customLayer.js';
 import { Texture } from './texture.js';
+import { isBoolean } from "./utils.js";
 
 const { V2, Vector2:Vec2, LineSegment:Seg } = Types;
 
@@ -92,10 +93,10 @@ class Raytracer extends CustomLayer {
 		});
 	}
 	
-	set useFog(value) { if (AE.isBoolean(value)) { this.surface.ctx.globalAlpha = 1.0; this._useFog = value; } }
+	set useFog(value) { if (isBoolean(value)) { this.surface.ctx.globalAlpha = 1.0; this._useFog = value; } }
 	get useFog() 	  { return this._useFog; }
 	
-	set useHalfPrecision(value) { if (AE.isBoolean(value)) { this._useHalfPrecision = value; this.updateViewport(); } }
+	set useHalfPrecision(value) { if (isBoolean(value)) { this._useHalfPrecision = value; this.updateViewport(); } }
 	get useHalfPrecision() 	  { return this._useHalfPrecision; }
 	
 	updateViewport() {

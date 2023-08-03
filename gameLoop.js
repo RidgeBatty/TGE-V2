@@ -156,7 +156,7 @@ class GameLoop {
 	 * @returns {boolean} true if the timer was deleted
 	 */
 	deleteTimer(nameOrRef) {
-		const index = typeof (nameOrRef == 'string') ? this.timers.findIndex(e => e.name == nameOrRef) : this.timers.findIndex(e => e == nameOrRef);		
+		const index = (typeof nameOrRef == 'string') ? this.timers.findIndex(e => e.name == nameOrRef) : this.timers.findIndex(e => e == nameOrRef);		
 		if (index > -1) {
 			this.timers.splice(index, 1);	
 			return true;

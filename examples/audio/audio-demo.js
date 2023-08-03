@@ -6,9 +6,9 @@
     Hosted on opengameart.org
 
 */
-import { Engine, Types } from '../../engine.js';
-import { InitAudio } from '../../audio.js';
-import { ID } from '../../utils.js';
+import { Engine, Types } from '/engine.js';
+import { InitAudio } from '/audio.js';
+import { ID } from '/utils.js';
 
 const { Vector2:Vec2 } = Types;
 
@@ -69,12 +69,12 @@ const main = async () => {
     await Engine.setup('./settings.hjson');
 
     try {                       
-        Engine.addLayer({ imgUrl:'img/level1.jpg' });        
+        Engine.addLayer({ imgUrl:'/assets/img/level1.jpg' });        
 
         for (let i = 0; i < 10; i++) {
             Engine.addActor('actor', { 
                 name:    `missile_${i}`, 
-                imgUrl:  'img/Missile.png', 
+                imgUrl:  '/img/missile.png', 
                 scale:    0.5, 
                 position: new Vec2(330 + i * 50, 500) 
             });
