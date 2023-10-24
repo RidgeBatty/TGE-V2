@@ -583,6 +583,23 @@ const style = (elem, properties, compute) => {
 	}
 }   
 
+/**
+ * Checks whether the 'object' has a class name or constructor named 'className' in its prototype chain. 
+ * This function deep scans the entire prototype chain. 
+ * Note! This function will only check for name equality. This is not the same as 'instanceOf' built in operator and does not ensure the equality of the classes.
+ * Use this when you need to compare objects which are created in different contexts (iframe or window) where 'instanceOf' will not work.
+ */
+const isInstanceOf = (object, className) => {	
+	if ( !isObject(object)) return false;
+	var n = object;
+	while (n) {
+		if (('constructor' in n) && (n.constructor.name == className)) return true;
+		if (n.name != '' && n.name == className) return true;		
+		n = Object.getPrototypeOf(n);
+	}
+	return false;
+}
+
 export { 
 	loadedJsonMap,
 	preloadImages, 
@@ -621,6 +638,7 @@ export {
 	isFunction,
 	isObject,
 	isNumeric,
+	isInstanceOf,
 	require,
 	addMethods,
 	addPropertyListener,

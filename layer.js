@@ -23,6 +23,7 @@ class Layer {
         this.viewport  = ('viewport' in o) ? o.viewport : Engine.viewport;
         this.repeat    = ('repeat' in o) ? o.repeat : ''; 
         this.position  = Vec2.Zero();       
+        this.buffer    = Engine.renderingSurface;
         
         if ('scale' in o) {
             if (typeof o.scale == 'number') this.scale = new Vec2(o.scale, o.scale); 
@@ -50,8 +51,8 @@ class Layer {
 
 	update() {        
         if (!this.img) return;
-        Engine.renderingSurface.resetTransform();        
-        Engine.renderingSurface.drawImageRepeat({
+        this.buffer.resetTransform();        
+        this.buffer.drawImageRepeat({
 			targetRect: this.viewport,
 			position: this.position,
 			img: this.img,

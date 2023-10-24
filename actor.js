@@ -293,7 +293,7 @@ class Actor extends Root {
 		actor.flags       = Object.assign({}, this.flags);
 		actor.renderHints = Object.assign({}, this.renderHints);
 		actor.isVisible   = this.isVisible;
-		actor.movement    = structuredClone(this.movement);
+		actor.movement    = {...this.movement};									// shallow clone: TO-DO: make movement a class and add clone() method in it!
 
 		// include gameloop flag overrides
 		if (this.owner.flags.showColliders) actor.renderHints.showColliders = true;
@@ -306,7 +306,7 @@ class Actor extends Root {
 			actor.setCollisionResponseFlag(this._hitTestFlag);					// copy hit test flag			
 		}
 		
-		this.flipbooks.forEach(fb => actor.flipbooks.push(fb.clone(actor)));	// clone flipbooks collection
+		this.flipbooks.forEach(fb => fb.clone(actor));							// clone flipbooks collection
 		
 		if (addToGameLoop)  this.owner.add(actor);								// add to gameLoop?
 

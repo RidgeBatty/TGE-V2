@@ -129,35 +129,35 @@ class Collider {
 		const colliders = ('optimizedColliders' in actor) ? actor.optimizedColliders : actor.colliders.objects;
 		
 		const gameLoop  = actor.owner;
-		const ctx 		= Engine.renderingSurface.ctx;
+		const s 		= gameLoop.surface;
 		const scale     = this.scale * this.actor.scale;
-
-		for (var i = 0; i < colliders.length; i++) {
+		
+		for (var i = 0; i < colliders.length; i++) {			
 			var c   = colliders[i];			
 			var cp  = actor.renderPosition;
 			var pos = Vec2.Zero();
 			
-			ctx.resetTransform();
-			ctx.translate(cp.x, cp.y);			
-			if (!c.ignoreParentRotation) ctx.rotate(actor.rotation);						
-			if ('offset' in actor) ctx.translate(actor.offset.x, actor.offset.y);
-			ctx.scale(scale, scale);
-			ctx.translate(c.position.x, c.position.y);			
-			ctx.rotate(c.angle);
+			s.ctx.resetTransform();
+			s.ctx.translate(cp.x, cp.y);			
+			if (!c.ignoreParentRotation) s.ctx.rotate(actor.rotation);						
+			if ('offset' in actor) s.ctx.translate(actor.offset.x, actor.offset.y);
+			s.ctx.scale(scale, scale);
+			s.ctx.translate(c.position.x, c.position.y);			
+			s.ctx.rotate(c.angle);
 	
 			// NOTE! This will draw the colliders always on Engine.renderingSurface, because it is assumed that colliders are drawn as an overlay
 			switch (c.type) {				
 				case Enum_PhysicsShape.Poly:					
-					Engine.renderingSurface.drawPoly(c.points, { stroke:'black', fill:actor.overlaps.length > 0 ? this.hilite : this.color });					
+					s.drawPoly(c.points, { stroke:'black', fill:actor.overlaps.length > 0 ? this.hilite : this.color });					
 				break;
 				case Enum_PhysicsShape.Box:															
-					Engine.renderingSurface.drawRect(new Rect(pos.x - c.halfSize.x, pos.y - c.halfSize.y, c.halfSize.x, c.halfSize.y), { stroke:'black', fill:actor.overlaps.length > 0 ? this.hilite : this.color });										
+					s.drawRect(new Rect(pos.x - c.halfSize.x, pos.y - c.halfSize.y, c.halfSize.x, c.halfSize.y), { stroke:'black', fill:actor.overlaps.length > 0 ? this.hilite : this.color });										
 				break;
 				case Enum_PhysicsShape.AABB: 					
 					
 				break;
-				case Enum_PhysicsShape.Circle:																
-					Engine.renderingSurface.drawCircle(pos, c.radius, { stroke:'black', fill:actor.overlaps.length > 0 ? this.hilite : this.color });
+				case Enum_PhysicsShape.Circle:																			
+					s.drawCircle(pos, c.radius, { stroke:'black', fill:actor.overlaps.length > 0 ? this.hilite : this.color });
 				break;
 			}						
 		}

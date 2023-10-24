@@ -1,3 +1,5 @@
+import { clamp, isFunction } from "./utils.js";
+
 /**
  * 
  * Sequence 
@@ -11,7 +13,7 @@
  * 
  */
 export class Sequence {
-	constructor(owner, name, start, end, loop = true) {
+	constructor(owner, name, start, end, loop = true) {		
 		if (typeof owner != 'object') throw 'Sequence must have an owning object (Flipbook or Animation)';
 		this.owner       = owner;
 		this.name        = name;
@@ -93,7 +95,7 @@ export class Sequence {
 	}
 	
 	set FPS(value) {
-		this._fps = !isNaN(value) ? AE.clamp(value, 0, 60) : 60;
+		this._fps = !isNaN(value) ? clamp(value, 0, 60) : 60;
 	}
 	
 	get FPS() {
@@ -195,8 +197,8 @@ export class Sequence {
 		this._iterations++;		
 		if (this._iterations < this._iterationCount) this.resetCycle();		// check if we have more loops to go?
 			else {
-				this._cycle = 'ended';			
-				if (AE.isFunction(this.onComplete)) this.onComplete(this);
+				this._cycle = 'ended';							
+				if (isFunction(this.onComplete)) this.onComplete(this);
 				this._isPaused = true;
 				if ('onSequenceEnd' in this.owner) this.owner.onSequenceEnd(this);
 			} 
@@ -210,7 +212,8 @@ export class Sequence {
 	 */
 	seek(frame) {		
 		if (isNaN(frame)) return;				
-		this.playhead       = AE.clamp(this.start + frame, this.start, this.end) * 64;				
+
+		this.playhead       = clamp(this.start + frame, this.start, this.end) * 64;				
 		this.owner.sequence = this;
 	}
 }
