@@ -84,7 +84,7 @@ export class TCustomWindow extends TFocusControl {
 
         //s.drawRect(this.clientRect, { stroke:settings.clWindowFrame, fill:settings.clWindow });               
         s.ctx.fillStyle   = settings.clWindow;
-        s.ctx.strokeStyke = settings.clWindowFrame;
+        s.ctx.strokeStyle = settings.clWindowFrame;
         s.ctx.beginPath();
         s.ctx.roundRect(clientRect.left, clientRect.top, clientRect.width, clientRect.height, 10);
         s.ctx.fill();
