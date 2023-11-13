@@ -5,12 +5,15 @@
 	
 **/
 import { Actor, Engine } from '../engine.js';
+import { Enum_HitTestMode, Transform } from '../root.js';
+import { ID, addElem, addEvent, getEnumKey } from '../utils.js';
 
 console.warn('TGE DEBUG TOOLS are enabled!');
 
 const sheet = new CSSStyleSheet();
-sheet.insertRule('.tge-debug    { position:absolute; left:10px; top:10px; color:lime; text-shadow:1px 1px 1px black; font:14px monospace; pointer-events:none; }'); 
-sheet.insertRule('.tge-controls { position:absolute; left:10px; bottom:10px; color:lime; text-shadow:1px 1px 1px black; font:14px monospace; pointer-events:none; }'); 
+sheet.insertRule('.tge-debug    { position:absolute; left:10px; top:10px; color:lime; text-shadow:1px 1px 1px black; font:12px monospace; pointer-events:none; }'); 
+sheet.insertRule('.tge-controls { position:absolute; left:10px; bottom:10px; color:lime; text-shadow:1px 1px 1px black; font:12px monospace; pointer-events:none; }'); 
+sheet.insertRule('h3 { margin-block-end:0; text-decoration:underline  }'); 
 document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
 
 const el = {
@@ -43,6 +46,9 @@ const mouse = {
 	x:0,
 	y:0,
 }
+const ath = {
+	collisionCheckTime : 0,
+}
 const KeybState = [];
 
 let overlapCallCount = 0;
@@ -55,12 +61,12 @@ let controlLayer     = null;
 	Adds a layer (HTMLElement) for debug information (singleton)
 */
 const addLayer = (elem = Engine._rootElem) => {
-	debugLayer   = AE.newElem(elem, 'div', 'tge-debug');	
-	controlLayer = AE.newElem(elem, 'div', 'tge-controls');	
+	debugLayer   = addElem({ parent:elem, class:'tge-debug' });	
+	controlLayer = addElem({ parent:elem, class:'tge-controls' });	
 
-	AE.setText(debugLayer, 'Tiny Game Engine Debug Layer');
+	debugLayer.innerHTML = '<h3>TGE Debug Layer</h3>';
 
-	for (const k of Object.keys(el)) el[k] = AE.newElem(debugLayer, 'div');		
+	for (const k of Object.keys(el)) el[k] = addElem({ parent:debugLayer });
 }
 
 const getLayer = () => {
@@ -102,7 +108,10 @@ Engine.gameLoop._render = function(ts) {
 	if (el.delta)  el.delta.textContent  = `Frame delta: ${gameLoop.frameDelta.toFixed(2)}ms`;
 	if (el.logic)  el.logic.textContent  = `Game logic: ${gameLoop.tickCount} ticks | ${gameLoop._tickQueue} queued | ${logic.current.toFixed(2)}ms | Min ${logic.min.toFixed(2)}ms | Max ${logic.max.toFixed(2)}ms | >5ms ${logic.above5ms} (${(logic.above5ms/fps.total*100).toFixed(2)}%)`;
 	if (el.actors) el.actors.textContent = `Actors: ${pad(gameLoop.actors.length, 3)} | zLayers: ${gameLoop.zLayers.length}`;
-	if (el.olaps)  el.olaps.textContent  = `Overlaps: Currently Testing ${pad(overlapCallCount)} | Total Detected ${pad(totalOverlaps)} | Collision Check Time ${gameLoop.collisionCheckTime.toFixed(2)}ms`;
+	if (el.olaps)  {
+		if (gameLoop.collisionCheckTime > ath.collisionCheckTime) ath.collisionCheckTime = gameLoop.collisionCheckTime;
+		el.olaps.textContent  = `Overlaps: Currently Testing ${pad(overlapCallCount,3)} | Total Detected ${pad(totalOverlaps,3)} | Test Time ${gameLoop.collisionCheckTime.toFixed(2)}ms | Max ${ath.collisionCheckTime.toFixed(2)}ms`;		
+	}
 	if (el.edges)  el.edges.textContent  = `Edges: L=${Engine.edges.left} | T=${Engine.edges.top} | R=${Engine.edges.right} | B=${Engine.edges.bottom}`;
 	
 	const ps = gameLoop.particleSystems;
@@ -112,10 +121,58 @@ Engine.gameLoop._render = function(ts) {
 		if (el.particles)  el.particles.textContent  = `Particle System: Emitters ${ec} | Particles: ${pc} | Active: ${ac}`;
 	}
 
+	if (el.player)  {
+		let result = '<h3>Player Info</h3>';
+		const p = gameLoop.players[0];
+		const s = [];
+		if (p?.flipbooks) {
+			let i = 0;
+			p.flipbooks.forEach(f => { 
+				const sequences = f.sequenceList.map(m => (f.sequence?.name == m.name) ? `(${m.name})` : `&nbsp;${m.name}&nbsp;`).join(''); 
+				s.push(`Flipbook #${i++} Sequences: ${sequences}<br>`)
+			});
+		}
+
+		const transform = p?.transform.asString(2, ['Position: ', 'Rotation: ', 'Scale: ']);
+		result += `Players: ${gameLoop.players.length} | Player #0 | Name ${p?.name}<br>`;
+		result += `Controllers: ${Object.keys(p.controllers).join(',')}<br>`;
+		result += `Colliders: ${p?.colliders?.objects.length}<br>`;
+		if (p.hasColliders) {
+			result += `Collision channels:<br>`;
+			for (const [k, v] of Object.entries(p.hitTestFlag)) {								
+				const modeName = getEnumKey(Enum_HitTestMode, v);
+				result += `&nbsp;${k}: ${modeName}<br>`
+			}
+		}
+		result += `${transform}<br>Flipbooks: ${p?.flipbooks?.length}<br>${s}`;
+
+		el.player.innerHTML = result;
+	}
+
+	if (el.zLayers)  {
+		const zLayers = gameLoop.zLayers;
+		let result = '<h3>Z-Layers</h3>';
+		let i = 0;
+		for (const z of zLayers) {
+			let objects = {};
+			for (const o of z) {
+				const name = o.constructor.name;
+				if (objects[name] == null) objects[name] = 0;
+				objects[name]++;									
+			}
+			
+			let objectInfo = [];
+			for (const [k, v] of Object.entries(objects)) objectInfo.push(`${k} (${v})`);
+			result += `${i++}:${objectInfo.join('|')}<br>`;			
+		}
+		el.zLayers.innerHTML = result;
+	}
+
 	if (controlLayer) {		
 		const keys = Object.keys(KeybState).filter(e => KeybState[e] != false).join(' ');
-		controlLayer.innerHTML = `Keys: ${keys}<br>Mouse: Screen ${mouse.x}:${mouse.y} | Viewport ${Engine.mousePos.asString()} | Touches:`;
+		controlLayer.innerHTML = `Keys: ${keys}<br>Mouse: Screen ${mouse.x}:${mouse.y} | Viewport ${Engine.mousePos.asString()} | Touches:<br>Toggle Details: (P)layer, (Z)-Layers`;
 	}
+	
 }
 
 Engine.gameLoop._tick = () => {
@@ -145,7 +202,7 @@ function _box(div, x, y, w, h) {
 function addBox(corners, id, params) {
 	if (id == null || ID(id) == null) {
 		const relativeTo = (params && 'relativeTo' in params) ? params.relativeTo : Engine._rootElem;
-		var div = AE.newElem(relativeTo, 'div', 'tge-collider-bg-blue');
+		var div = addElem({ parent:relativeTo, class:'tge-collider-bg-blue' });
 	} else var div = ID(id);
 	
 	_box(div, Math.min(corners[0].x, corners[1].x),
@@ -166,11 +223,11 @@ function addRect(rect, id, params) {
 */
 function addCrosshair(x, y, id) {	
 	if (id == null || ID(id) == null) {
-		var div  = AE.newElem(Engine._rootElem, 'div');
-		var vert = AE.newElem(div, 'div', 'tge-collider-bg-blue');		
-		var horz = AE.newElem(div, 'div', 'tge-collider-bg-blue');				
+		var div  = addElem({ parent:Engine._rootElem });
+		var vert = addElem({ parent:div, class:'tge-collider-bg-blue' });
+		var horz = addElem({ parent:div, class:'tge-collider-bg-blue' });
 		div.id   = id;		
-	} else {		
+	} else {				
 		var div  = ID(id);		
 		var vert = div.children[0];
 		var horz = div.children[1];		
@@ -199,9 +256,18 @@ function addAnimationDebug() {
 
 function init() {
 	addLayer();	
-	AE.addEvent(window, 'mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
-	AE.addEvent(window, 'keydown', (e) => { KeybState[e.code] = true; });
-	AE.addEvent(window, 'keyup', (e) => { KeybState[e.code] = false; });
+	
+	addEvent(window, 'mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+	addEvent(window, 'keydown', (e) => { KeybState[e.code] = true; });
+	addEvent(window, 'keyup', (e) => { 
+		KeybState[e.code] = false; 
+		if (e.code == 'KeyP') {			
+			if (el.player) { el.player.remove(); delete el.player; } else { el.player = addElem({ parent:debugLayer }); el.player.style.marginLeft = '1em'; }
+		}
+		if (e.code == 'KeyZ') {			
+			if (el.zLayers) { el.zLayers.remove(); delete el.zLayers; } else { el.zLayers = addElem({ parent:debugLayer }); el.zLayers.style.marginLeft = '1em'; }
+		}
+	});
 }
 
 init();
@@ -215,3 +281,4 @@ const Debug = {
 }
 
 export default Debug;
+

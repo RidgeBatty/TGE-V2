@@ -7,7 +7,7 @@
  * 
  */
  import { Vector2 as Vec2 } from "./types.js";
- import { Mixin, preloadImages } from "./utils.js";
+ import { Mixin, isInstanceOf, preloadImages } from "./utils.js";
 
 class ImageOwner {
     create(o) {
@@ -29,9 +29,9 @@ class ImageOwner {
     }
 
     _determineImageSize() {        
-        const img = this.img;
+        const img = this.img;        
         if (img instanceof HTMLImageElement) this.size = new Vec2(img.naturalWidth, img.naturalHeight);
-			else if (img instanceof HTMLCanvasElement || img instanceof OffscreenCanvas || AE.isInstanceOf(img, 'CanvasSurface')) this.size = new Vec2(img.width, img.height);        
+			else if (img instanceof HTMLCanvasElement || img instanceof OffscreenCanvas || isInstanceOf(img, 'CanvasSurface')) this.size = new Vec2(img.width, img.height);        
                 else {                
                     throw new Error('Unknown image type');                    
                 }

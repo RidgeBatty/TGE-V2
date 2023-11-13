@@ -313,7 +313,7 @@ class AudioLib {
 	}
 	
 	/**
-	 * Adds a bunch of new tracks in to the track library
+	 * Adds a bunch of new tracks into the track library
 	 * @param {[object]} list Array of { name, url } pairs
 	 * @returns {Track|String}
 	 */
@@ -321,8 +321,8 @@ class AudioLib {
 		return new Promise(async resolve => {
 			let group = [];
 			for (const s of list) group.push(this.add(s));
-			await Promise.all(group);	
-			resolve();
+			const r = await Promise.all(group);	
+			resolve(r);
 		});
 	}
 
@@ -422,7 +422,8 @@ class AudioLib {
  * @returns {Audio} 
  */
 const InitAudio = (engine) => {
-	return new AudioLib(engine);
+	if (engine?.toString() == '[TinyGameEngine]') return new AudioLib(engine);
+	throw new Error('TinyGameEngine reference required');
 }
 
 export { InitAudio, AudioLib, AudioParams, Track, SFX }

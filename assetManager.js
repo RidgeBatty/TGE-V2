@@ -77,6 +77,17 @@ class AssetManager {
     }
 
     /**
+     * 
+     * @param {function} e Predicate function. Each image asset is sent to the predicate function as a parameter. Return the value you want to collect to the resulting array.
+     * @returns {array}
+     */
+    filterImages(e) {
+        const res = [];
+        this.assets.images.forEach(f => { const r = e(f); if (r) res.push(r); });
+        return res;
+    }
+
+    /**
      * Creates a new actor from (H)JSON data. 
      * By default the actor is created and stored only in the assetManager as an offline 'class' ready to be instantiated quickly
      * Optionally this method adds the new actor into the gameloop (if assetManager.flags.addActorsToGameLoop is set to true)     
@@ -143,7 +154,7 @@ class AssetManager {
      */
 
     async loadAsset(o, options) {
-        const s = await getJSON(o.url);        
+        const s = await getJSON(o.url);                
         if (s.type == 'actor') {
             const actor = await this.deserializeActor(s.data, options);
             return this.assets.actors.push(actor);            
@@ -174,7 +185,7 @@ class AssetManager {
     /**
      * Spawns a new Actor from the internal stash of AssetManager
      * @param {string|Actor} asset the asset must exist in AssetManager internal stash
-     * @param {*} o 
+     * @param {*} o Optional. Pass createparams to the asset (if applicable)
      * @returns 
      */
     spawn(asset, o = {}) {

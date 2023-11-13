@@ -16,6 +16,8 @@ class CanvasSurface {
 	 * @param {string=} o.name Optional.
 	 * @param {Canvas=} o.canvas Optional.
 	 * @param {boolean=} o.preferOffscreenCanvas Optional flag.
+	 * @param {boolean=} o.pixelSmooth Optional flag.
+	 * @param {boolean=} o.imageSmooth Optional image smoothing quality (none|low|medium|high)
 	 */
 	constructor(o = {}) {	
 		if ('canvas' in o) {
@@ -43,6 +45,20 @@ class CanvasSurface {
 		this.isCanvasSurface = true;
 		
 		this.pixelSmooth = ('pixelSmooth' in o) ? o.pixelSmooth : true;		
+		this.setImageSmoothing(('zoomQuality' in o) ? o.zoomQuality : 'none');
+	}
+
+	get zoomQuality() {
+		return (!this.ctx.imageSmoothingEnabled) ? 'none' : this.ctx.imageSmoothingQuality;
+	}
+
+	set zoomQuality(v) {
+		this.setImageSmoothing(v);
+	}
+
+	setImageSmoothing(v) {
+		this.ctx.imageSmoothingEnabled = (v != 'none');
+		if (['low', 'medium', 'high'].includes(v)) this.ctx.imageSmoothingQuality = v;		
 	}
 
 	toString() {

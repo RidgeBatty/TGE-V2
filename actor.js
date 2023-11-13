@@ -4,7 +4,7 @@
  @desc   Actor is the base class for an Object that can be placed or spawned in a level. 
 */
 
-import { Types, Root, Events, Engine } from "./engine.js";
+import { Types, Root, Events } from "./engine.js";
 import { ImageOwner, Mixin } from "./imageOwner.js";
 import { ManagedArray } from "./managedArray.js";
 import { Weapon } from "./weapon.js";
@@ -12,6 +12,7 @@ import { ActorMovement } from "./actorMovement.js";
 import { GameLoop } from "./gameLoop.js";
 import { addPropertyListener, sealProp } from "./utils.js";
 import { defaultFlipbookPlayer } from "./flipbookPlayer.js";
+import { Transform } from "./root.js";
 
 const { Vector2:Vec2, Rect } = Types;
 const ImplementsEvents = 'click tick beginoverlap endoverlap collide destroy';
@@ -86,10 +87,10 @@ class Actor extends Root {
 		 * Flags
 		 * 
 		*/
-		Object.assign(this.flags, { isStatic:false, isDestroyed:false, isFlipbookEnabled:false, hasEdges:true, mouseEnabled:false, boundingBoxEnabled:false, optimizeCollisionChecks:true });
+		Object.assign(this.flags, { isStatic:false, isDestroyed:false, isFlipbookEnabled:false, hasEdges:true, mouseEnabled:false, boundingBoxEnabled:false, optimizeCollisionChecks:true });		
 
 		addPropertyListener(this.flags, 'isFlipbookEnabled', e => {
-			if (e == true) {
+			if (e === true) {
 				if (!('flipbooks' in this))         this.flipbooks         = [];
 				if (!('_renderAnimations' in this)) this._renderAnimations = defaultFlipbookPlayer;
 			} else {
@@ -105,6 +106,9 @@ class Actor extends Root {
 				delete this.optimizedColliders;
 			}			
 		});
+
+		const paramsFlags = ('flags' in o) ? o.flags : {};
+		for (const [k, v] of Object.entries(paramsFlags)) this.flags[k] = v;   				// add flags from parameters
 
 		/**
 		 * @member {number}
@@ -134,13 +138,13 @@ class Actor extends Root {
 		if ('surface' in o) this.surface = o.surface;
 			else
 				if (o?.owner?.surface) this.surface = this.owner.surface;			
-		
-		this.flipbooks       = [];
+				
 		this._target         = null;														// follow/tracking target (actor or some object with a position)
 		this._follower       = null;
 		this.weapons         = new ManagedArray(this, Weapon);
 		this._zIndex         = ('zIndex' in o) ? o.zIndex : 1;								// render order
 		this.origin          = ('origin' in o) ? o.origin : new Vec2(-0.5, -0.5);			// relative to img dims, normalized coordinates - i.e. { -0.5, -0.5 } = center of the image
+		this._transform      = new Transform(this.position, this.rotation, this.scale);
 		
 		/**
 		 * @type {boolean} Is the actor currently drawn on the screen or not?
@@ -153,6 +157,10 @@ class Actor extends Root {
 		if ('size' in o)		 this.size         = o.size;
 		
 		Mixin(this, ImageOwner, o);															// if actor's createparams contain "img" or "imgUrl", the image will be assigned/loaded
+	}
+
+	get engine() {
+		return this.owner.engine;
 	}
 
 	get uid() {
@@ -193,7 +201,12 @@ class Actor extends Root {
 	 * Returns the current position, rotation, scale and origin of the actor
 	 */
 	get transform() {
-		return { position:this.position, origin:this.origin, scale:this.scale, rotation:this.rotation, offset:this.offset };	
+		this._transform.position = this.position;
+		this._transform.rotation = this.rotation;
+		this._transform.scale    = this.scale;
+		this._transform.offset   = this.offset;
+		this._transform.origin   = this.origin;
+		return this._transform;
 	}
 	
 	set target(actor) {
@@ -275,6 +288,7 @@ class Actor extends Root {
 			name     : this.name + '_clone',
 			opacity  : this.opacity,			
 			zIndex   : this.zIndex,
+			flags    : this.flags
 		}
 		
 		if (this.imgUrl)          createParams.imgUrl = this.imgUrl;  		    // a new copy of the image will be loaded and created				
@@ -282,7 +296,7 @@ class Actor extends Root {
 		if (this.img)             createParams.img    = this.img;				// an existing image will be shared	
 		if (this.hpMax)           createParams.hpMax  = this.hpMax;
 		if (this.hp)              createParams.hp     = this.hp;
-		if (this.lives)           createParams.lives  = this.lives;
+		if (this.lives)           createParams.lives  = this.lives;		
 		
 		const actor = new this.constructor(Object.assign(createParams, appendCreateParams));		
 		
@@ -290,13 +304,9 @@ class Actor extends Root {
 		if ('objectType' in this) actor.objectType = this.objectType;
 		if ('_type' in this)      actor._type      = this._type;		
 
-		actor.flags       = Object.assign({}, this.flags);
 		actor.renderHints = Object.assign({}, this.renderHints);
 		actor.isVisible   = this.isVisible;
 		actor.movement    = {...this.movement};									// shallow clone: TO-DO: make movement a class and add clone() method in it!
-
-		// include gameloop flag overrides
-		if (this.owner.flags.showColliders) actor.renderHints.showColliders = true;
 				
 		if (this.colliders) {													// clone colliders
 			actor.flags.hasColliders = false;
@@ -306,13 +316,13 @@ class Actor extends Root {
 			actor.setCollisionResponseFlag(this._hitTestFlag);					// copy hit test flag			
 		}
 		
-		this.flipbooks.forEach(fb => fb.clone(actor));							// clone flipbooks collection
+		if ('flipbooks' in this) this.flipbooks.forEach(fb => fb.clone(actor));							// clone flipbooks collection
 		
-		if (addToGameLoop)  this.owner.add(actor);								// add to gameLoop?
-
 		if (!(('surface') in appendCreateParams) && this?.owner?.surface) {		// copy reference to original actor's rendering surface if new one is not given in appendCreateParams
 			actor.surface = this.owner.surface;
 		}
+
+		if (addToGameLoop)  this.owner.add(actor);								// add to gameLoop?
 
 		return actor;
 	}
@@ -379,9 +389,9 @@ class Actor extends Root {
 			const { rotation, scale, origin, size, offset, img } = this;			
 			const pos = this.renderPosition;
 
-			c.setTransform((this.renderHints.mirrorX ? -1 : 1) * scale, 0, 0, (this.renderHints.mirrorY ? -1 : 1) * scale, pos.x + offset.x, pos.y + offset.y);
+			c.setTransform((this.renderHints.mirrorX ? -1 : 1) * scale * this.owner.transform.scale, 0, 0, (this.renderHints.mirrorY ? -1 : 1) * scale * this.owner.transform.scale, pos.x + offset.x, pos.y + offset.y);
 			c.rotate(rotation);
-			c.translate(size.x * origin.x, size.y * origin.y);
+			c.translate(size.x * origin.x, size.y * origin.y);			
 			
 			if (img.isCanvasSurface) c.drawImage(img.canvas, 0, 0);							
 				else c.drawImage(img, 0, 0);			
@@ -404,7 +414,7 @@ class Actor extends Root {
 
 		if (this.colliders) {			
 			if (this.flags.optimizeCollisionChecks) {
-				if (this.owner.engine.viewport.isPointInside(this.renderPosition)) this.optimizedColliders = this.colliders.objects;			
+				if (this.engine.viewport.isPointInside(this.renderPosition)) this.optimizedColliders = this.colliders.objects;			
 			} 
 		}
 
@@ -449,30 +459,32 @@ class Actor extends Root {
 			this.moveBy(this.velocity);				
 		}
 				
-		if (Engine.hasEdges && this.flags.hasEdges) this._handleEdges();									// restrict movement by checking against engine edges rectangle
+		if (this.engine.hasEdges && this.flags.hasEdges) this._handleEdges();									// restrict movement by checking against engine edges rectangle
 	}
 
 	_handleEdges() {
+		const { engine } = this;
+
 		function edgeCollision(axis, edge) {
 			const o = { preventDefault:false, edge }; 
 			this.events.fire('collide', o); 
 			if (!o.preventDefault) {
 				this.velocity.mulScalar(0); 
-				this.position[axis] = Engine.edges[edge];
+				this.position[axis] = engine.edges[edge];
 			}
 		}
 		
-		const edge = Engine.edges;			
+		const edge = engine.edges;			
 		const pos  = this.position.clone().add(this.velocity);
 
-		if (Engine.edgeAction == 'collide') {
+		if (engine.edgeAction == 'collide') {
 			if (pos.x < edge.left)   edgeCollision.call(this, 'x', 'left');
 			if (pos.y < edge.top)    edgeCollision.call(this, 'y', 'top');
 			if (pos.x > edge.right)  edgeCollision.call(this, 'x', 'right');
 			if (pos.y > edge.bottom) edgeCollision.call(this, 'y', 'bottom');
 		}
 
-		if (Engine.edgeAction == 'wrap-around') {
+		if (engine.edgeAction == 'wrap-around') {
 			if (pos.x < edge.left)   this.position.x = edge.right;
         	if (pos.x > edge.right)  this.position.x = edge.left;
         	if (pos.y < edge.top)    this.position.y = edge.bottom;
@@ -481,10 +493,10 @@ class Actor extends Root {
 	}
 
 	_updateBoundingBox() {
-		const p1  = new Vec2(-this.size.x / 2, -this.size.y / 2);			
-		const p2  = new Vec2(this.size.x / 2, -this.size.y / 2);			
-		const p3  = new Vec2(this.size.x / 2, this.size.y / 2);			
-		const p4  = new Vec2(-this.size.x / 2, this.size.y / 2);
+		const p1  = new Vec2(0, 0);			
+		const p2  = new Vec2(this.size.x, 0);			
+		const p3  = new Vec2(this.size.x, this.size.y);
+		const p4  = new Vec2(0, this.size.y);
 
 		const r   = this.transformPoints([p1, p2, p3, p4]);
 		const smx = r.map(e => e.x);
@@ -550,13 +562,22 @@ class Actor extends Root {
 	 * @returns {[Vector2]} Array of transformed points
 	 */
 	transformPoints(points) {
-		const p = this.position;
 		const c = this.surface.ctx;
-		c.setTransform(this.scale, 0, 0, this.scale, p.x, p.y);
-		c.scale(this.renderHints.mirrorX ? -1 : 1, this.renderHints.mirrorY ? -1 : 1);
-		c.rotate(this.rotation);
+		
+		const { rotation, scale, origin, size, offset } = this;			
+		const pos = this.renderPosition;
+
+		c.resetTransform();
+		const t = c.getTransform();
+		c.setTransform((this.renderHints.mirrorX ? -1 : 1) * scale * this.owner.transform.scale, 0, 0, (this.renderHints.mirrorY ? -1 : 1) * scale * this.owner.transform.scale, pos.x + offset.x, pos.y + offset.y);
+		c.rotate(rotation);
+		c.translate(size.x * origin.x, size.y * origin.y);
+
 		const m = c.getTransform();		
 		const a = points.map(v => new Vec2(m.a * v.x + m.c * v.y + m.e, m.b * v.x + m.d * v.y + m.f));
+
+		c.setTransform(t);
+
 		return a;
 	}
 	
@@ -604,6 +625,7 @@ class Actor extends Root {
 		if (this.flipbooks) for (const fb of this.flipbooks) {
 			if (fb.autoplay) fb.play(fb.autoplay);
 		}
+		if (this.owner.flags.showColliders) this.renderHints.showColliders = true; // include gameloop flag override
 	}
 }
 

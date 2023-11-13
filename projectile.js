@@ -62,9 +62,9 @@ class Projectile extends Actor {
 		}
 		
 		const m = this._info;
-		this.movement.maxVelocity = m.maxSpeed;
-
 		if (!this._isHoming || !m || !t) return super.tick();													// if projectile is not homing, get out
+
+		this.movement.maxVelocity = m.maxSpeed;
 
 		// homing code				
 		const ab  = Vector2.AngleBetween(Vector2.FromAngle(this.rotation), Vector2.Sub(t.position, this.position));									

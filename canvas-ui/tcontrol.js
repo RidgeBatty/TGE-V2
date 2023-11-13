@@ -15,6 +15,8 @@ export class TControl extends TComponent {
     constructor(o) {
         super(o);
 
+        if (o.parent === undefined) console.warn('Parent is undefined -->', this);      // TUI parent is "null" and all other controls should have a parent assigned.
+
         if ('align' in o) {
             const pc = this.parent.clientRect.center;
 

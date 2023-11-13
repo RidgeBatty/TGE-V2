@@ -19,7 +19,7 @@
 * For example a space invaders, tetris, pong, asteroids, etc. might have no use of container for static World but a platformer game definitely has.
 *
 */
-const VersionNumber = '2.8.15';
+const VersionNumber = '2.9';
 
 import * as Types from "./types.js";
 import { Root, Enum_HitTestMode } from "./root.js";
@@ -51,7 +51,9 @@ const DefaultFlags = {
 	'hasUI' : false,
 	'connection' : false,
 	'developmentMode' : false,
-	'hasAssetManager' : false,
+	'hasAssetManager' : false,	
+	'debugLayer' : false,
+	'hasAudio' : false,
 }
 
 const die = (msg) => {
@@ -132,6 +134,10 @@ class TinyGameEngine {
 		this.#installEventHandlers();				
 	}
 
+	toString() {
+		return '[TinyGameEngine]';
+	}
+
 	normalizeMouseCoords(x, y) {
 		return Types.V2(x / this.zoom - this.screen.left, y / this.zoom - this.screen.top);		
 	}
@@ -161,14 +167,17 @@ class TinyGameEngine {
 			if (!this.flags.getFlag('mouseEnabled')) return;
 			const p = e.changedTouches ? e.changedTouches[0] : e;
 			const m = this._mouse;
+
+			const lastPos = m.position.clone();
 			m.position.set(this.normalizeMouseCoords(p.clientX, p.clientY))
 			
 			const eventInfo = { 
 				event: e,
 				downPos : m.dragStart.clone(),
+				lastPos,
 				position: m.position.clone(), 
 				dragging: m.dragging, 
-				delta: Vector2.Sub(m.position, m.dragStart),
+				delta: Vector2.Sub(m.position, lastPos),
 				target: e.target
 			};
 			this.events.fire('mousemove', eventInfo);
@@ -655,11 +664,19 @@ class TinyGameEngine {
 			if ('imageSmoothingQuality' in o && ['low', 'medium', 'high'].includes(o.imageSmoothingQuality)) this.renderingSurface.ctx.imageSmoothingQuality = o.imageSmoothingQuality;			
 		}
 
+		const enginePath = Utils.trimPath((('enginePath' in o) ? o.enginePath : ''));		
 		if (this.flags.getFlag('developmentMode')) {
 			console.warn('Development mode enabled');
 			Object.assign(this.allowedKeys, { F5:true, F11:true, F12:true });
-			require('engine/tools/development.js', { module:true });
-			require('engine/css/devtools.css');			
+			require(`${enginePath}/tools/development.js`, { module:true });
+			require(`${enginePath}/css/devtools.css`);			
+		}
+		if (this.flags.getFlag('debugLayer')) {
+			require(`${enginePath}/tools/debug.js`, { module:true });			
+		}
+		if (this.flags.getFlag('hasAudio')) {			
+			const audio = await import(`./audio.js`);
+			audio.InitAudio(this);
 		}
 		
 		if (!this.initCompleted) this._setupComplete();

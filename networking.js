@@ -1,5 +1,6 @@
 import { Engine } from "./engine.js";
 import { Events } from "./events.js";
+import { delay } from "./utils.js";
 
 /**
  * Establish and manage unlimited number of connections using ws, wss, http or https protocols
@@ -11,7 +12,7 @@ class Networking {
     /**
      * Creates a new Networking object and stores reference to it as Engine.net
      * @param {string} host Hostname i.e. "http://localhost:3000"
-     * @param {string|null} apiPath Path which is automatically appended to every request right after the host name. Set to "null" if no path is to be appended.
+     * @param {string|null} apiPath Path which is automatically appended to every request right after the host name. Set to "null" if no path is to be appended. No leading or trailing slash.
      * @param {errorHandler=} errorHandler Optional errorHandler
      */
     constructor(host, apiPath, errorHandler) {
@@ -32,12 +33,22 @@ class Networking {
             apiPath               : apiPath,
             isSecure,
             protocol              : url.protocol,
-            errorHandler          : errorHandler ? errorHandler : _ => { throw 'Networking error!' },
+            globalErrorHandler    : errorHandler ? errorHandler : e => { console.error('Networking error:', e); },
             options               : {},
             headers               : {},
             autoDetectContentType : true,
-            customValidation      : null,                                                           // provide a custom validation function which will run before the response is passed to your app
+            customValidation      : null,                // provide a custom validation function which will run before the response is passed to your app
             lag                   : 0,            
+            lastResponse          : null,
+            onReceive             : null,                // this event is fired every time a non-error server response is received 
+            retry                 : {
+                enabled   : true,
+                onRetry   : null,                        // call back when retry is attempted
+                onFailed  : null,                        // called if all retries failed
+                attempts  : 3,                           // how many times to try before failing?
+                count     : 0,                           // current number of retries
+                delaySecs : 10                           // how many seconds to wait before retry?
+            }
         });
 
         this.events = new Events(this, ImplementsEvents);
@@ -64,11 +75,12 @@ class Networking {
         }                    
     }
     
-    req(value = '', payload) {    
-        const { host, apiPath, options, errorHandler, customValidation, headers } = this.connection;
+    req(value = '', payload, requestErrorHandler) {    
+        const { host, apiPath, options, headers, retry } = this.connection;
 
         return new Promise(async resolve => {
-            const customOptions = AE.clone(options);
+            const customOptions = structuredClone(options);
+            
             if (!('headers' in customOptions)) customOptions.headers = {}
             
             if (payload) {                                                                          // post request                
@@ -82,33 +94,61 @@ class Networking {
             
             const url = apiPath ? host.origin + '/' + apiPath + '/' + value : host.origin + '/' + value;
 
-            const requestStartTime = performance.now();
+            this.connection.endpoint = url;                                                         // save the last fetch address
+            this.connection.method   = (payload == null) ? 'GET' : 'POST';
+            
+            retry.count = 0;
+            this._doFetch(url, customOptions, requestErrorHandler, resolve);
+        });
+    }
 
-            fetch(url, customOptions)
+    _doFetch(url, customOptions, requestErrorHandler, resolve) {
+        const { globalErrorHandler, customValidation, retry } = this.connection;
+        const requestStartTime = performance.now();
+        const connection = this.connection;
+        
+        fetch(url, customOptions)
                 .then(r => { 
-                    this.connection.lag = performance.now() - requestStartTime; 
-                    if (r.ok) return r; 
-                    console.warn(r); 
-                    throw new Error('Networking error'); 
+                    connection.lag = performance.now() - requestStartTime; 
+                    if (r.ok) {                        
+                        connection.lastResponse = r;                        
+                        return r; 
+                    }
+                    throw new Error('Networking error');                                            // probably a server error?
                 })
                 .then(r => this.handleResponse(r))
-                .then(v => {                                                                         // we successfully retrieved a response object, place pre-validation here before passing it to user
+                .then(v => {                                                                        // we successfully retrieved a response object, place pre-validation here before passing it to user
                     if (customValidation) {
                         const isValid = customValidation(v);
                         if (isValid) return v;
                         throw new Error('Validation failed');
                     }
-                    if (v.type == 'json' && !('status' in v.data)) {                                               // if no custom validation code is specified, the default code will run and check for 'status' field if the response is a JSON object
+                    if (v.type == 'json' && !('status' in v.data)) {                                // if no custom validation code is specified, the default code will run and check for 'status' field if the response is a JSON object
                         throw new Error('JSON response is expected to have "status" field');
                     }
+                    const evt = { connection, data: v.data };
+                    if (connection.onReceive) connection.onReceive(evt);
+                    this.events.fire('receive', evt);
                     resolve(v.data);
                 })
-                .catch(e => {      
-                    this.events.fire('error', { connection:this.connection, error:e });
-                    const o = { status:'error', message:'Networking error', error:e };                    
+                .catch(async e => {  
+                    const evt = { connection, error: e };
+                    if (requestErrorHandler) requestErrorHandler(evt);
+                    globalErrorHandler(e);                      
+                    this.events.fire('error', { connection, error:e });
+                    const o = { status:'error', message:'Networking error', error:e };
+
+                    if (retry.enabled) {
+                        if (retry.count < retry.attempts) {
+                            retry.count++;                            
+                            if (retry.onRetry) retry.onRetry(evt);
+                            await delay(Math.ceil(retry.delaySecs * 1000));
+                            return this._doFetch(url, customOptions, requestErrorHandler, resolve);
+                        }             
+                        if (retry.onFailed) retry.onFailed(evt);
+                    }
                     resolve(o);
-                });
-        });   
+                });                        
     }
 
     initWebSockets(connection) {

@@ -67,16 +67,22 @@ export class TCustomWindow extends TFocusControl {
         s.ctx.globalAlpha = this._opacity;
 
         // window background
-        if (this.background?.picture && this.settings.useBackgroundImage) {        
+        if (this.background?.picture && settings.useBackgroundImage) {        
             const f = this.background.picture;                
             const t = s.ctx.getTransform();
             const sx = this.size.x;
             const sy = this.size.y;
-                        
+                                                
+            if (settings?.backgroundScale == 'both') s.ctx.scale(this.size.x / f.image.width, this.size.y / f.image.height);
+            if (settings?.backgroundScale == 'x')    s.ctx.scale(this.size.x / f.image.width, 1);
+            if (settings?.backgroundScale == 'y')    s.ctx.scale(1, this.size.y / f.image.height);
+
             s.ctx.fillStyle = s.ctx.createPattern(f.image, 'repeat');                                 
             s.ctx.fillRect(0, 0, sx, sy);            
-        }
 
+            s.ctx.setTransform(t);
+        }
+        
         s.ctx.shadowColor = 'rgba(0,0,0,0.5)';
         s.ctx.shadowBlur = 20;
         s.ctx.shadowOffsetX = 2;

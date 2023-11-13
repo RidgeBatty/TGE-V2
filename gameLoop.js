@@ -81,6 +81,10 @@ class GameLoop {
 				}
 			}
 		});	
+
+		this.transform = {
+			scale : 1
+		}
 	}
 
 	/**
@@ -353,9 +357,7 @@ class GameLoop {
 			this._frameStart   = this._lastTick;
 			return;		
 		}
-		
-		this.surface.resetTransform();																	// reset transform (before ticks)
-		
+				
 		// --- tick ---
 		const nextTick = this._lastTickLen + this._tickRate;
 		this._tickQueue = 0;
@@ -377,6 +379,8 @@ class GameLoop {
 		}
 		
 		// --- render ---
+		this.surface.resetTransform();																	// reset transform (before ticks)
+		
 		if (this._frameStart == null) this._frameStart = timeStamp;		
 		this.frameDelta = timeStamp - this._frameStart;		
 		
@@ -393,10 +397,8 @@ class GameLoop {
 			}			
 		}
 
-		if (this.engine.ui) {
-			if (this.engine.ui.isCanvasUI) this.engine.ui.draw();											// GUI overlay
-		}
-
+		if (this.engine?.ui?.isCanvasUI) this.engine.ui.draw();												// GUI overlay
+		
 		if (this.flags.doubleBuffering) {
 			if (this.onFlipBuffers) this.onFlipBuffers({ front:this._frontBuffer, back: this.surface });
 			this._frontBuffer.resetTransform();

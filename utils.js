@@ -406,27 +406,19 @@ const addElem = (o) => {
     return el;
 }
 
-const listeners = {};
 const addPropertyListener = (object, prop, handler) => {
 	if (!(prop in object)) throw `Property ${prop} does not exist in object ${object}`;
 
-	let oldValue = object[prop];
-	const n = Object.defineProperty(object, prop, {
+	let temp;
+	Object.defineProperty(object, prop, {
 		set(x) {
-			handler(x, oldValue);
-			oldValue = x;						
-			if (listeners[object]) {
-				const otherHandlers = listeners[object].filter(e => e.prop == prop && e.handler != handler);
-				otherHandlers.forEach(e => e.handler(x));
-			}
+			const result = handler(x, object[prop]);		
+			if (result == null) temp = x;
 		},
-		get() {
-			return oldValue;
+		get(x) {
+			return temp;
 		}
-	});	
-
-	if (listeners[object] == null) listeners[object] = [];
-	listeners[object].push({ prop, handler });
+ 	});	
 }
 
 /**
@@ -535,7 +527,7 @@ const require = (url, settings = {}) => {
             var tag = doc.createElement('script');
 			if (settings.module) tag.type = 'module';
             tag.src  = url;
-        break;
+        break;		
 		default:
 			console.warn('Filetype not detected:', url);
     }
@@ -600,6 +592,23 @@ const isInstanceOf = (object, className) => {
 	return false;
 }
 
+/**
+ * Trims excess, leading and trailing slashes/backslashes from given string 
+ * @param {string} str string to process 
+ * @returns 
+ */
+const trimPath = (str, separator = '/') => {
+	let result = str.split(/\/|\\/).filter(v => v !== '').join(separator)
+	result = result.replace(/http:\//y, 'http://');
+	result = result.replace(/https:\//y, 'https://');
+	return result;
+}
+
+const getEnumKey = (enumObject, value) => {
+	const o = Object.entries(enumObject).find(f => f[1] == value);
+	if (o) return o[0];
+}
+
 export { 
 	loadedJsonMap,
 	preloadImages, 
@@ -645,5 +654,7 @@ export {
 	copyProps,
 	sealProp,
 	getPos,
-	style
+	style,
+	trimPath,
+	getEnumKey
 }

@@ -8,7 +8,7 @@ import * as Types from './types.js';
 import { KeyController, GamepadController, PointerController } from './gameController.js';
 import { Enum_HitTestMode } from './engine.js';
 import { Hitpoints } from './hitpoints.js';
-import { Mixin } from './utils.js';
+import { Mixin, clamp } from './utils.js';
 
 const { Vector2:Vec2, V2 } = Types;
 const { Overlap, Ignore }  = Enum_HitTestMode;		
@@ -117,13 +117,13 @@ class Player extends Actor {
 		if (value == Enum_PlayerMovement.Car) {
 			m.acceleration = 0.0004;		
 			m.turnRate     = 0.0004;
-			m.friction     = 0.01;		    	// how much the vehicle resists movement in lateral slip condition
-			m.rollingFriction = 0.002;			// how much the vehicle resists movement when moving forward
+			m.friction     = 0.002;		    		// how much the vehicle resists movement when moving forward
+			m.wheelAngleFriction = 0.01;			// how much the vehicle resists movement in lateral slip condition
 			this._movementType         = value;
 			return;
 		}		
 		if (value == Enum_PlayerMovement.Platformer) {	
-			m.isKeyUpJump  = true;				// arbitrarily turn off jumping with up key
+			m.isKeyUpJump  = true;					// arbitrarily turn off jumping with up key
 			m.isAirborne   = true;
 			m.isJumping    = false;
         	m.isFalling    = false;		
@@ -136,7 +136,7 @@ class Player extends Actor {
 			m.airFriction  = 0.01;
 			m.gravity      = V2(0, 0.5);
 			m.jumpForce    = V2(0, -14);
-			m.fallingThreshold = 14;			// how fast the player should be falling when the isFalling flag is turned on
+			m.fallingThreshold = 14;				// how fast the player should be falling when the isFalling flag is turned on
 		}
 		this._movementType = value;
 	}
@@ -186,77 +186,88 @@ class Player extends Actor {
 		for (const [k, v] of Object.entries(this.keyMask)) ks[k] = ks[k] & v;		
 		
 		switch (p._movementType) {
-		case Enum_PlayerMovement.FirstPersonShooter: {
-			const delta    = p.owner.frameDelta;
-			const acc      = p.movement.acceleration * delta;
-			const turnRate = p.movement.turnRate * delta;
-			const sAcc     = p.movement.strafe * delta;
-			
-			if (ks.left)  	  p.addImpulse(Vec2.Left().rotate(p.rotation).mulScalar(sAcc));		
-			if (ks.right) 	  p.addImpulse(Vec2.Right().rotate(p.rotation).mulScalar(sAcc));
-			if (ks.turnLeft)  p.rotation -= turnRate;	
-			if (ks.turnRight) p.rotation += turnRate;	
-				
-			if (ks.up)    	  p.addImpulse(Vec2.Up().rotate(p.rotation).mulScalar(acc));
-			if (ks.down)  	  p.addImpulse(Vec2.Down().rotate(p.rotation).mulScalar(acc));
-
-			this.velocity.mulScalar(1 - this.movement.friction);
-			
-			break; }
-		case Enum_PlayerMovement.SpaceShip: {
-			const delta    = p.owner.frameDelta;
-			const acc      = p.movement.acceleration * delta;
-			const turnRate = p.movement.turnRate * delta;
-			
-			if (ks.left)  	  p.rotation -= turnRate;	
-			if (ks.right) 	  p.rotation += turnRate;	
-			
-			if (ks.up)    	  p.addImpulse(Vec2.Up().rotate(p.rotation).mulScalar(acc));
-			if (ks.down)  	  p.addImpulse(Vec2.Down().rotate(p.rotation).mulScalar(acc));
-			
-			break; }	
-		case Enum_PlayerMovement.Car: {
-			if (this.velocity.length > 0) {
-				// calculate how much the current travel angle deviates from the vehicle's sides, i.e. going sideways to the travel angle would cause maximum friction.
-				const dev = Math.acos(this.velocity.clone().normalize().dot(Vec2.FromAngle(p.rotation))) / Math.PI;						
-				this.velocity.mulScalar(1 - (dev * this.movement.friction));
-
-				if (isNaN(this.velocity.length)) {				// make sure velocity does not underflow
-					this.velocity = Vec2.Zero();
-				}
-			}
-
-			const delta     = p.owner.frameDelta;
-			const acc       = p.movement.acceleration * delta;
-			const turnRate  = p.movement.turnRate * delta;						
-						
-			if (ks.up)    	  p.addImpulse(Vec2.Up().rotate(p.rotation).mulScalar(acc));
-			if (ks.down)  	  p.addImpulse(Vec2.Down().rotate(p.rotation).mulScalar(acc));			
-
-			this.velocity.mulScalar(1 - this.movement.rollingFriction);
-
-			if (ks.left)  	  p.rotation -= turnRate * this.velocity.length;	
-			if (ks.right) 	  p.rotation += turnRate * this.velocity.length;	
-			break; }
+		case Enum_PlayerMovement.FirstPersonShooter: 
+			this.fpsMovement(p, ks);			
+			break;
+		case Enum_PlayerMovement.SpaceShip: 
+			this.spaceshipMovement(p, ks);
+			break;
+		case Enum_PlayerMovement.Car: 
+			this.carMovement(p, ks);
+			break;		
+		case Enum_PlayerMovement.Platformer: 
+			this.platformerMovement(p, ks);
+			break;
 		case Enum_PlayerMovement.Arcade:
 		case Enum_PlayerMovement.Default:		
-			if (ks.up)  	  p.velocity.add(V2(0, -p.movement.acceleration));
-			if (ks.down)  	  p.velocity.add(V2(0, p.movement.acceleration));			
-			if (ks.left)  	  p.velocity.add(V2(-p.movement.acceleration,  0));
-			if (ks.right)  	  p.velocity.add(V2(p.movement.acceleration, 0));
-			break;
-		case Enum_PlayerMovement.Platformer: 
-			this.platformerMovement();
+			this.arcadeMovement(p, ks);			
 			break;
 		case Enum_PlayerMovement.Custom:
-			if (this.customMovement) this.customMovement(ks);
+			if (this.customMovement) this.customMovement(p, ks);
 		}		
+
+		p.movement.friction = clamp(p.movement.friction, 0, 1);			// ensure friction is between 0 and 1 (inclusive)
+		p.velocity.mulScalar(1 - p.movement.friction);
+	}
+
+	arcadeMovement(p, ks) {
+		if (ks.up)  	  p.velocity.add(V2(0, -p.movement.acceleration));
+		if (ks.down)  	  p.velocity.add(V2(0, p.movement.acceleration));			
+		if (ks.left)  	  p.velocity.add(V2(-p.movement.acceleration,  0));
+		if (ks.right)  	  p.velocity.add(V2(p.movement.acceleration, 0));		
+	}
+
+	spaceshipMovement(p, ks) {
+		const delta    = p.owner.frameDelta;
+		const acc      = p.movement.acceleration * delta;
+		const turnRate = p.movement.turnRate * delta;
+		
+		if (ks.left)  	  p.rotation -= turnRate;	
+		if (ks.right) 	  p.rotation += turnRate;			
+		if (ks.up)    	  p.addImpulse(Vec2.Up().rotate(p.rotation).mulScalar(acc));
+		if (ks.down)  	  p.addImpulse(Vec2.Down().rotate(p.rotation).mulScalar(acc));
+	}
+
+	fpsMovement(p, ks) {
+		const delta    = p.owner.frameDelta;
+		const acc      = p.movement.acceleration * delta;
+		const turnRate = p.movement.turnRate * delta;
+		const sAcc     = p.movement.strafe * delta;
+		
+		if (ks.left)  	  p.addImpulse(Vec2.Left().rotate(p.rotation).mulScalar(sAcc));		
+		if (ks.right) 	  p.addImpulse(Vec2.Right().rotate(p.rotation).mulScalar(sAcc));
+		if (ks.turnLeft)  p.rotation -= turnRate;	
+		if (ks.turnRight) p.rotation += turnRate;	
+			
+		if (ks.up)    	  p.addImpulse(Vec2.Up().rotate(p.rotation).mulScalar(acc));
+		if (ks.down)  	  p.addImpulse(Vec2.Down().rotate(p.rotation).mulScalar(acc));		
+	}
+
+	carMovement(p, ks) {
+		if (p.velocity.length > 0) {
+			// calculate how much the current travel angle deviates from the vehicle's sides, i.e. going sideways to the travel angle would cause maximum friction.
+			const dev = Math.acos(p.velocity.clone().normalize().dot(Vec2.FromAngle(p.rotation))) / Math.PI;						
+			p.velocity.mulScalar(1 - (dev * p.movement.wheelAngleFriction));
+
+			if (isNaN(p.velocity.length)) {				// make sure velocity does not underflow
+				p.velocity = Vec2.Zero();
+			}
+		}
+
+		const delta     = p.owner.frameDelta;
+		const acc       = p.movement.acceleration * delta;
+		const turnRate  = p.movement.turnRate * delta;						
+					
+		if (ks.up)    	  p.addImpulse(Vec2.Up().rotate(p.rotation).mulScalar(acc));
+		if (ks.down)  	  p.addImpulse(Vec2.Down().rotate(p.rotation).mulScalar(acc));
+		if (ks.left)  	  p.rotation -= turnRate * this.velocity.length;	
+		if (ks.right) 	  p.rotation += turnRate * this.velocity.length;				
 	}
 
 	platformerMovement() {	
-		const keys = this.controllers.keyboard.keyState;	
-		const v    = this.velocity;
-		const m    = this.movement;
+		const keys = p.controllers.keyboard.keyState;	
+		const v    = p.velocity;
+		const m    = p.movement;
 
 		m.isFalling = v.y > m.fallingThreshold;
 			
@@ -282,8 +293,7 @@ class Player extends Actor {
 				m.isAirborne = true;
 				m.isJumping  = true;
 			}	
-		}
-		   
+		}		   
 	}
 }
 

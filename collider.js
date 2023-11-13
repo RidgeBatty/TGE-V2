@@ -145,19 +145,19 @@ class Collider {
 			s.ctx.translate(c.position.x, c.position.y);			
 			s.ctx.rotate(c.angle);
 	
-			// NOTE! This will draw the colliders always on Engine.renderingSurface, because it is assumed that colliders are drawn as an overlay
+			const fill = actor.isOverlapped ? this.hilite : this.color;
 			switch (c.type) {				
 				case Enum_PhysicsShape.Poly:					
-					s.drawPoly(c.points, { stroke:'black', fill:actor.overlaps.length > 0 ? this.hilite : this.color });					
+					s.drawPoly(c.points, { stroke:'black', fill });
 				break;
 				case Enum_PhysicsShape.Box:															
-					s.drawRect(new Rect(pos.x - c.halfSize.x, pos.y - c.halfSize.y, c.halfSize.x, c.halfSize.y), { stroke:'black', fill:actor.overlaps.length > 0 ? this.hilite : this.color });										
+					s.drawRect(new Rect(pos.x - c.halfSize.x, pos.y - c.halfSize.y, c.halfSize.x, c.halfSize.y), { stroke:'black', fill });
 				break;
 				case Enum_PhysicsShape.AABB: 					
-					
+					// not implemented	
 				break;
 				case Enum_PhysicsShape.Circle:																			
-					s.drawCircle(pos, c.radius, { stroke:'black', fill:actor.overlaps.length > 0 ? this.hilite : this.color });
+					s.drawCircle(pos, c.radius, { stroke:'black', fill });
 				break;
 			}						
 		}

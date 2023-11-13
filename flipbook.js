@@ -374,7 +374,7 @@ class Flipbook {
 
 		this.customRender = image;		
 		if (!this.actor.img) { this.actor.size = V2(image.w, image.h); }
-		
+
 		this._lastFrame = index;
 	}
 

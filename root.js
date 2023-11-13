@@ -19,7 +19,11 @@ const Vec2 = Types.Vector2;
 
 class Transform {
 	constructor(position = Vec2.Zero(), rotation = 0, scale = 1) {
-		Object.assign(this, { position, rotation, scale });
+		Object.assign(this, { position, rotation, scale });		
+	}
+
+	asString(precision = 2, names = ['', '', '']) {		
+		return `${names[0]}${this.position.asString(precision)}\r\n${names[1]}${this.rotation.toFixed(precision)}\r\n${names[2]}${this.scale.toFixed(precision)}`;
 	}
 }
 
@@ -86,6 +90,10 @@ class Root extends TNode {
 	
 	get world() {
 		return this?.owner?.engine?.world;
+	}
+
+	get hitTestFlag() {
+		return this._hitTestFlag;
 	}
 	
 	_createCollisionChannels() {

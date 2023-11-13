@@ -251,7 +251,7 @@ class LineSegment {
 	}	
 	
 	static isLineSegment(a) {
-		return (AE.isObject(a) && a.constructor === LineSegment.prototype.constructor);
+		return (a != null && typeof a == 'object' && a.constructor === LineSegment.prototype.constructor);
 	}
 }
 
@@ -464,7 +464,7 @@ class Color extends BaseColor {
 	 */
 	get hex() {
 		var result = '#';
-		for (var i = 0; i < 3; i++) result += AE.pad(this.value[i].toString(16), 2);			
+		for (var i = 0; i < 3; i++) result += this.value[i].toString(16).padStart(2, '0');			
 		return result;
 	}
 	
@@ -514,7 +514,7 @@ class Color extends BaseColor {
 	 */
 	static RGBToHex(color){
 		var result = '#';
-		for (var i = 0; i < 3; i++) result += AE.pad(color.value[i].toString(16), 2);			
+		for (var i = 0; i < 3; i++) result += color.value[i].toString(16).padStart(2, '0');
 		return result;		
 	}
 
@@ -764,9 +764,12 @@ class VectorBase {
 	}    
 	
 	static FromArray(a) {
-		let me = new this();		
-        Object.keys(me).forEach( (key) => me[key] = a.shift() );
-		return me;
+		switch (a.length) {
+			case 2: return new Vector2(a[0], a[1]);
+			case 3: return new Vector(a[0], a[1], a[2]);
+			case 4: return new Vector4(a[0], a[1], a[2], a[3]);
+		}	
+		throw 'No constructor found for given arguments';
 	}
 	
 	static FromCoords(...args) { 
@@ -960,7 +963,7 @@ class Vector extends VectorBase {
 	
     static Zero() { return new Vector(0,0,0); }
     static FromStruct(a) { return new Vector2(a.x, a.y, a.z) }
-	static IsVector(a) { return (AE.isObject(a) && a.constructor === Vector.prototype.constructor); }
+	static IsVector(a) { return (a != null && typeof a == 'object' && a.constructor === Vector.prototype.constructor); }
 	
 	/**
 	 * 
@@ -1169,7 +1172,7 @@ class Vector2 extends VectorBase {
 	 * @returns {Vector2}
 	 */
 	static FromAngle(angle, scale = 1) { return new Vector2(-Math.sin(angle) * scale, Math.cos(angle) * scale); }
-	static IsVector2(a) { return (AE.isObject(a) && a.constructor === Vector2.prototype.constructor); }
+	static IsVector2(a) { return (a != null && typeof a == 'object' && a.constructor === Vector2.prototype.constructor); }
 
 	/**
 	 * Linear interpolation of the components of two vectors
@@ -1287,7 +1290,7 @@ class Vector4 extends VectorBase {
     }        
     static Zero() { return new Vector(0,0,0,0); }
     static FromStruct(a) { return new Vector2(a.x, a.y, a.z, a.w) }	
-	static IsVector4(a) { return (AE.isObject(a) && a.constructor === Vector4.prototype.constructor); }
+	static IsVector4(a) { return (a != null && typeof a == 'object' && a.constructor === Vector4.prototype.constructor); }
 }  
 
 class Matrix4x4 {
