@@ -91,11 +91,11 @@ class Actor extends Root {
 
 		addPropertyListener(this.flags, 'isFlipbookEnabled', e => {
 			if (e === true) {
-				if (!('flipbooks' in this))         this.flipbooks         = [];
-				if (!('_renderAnimations' in this)) this._renderAnimations = defaultFlipbookPlayer;
+				this.flipbooks         = [];
+				this._renderAnimations = defaultFlipbookPlayer;
 			} else {
-				delete this.flipbooks;
-				delete this._renderAnimations;				
+				this.flipbooks 		   = null;
+				this._renderAnimations = null;
 			}
 		});
 
@@ -103,7 +103,7 @@ class Actor extends Root {
 			if (e == true) {
 				this.optimizedColliders = [];
 			} else {
-				delete this.optimizedColliders;
+				this.optimizedColliders = null;
 			}			
 		});
 
@@ -145,6 +145,7 @@ class Actor extends Root {
 		this._zIndex         = ('zIndex' in o) ? o.zIndex : 1;								// render order
 		this.origin          = ('origin' in o) ? o.origin : new Vec2(-0.5, -0.5);			// relative to img dims, normalized coordinates - i.e. { -0.5, -0.5 } = center of the image
 		this._transform      = new Transform(this.position, this.rotation, this.scale);
+		this.filter          = null;														// for faster checking, the property must exist
 		
 		/**
 		 * @type {boolean} Is the actor currently drawn on the screen or not?
@@ -316,7 +317,7 @@ class Actor extends Root {
 			actor.setCollisionResponseFlag(this._hitTestFlag);					// copy hit test flag			
 		}
 		
-		if ('flipbooks' in this) this.flipbooks.forEach(fb => fb.clone(actor));							// clone flipbooks collection
+		if (this.flipbooks) this.flipbooks.forEach(fb => fb.clone(actor));		// clone flipbooks collection
 		
 		if (!(('surface') in appendCreateParams) && this?.owner?.surface) {		// copy reference to original actor's rendering surface if new one is not given in appendCreateParams
 			actor.surface = this.owner.surface;
@@ -382,7 +383,7 @@ class Actor extends Root {
 
 		const c = this.surface.ctx;		
 
-		c.globalAlpha = this.opacity;
+		if (c.globalAlpha != this.opacity) c.globalAlpha = this.opacity;
 		if (this.filter) c.filter = this.filter;
 		if (this._renderAnimations) this._renderAnimations(c);			// if animation rendering algorithm is attached, use it		
 		if (this.img) {			   		  								// if the Actor has an image attached, directly or via flipbook, display it
@@ -398,7 +399,7 @@ class Actor extends Root {
 		}
 
 		if (this.filter) c.filter = 'none';
-		c.globalAlpha = 1;
+		if (c.globalAlpha != 1) c.globalAlpha = 1;
 
 		if (this.hasColliders && this.renderHints.showColliders && this.owner.flags.showColliders) this.colliders.update();			
 		if (this.owner.flags.showBoundingBoxes && this.renderHints.showBoundingBox && this.onDrawBoundingBox) this.onDrawBoundingBox(this);		

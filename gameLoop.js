@@ -45,6 +45,8 @@ class GameLoop {
 		this.onPanic        = ('onPanic' in o && typeof o.onPanic == 'function') ? o.onPanic : null;
 		this.onAfterRender  = ('onAfterRender' in o && typeof o.onAfterRender == 'function') ? o.onAfterRender : null;
 		this.onFlipBuffers  = ('onFlipBuffers' in o && typeof o.onFlipBuffers == 'function') ? o.onFlipBuffers : null;
+		this.onBeforeUpdateLayer = null;
+		this.onAfterUpdateLayer  = null;
 		this.timers		    = [];
 		
 		// other:
@@ -360,14 +362,14 @@ class GameLoop {
 				
 		// --- tick ---
 		const nextTick = this._lastTickLen + this._tickRate;
-		this._tickQueue = 0;
+		this._tickQueue = 1;
 		
 		if (timeStamp > nextTick) {
 			const timeSinceTick = timeStamp - this._lastTickLen;
 			this._tickQueue     = ~~(timeSinceTick / this._tickRate);
 		}
 		
-		if (this._tickQueue > 120) { 																		// handle tick timer panic
+		if (this._tickQueue > 120) { 																		// handle tick timer panic when over 120 ticks are in queue
 			this._lastTickLen = performance.now(); 
 			if (this.onPanic) this.onPanic(this._tickQueue);
 			return; 
@@ -391,10 +393,14 @@ class GameLoop {
 		}
 		if (this.onBeforeRender) this.onBeforeRender();		
 		
+		let index = 0;
 		for (const layer of this.zLayers) {			
-			for (let i = 0; i < layer.length; i++) {				
-				layer[i].update();				
+			if (this.onBeforeUpdateLayer) this.onBeforeUpdateLayer(index);
+			for (let i = 0; i < layer.length; i++) {								
+				layer[i].update();								
 			}			
+			if (this.onAfterUpdateLayer) this.onAfterUpdateLayer(index);
+			index++;
 		}
 
 		if (this.engine?.ui?.isCanvasUI) this.engine.ui.draw();												// GUI overlay

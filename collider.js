@@ -9,9 +9,8 @@
 
 */
 import { Transform } from './root.js';
-import { Engine, Root, Actor, Types, Utils } from './engine.js';
+import { Root, Actor, Types, Utils } from './engine.js';
 import { PhysicsShape, Circle, AABB, Box, Enum_PhysicsShape, Poly } from './physics.js';
-import { sealProp } from './utils.js';
 
 const { Vector2:Vec2, Rect, V2 } = Types;
 
@@ -126,7 +125,7 @@ class Collider {
 	*/
 	update() {	
 		const actor     = this.actor;
-		const colliders = ('optimizedColliders' in actor) ? actor.optimizedColliders : actor.colliders.objects;
+		const colliders = actor.optimizedColliders ? actor.optimizedColliders : actor.colliders.objects;
 		
 		const gameLoop  = actor.owner;
 		const s 		= gameLoop.surface;
@@ -169,7 +168,7 @@ class Collider {
 	 */
 	resolveOverlap(otherActor) {				
 		// can we get any optimization?
-		const otherColliders = ('optimizedColliders' in otherActor) ? otherActor.optimizedColliders : otherActor.colliders.objects;
+		const otherColliders = otherActor.optimizedColliders ? otherActor.optimizedColliders : otherActor.colliders.objects;
 		
 		const colliders      = this.objects;		
 		const actor          = this.actor;

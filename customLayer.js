@@ -20,13 +20,14 @@ class CustomLayer extends Root {
 	constructor(o = {}) {		
         super(o);
 
-		this.owner   = o.owner || Engine.gameLoop;       
-		this.engine  = o.engine || Engine;
-        this.zIndex  = ('zIndex' in o) ? o.zIndex : 1;		
-		this.surface = ('surface' in o) ? o.surface : this.engine.renderingSurface;
+		this.owner   		 = o.owner || Engine.gameLoop;       
+		this.engine  		 = o.engine || Engine;
+        this.zIndex  		 = ('zIndex' in o) ? o.zIndex : 1;		
+		this.surface 		 = ('surface' in o) ? o.surface : this.engine.renderingSurface;
 		this._buffer         = ('buffer' in o) ? o.buffer : null;																// backbuffer reference (draw on this surface)
 		this._bufferSize     = null;
 		this._resetTransform = ('resetTransform' in o) ? o.resetTransform : false;
+		this._bufferScale    = 1;
         
         if ('addLayer' in o && o.addLayer == true) {
             this.owner.zLayers[this.zIndex].push(this);
@@ -53,9 +54,10 @@ class CustomLayer extends Root {
 	 * First call will automatically create the buffer surface if it doesn't exist already.
 	 */
     updateViewport() {
-        const { engine, _bufferSize } = this;
-		const width  = _bufferSize ? _bufferSize.x : engine.viewport.width;
-		const height = _bufferSize ? _bufferSize.y : engine.viewport.height;
+        const { engine, _bufferSize, _bufferScale } = this;
+
+		const width  = Math.floor((_bufferSize ? _bufferSize.x : engine.viewport.width) * _bufferScale);
+		const height = Math.floor((_bufferSize ? _bufferSize.y : engine.viewport.height) * _bufferScale);
 				
 		if (this._canvas == null) {			
 			this._buffer      = new CanvasSurface({ dims:V2(width, height), preferOffscreenCanvas:true });			
@@ -72,10 +74,11 @@ class CustomLayer extends Root {
 
 	flip() {
 		if (this.resetTransform) this.surface.resetTransform();     
-		this.surface.drawImage(Vec2.Zero(), this._buffer.canvas);
+		this.surface.ctx.drawImage(this._buffer.canvas, 0, 0, this.surface.width, this.surface.height);		
 	}
 
 	update() {   
+		this._buffer.ctx.clearRect(0, 0, this._buffer.width, this._buffer.height);
 		this.flip();
 	}
 }
