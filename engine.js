@@ -19,44 +19,45 @@
 * For example a space invaders, tetris, pong, asteroids, etc. might have no use of container for static World but a platformer game definitely has.
 *
 */
-const VersionNumber = '2.9.1';
+const VersionNumber = '2.12';
 
 import * as Types from "./types.js";
-import { Root, Enum_HitTestMode } from "./root.js";
+import { Root, TNode, Enum_HitTestMode } from "./root.js";
 import { GameLoop } from "./gameLoop.js";
 import { Actor, Enum_ActorTypes } from "./actor.js";
 import { World } from "./world.js";
 import { Collider } from "./collider.js";
 import { CanvasRenderer as Renderer } from './canvasRenderer.js';
 import * as Utils from "./utils.js";
+import { addEvent, require, getPos, ID } from './utils-web.js';
 import { Flags } from "./flags.js";
 import { Events } from "./events.js";
 import { CustomLayer } from "./customLayer.js";
     
 const { Rect, Vector2, V2, LineSegment } = Types;
-const { addEvent, sealProp, require, isBoolean, isFunction, getPos, ID } = Utils;
+const { sealProp, isBoolean, isFunction, trimPath } = Utils;
 
 const ImplementsEvents = 'resize contextmenu mousemove mouseup mousedown mouseover mouseout wheel keyup keydown';
 
 const DefaultFlags = {
-	'hasWorld' : false,
-	'hasEdges' : true,
-	'screenAutoAdjustEnabled' : true,
-	'preserveAspectRatio' : true,
-	'hasContextMenu' : false,
-	'mouseEnabled' : true,						// enable/disable Engine mouse events. Disabling might increase performance but the effect is tiny. Used by DevTools to bypass Engine mouse events
-	'hasRenderingSurface' : false,	
-	'preventKeyDefaults' : true,
-	'autoZoomEnabled' : true,
-	'hasUI' : false,
-	'connection' : false,
-	'developmentMode' : false,
-	'hasAssetManager' : false,	
-	'debugLayer' : false,
-	'hasAudio' : false,
+	'hasWorld' 				  	: false,
+	'hasEdges' 				  	: true,
+	'screenAutoAdjustEnabled' 	: true,
+	'preserveAspectRatio' 	  	: true,
+	'hasContextMenu' 			: false,
+	'mouseEnabled' 				: true,		// enable/disable Engine mouse events. Disabling might increase performance but the effect is tiny. Used by DevTools to bypass Engine mouse events
+	'hasRenderingSurface' 		: false,	
+	'preventKeyDefaults' 		: true,
+	'autoZoomEnabled' 			: true,
+	'hasUI' 					: false,
+	'connection' 				: false,
+	'developmentMode' 			: false,
+	'hasAssetManager' 			: false,	
+	'debugLayer' 				: false,
+	'hasAudio' 					: false,
 }
 
-const die = (msg) => {
+const die = (msg) => {	
 	try {
 		const err  = new Error().stack;
 		const func = err.split('\n')[2].split('at ')[1];
@@ -76,30 +77,29 @@ class TinyGameEngine {
 	*/	
 	#GUI
 	constructor (o) {		
-		sealProp(this, 'flags', new Flags(DefaultFlags, (a, b) => this.onFlagChange(a, b))); 				// create default flags and make 'this.flags' immutable
-		sealProp(this, 'url', import.meta ? new URL('./', import.meta.url).pathname : null);
-
+		this.flags = Flags.Create(DefaultFlags, {}, (o, p) => this.onFlagChange(o, p));
 		
-		// line segments describing the current screen:
-		sealProp(this, 'viewportLineSegments');
-
-		// reserved names for optional modules:
-		sealProp(this, 'assetManager');
+		sealProp(this, 'url', import.meta ? new URL('./', import.meta.url).pathname : null);
+		sealProp(this, 'viewportLineSegments');										// line segments describing the current screen				
+		sealProp(this, 'assetManager');												// reserved names for optional modules
 		sealProp(this, 'audio');
 		sealProp(this, 'net');
-		sealProp(this, 'data', {});
-
-		// main rendering surface:
-		sealProp(this, 'renderingSurface', null);
+		sealProp(this, 'data', {});		
+		sealProp(this, 'renderingSurface', null);									// main rendering surface
 
 		this.gameLoop     = new GameLoop({ engine:this, name:'DefaultGameLoop' });		
 		this._zoom	      = 1;
 		this.maxZoom      = 2;
 		this.resolution   = new Vector2(1152, 648);
+
+		/**		 
+		 * @type {import("./audio.js").AudioLib}
+		 */
+		this.audio;
 		
 		/** 
 		 * @type {Types.Rect}
-		 * @desc Rectangle representing the game engine viewport area in the browser window 
+		 * @desc Rectangle representing the game engine canvas area in browser window coordinate space.
 		 */
 		this.screen     = new Rect(0, 0, 1920, 1080);			
 
@@ -139,7 +139,7 @@ class TinyGameEngine {
 	}
 
 	normalizeMouseCoords(x, y) {
-		return Types.V2(x / this.zoom - this.screen.left, y / this.zoom - this.screen.top);		
+		return Types.V2((x - this.screen.left) / this.zoom, (y - this.screen.top) / this.zoom);		
 	}
 
 	#installEventHandlers() {				
@@ -152,19 +152,19 @@ class TinyGameEngine {
 		//addEvent(window, 'beforeunload', (e) => { e.preventDefault(); e.stopPropagation(); return e.returnValue = null; });
 
 		// all internal event handlers:
-		const resize = (e) => {		
-			if (this.flags.getFlag('screenAutoAdjustEnabled')) this.recalculateScreen();
-			if (this.flags.getFlag('autoZoomEnabled')) this.autoZoom();	
+		const resize = (e) => {					
+			if (this.flags.screenAutoAdjustEnabled) this.recalculateScreen();
+			if (this.flags.autoZoomEnabled) this.autoZoom();	
 			this.events.fire('resize', { event:e });
 		}
 		
 		const contextmenu = (e) => {
-			if (!this.flags.getFlag('hasContextMenu')) e.preventDefault();
+			if (!this.flags.hasContextMenu) e.preventDefault();
 			this.events.fire('contextmenu', { event:e });
 		}
 		
 		const mousemove = (e) => { 
-			if (!this.flags.getFlag('mouseEnabled')) return;
+			if (!this.flags.mouseEnabled) return;
 			const p = e.changedTouches ? e.changedTouches[0] : e;
 			const m = this._mouse;
 
@@ -184,7 +184,7 @@ class TinyGameEngine {
 		}
 	
 		const mousedown = (e) => {
-			if (!this.flags.getFlag('mouseEnabled')) return;
+			if (!this.flags.mouseEnabled) return;
 			const p = e.changedTouches ? e.changedTouches[0] : e;
 			const m = this._mouse;
 			m.position.set(this.normalizeMouseCoords(p.clientX, p.clientY))
@@ -198,7 +198,7 @@ class TinyGameEngine {
 		}
 	
 		const mouseup = (e) => { 
-			if (!this.flags.getFlag('mouseEnabled')) return;
+			if (!this.flags.mouseEnabled) return;
 			const p = e.changedTouches ? e.changedTouches[0] : e;
 			const m = this._mouse;
 			m.position.set(this.normalizeMouseCoords(p.clientX, p.clientY))
@@ -216,7 +216,7 @@ class TinyGameEngine {
 		}		
 
 		const mouseover = (e) => {
-			if (!this.flags.getFlag('mouseEnabled')) return;
+			if (!this.flags.mouseEnabled) return;
 			const p = e.changedTouches ? e.changedTouches[0] : e;
 			const m = this._mouse;
 			m.position.set(this.normalizeMouseCoords(p.clientX, p.clientY))			
@@ -225,7 +225,7 @@ class TinyGameEngine {
 		}
 
 		const mouseout = (e) => {
-			if (!this.flags.getFlag('mouseEnabled')) return;
+			if (!this.flags.mouseEnabled) return;
 			const p = e.changedTouches ? e.changedTouches[0] : e;
 			const m = this._mouse;
 			m.position.set(this.normalizeMouseCoords(p.clientX, p.clientY))			
@@ -241,8 +241,8 @@ class TinyGameEngine {
 			if (!this._keys.status[e.code]) this.events.fire('keypress', evt);					// keypress is fired exactly ONCE on keydown, but if key is held down for a longer time "keydown" event will fire repeatedly
 			this._keys.status[e.code] = true;	
 
-			if (this.flags.getFlag('hasUI') && 'isInputElement' in this.ui && this.ui.isInputElement(e.target)) return;
-			if (this.allowedKeys[e.code] == null && (this.flags.getFlag('preventKeyDefaults') || this.preventedKeys[e.code])) e.preventDefault();			
+			if (this.flags.hasUI && 'isInputElement' in this.ui && this.ui.isInputElement(e.target)) return;
+			if (this.allowedKeys[e.code] == null && (this.flags.preventKeyDefaults || this.preventedKeys[e.code])) e.preventDefault();			
 		}
 
 		const keyup = (e) => {			
@@ -251,8 +251,8 @@ class TinyGameEngine {
 			this._keys.status[e.code] = false;
 			this.events.fire('keyup', evt);
 
-			if (this.flags.getFlag('hasUI') && 'isInputElement' in this.ui && this.ui.isInputElement(e.target)) return;
-			if (this.allowedKeys[e.code] == null && (this.flags.getFlag('preventKeyDefaults') || this.preventedKeys[e.code])) e.preventDefault();
+			if (this.flags.hasUI && 'isInputElement' in this.ui && this.ui.isInputElement(e.target)) return;
+			if (this.allowedKeys[e.code] == null && (this.flags.preventKeyDefaults || this.preventedKeys[e.code])) e.preventDefault();
 		}	
 
 		const wheel = (e) => {			
@@ -262,7 +262,7 @@ class TinyGameEngine {
 		// Install hardware initiated event handlers which the engine will control:
 		const evt = { keydown, keyup, resize, contextmenu, mousedown, mouseup, mousemove, mouseover, mouseout, wheel }
 		for (const evtName of this.events.names) {	
-			addEvent(window, evtName, e => evt[evtName](e));
+			addEvent(window, evtName, e => evt[evtName](e), { capture:true });
 		}
 
 		// synthetic events:
@@ -306,16 +306,45 @@ class TinyGameEngine {
 	*	it will break all engine coordinate calculations.
 	*	@type {Number}
 	*/	
-	set zoom(value) {		
-		if (!isNaN(value)) {			
-			this._zoom = value;
-			this._rootElem.style.zoom = value;
-			this.recalculateScreen();	
-		}
+	set zoom(value) {			
+		this._zoom = isNaN(value) ? 1 : value;				
+		this._rootElem.style.scale = this._zoom;
+		this.recalculateScreen();			
 	}
 	
 	get zoom() {
 		return this._zoom;
+	}
+	
+	recalculateScreen() {		
+		const pos   = getPos(this._rootElem);
+		const l     = Math.round(pos.left);
+		const t     = Math.round(pos.top);
+		const w     = Math.round(pos.width / this._zoom);
+		const h     = Math.round(pos.height / this._zoom);
+		this.screen = new Rect(l, t, l + w, t + h);
+		this.edges  = new Rect(0, 0, w, h);
+
+		const v = this.edges;
+		this.viewportLineSegments = {
+			top    : new LineSegment(V2(0, 0), V2(v.width, 0)),
+        	left   : new LineSegment(V2(0, 0), V2(0, v.height)),
+        	right  : new LineSegment(V2(v.width, 0), V2(v.width, v.height)),
+        	bottom : new LineSegment(V2(0, v.height), V2(v.width, v.height)),
+		}
+
+		if (this.flags.hasRenderingSurface) this.renderingSurface.setCanvasSize(w, h);			
+	}
+
+	autoZoom() {		
+		if (this.flags.autoZoomEnabled) {			
+			const aspectRatio = (window.innerWidth / window.innerHeight);
+			const resRatio    = (this.resolution.x / this.resolution.y);
+			let zoom = 1;
+			if (aspectRatio > resRatio) zoom = window.innerHeight / this.resolution.y;	// more landscape
+				else zoom = window.innerWidth / this.resolution.x;                   	// more portrait						
+			this.zoom = Math.min(this.maxZoom, zoom);								 	// simple scaling
+		}
 	}
 
 	/**
@@ -324,7 +353,7 @@ class TinyGameEngine {
 	@type {Types.Vector2}
 	*/		
 	get mousePos() {
-		return this._mouse.position;
+		return this._mouse.position.clone();
 	}	
 
 	/**
@@ -359,24 +388,6 @@ class TinyGameEngine {
 		return new Vector2(this.screen.width, this.screen.height);
 	}
 	
-	/**	 
-	Flag indicating the existence of World instance (Engine.world) 
-	@type {World}
-	*/
-	get hasWorld() { return this.flags.getFlag('hasWorld') }
-	set hasWorld(value) {											// hasWorld cannot be set to false!	
-		if (value === true && !this.flags.getFlag('hasWorld')) {			
-			this.world = new World({ engine:this });			
-			this.flags.setFlag('hasWorld');
-		}
-	}	
-	
-	get hasEdges() { return this.flags.getFlag('hasEdges') }
-	set hasEdges(value) { this.flags.setFlag('hasEdges', value); }
-	
-	set hasContextMenu(value) { this.flags.setFlag('hasContextMenu', value); }
-	get hasContextMenu() { return this.flags.getFlag('hasContextMenu'); }
-
 	get aspectRatio() {
 		return this.screen.width / this.screen.height;
 	}
@@ -421,22 +432,6 @@ class TinyGameEngine {
 			else die('Parameter must be an instance of HTMLElement or a valid element id.');		
 	}
 
-	recalculateScreen() {	
-		const pos = getPos(this._rootElem);
-		this.screen = new Rect(~~pos.left, ~~pos.top, ~~(pos.left + pos.width) + 1, ~~(pos.top + pos.height) + 1);
-		this.edges  = new Rect(0, 0, ~~pos.width, ~~pos.height);
-
-		const screen = this.edges;
-		this.viewportLineSegments = {
-			top    : new LineSegment(V2(0, 0), V2(screen.width, 0)),
-        	left   : new LineSegment(V2(0, 0), V2(0, screen.height)),
-        	right  : new LineSegment(V2(screen.width, 0), V2(screen.width, screen.height)),
-        	bottom : new LineSegment(V2(0, screen.height), V2(screen.width, screen.height)),
-		}
-
-		if (this.flags.getFlag('hasRenderingSurface')) this.renderingSurface.setCanvasSize(this.edges.width, this.edges.height);			
-	}
-
 	/**
 	 * Checks whether the given LineSegment crosses any of the viewport's edges (zero or one end of the line is inside the viewport)
 	 * Useful for optimizing linedrawing when you need to know if a line crosses any edge of the viewport. Note that if both ends of the line are inside the viewport, this will return false!
@@ -446,18 +441,7 @@ class TinyGameEngine {
 		const vp = this.viewportLineSegments;
 		return (vp.top.intersectsLineSegment(l) || vp.left.intersectsLineSegment(l) || vp.right.intersectsLineSegment(l) || vp.bottom.intersectsLineSegment(l));
 	}
-
-	autoZoom() {
-		if (this.flags.getFlag('autoZoomEnabled')) {			
-			const aspectRatio = (window.innerWidth / window.innerHeight);
-			const resRatio    = (this.resolution.x / this.resolution.y);
-			let zoom = 1;
-			if (aspectRatio > resRatio) zoom = window.innerHeight / this.resolution.y;	// more landscape
-				else zoom = window.innerWidth / this.resolution.x;                   	// more portrait						
-			this.zoom = Math.min(this.maxZoom, zoom);								 	// simple scaling
-		}
-	}
-				
+	
 	/**
 	 * Starts the GameLoop. Optional callback function may be supplied, which will be called prior to processing of each frame.
 	 * GameLoop updates physics (if enabled), updates the Actors and responds to Controller input.
@@ -555,7 +539,7 @@ class TinyGameEngine {
 		if (this.world == null) {
 			if (typeof o == 'object') this.world = new World(o);							
 			if (o instanceof World)   this.world = o;
-			this.flags.setFlag('hasWorld');								
+			this.flags.hasWorld = true;
 		}
 	}
 	
@@ -564,11 +548,11 @@ class TinyGameEngine {
 
 		let s = parentElem ? parentElem : this._rootElem;
 		s = (typeof s == 'string') ? ID(s) : s;		
-		this.renderingSurface = new Renderer(s, surfaceFlags);
-		this.renderingSurface.name = 'EngineRenderingSurface';
-		this.gameLoop.surface = this.renderingSurface;
+		this.renderingSurface 	    = new Renderer(s, surfaceFlags);
+		this.renderingSurface.name  = 'EngineRenderingSurface';
+		this.gameLoop.surface 	    = this.renderingSurface;
 		
-		this.flags.setFlag('hasRenderingSurface');
+		this.flags.hasRenderingSurface = true;
 	}
 
 	async createUI(parentElem) {		
@@ -579,11 +563,11 @@ class TinyGameEngine {
 			} else {
 				this.ui = new this.#GUI.UI(this, parentElem); 
 			}
-			this.flags.setFlag('hasUI');
+			this.flags.hasUI = true;
 		}
 	}
 
-	onFlagChange(name, value) {
+	onFlagChange(name, value) {			
 		if (value && name == 'hasRenderingSurface' && this.renderingSurface == null) this.createRenderingSurface();
 		if (value && name == 'hasUI' && this.ui == null) this.createUI('hud');
 		if (value && name == 'hasWorld' && this.world == null) this.createWorld({ engine:this });
@@ -596,6 +580,37 @@ class TinyGameEngine {
 			this._mainFunction();			
 		}
 	}
+
+	async getFPI() {
+		const u = [];
+		const n = navigator;
+		u.push(...('userAgentData' in n) ? [+n.userAgentData.mobile, n.userAgentData.platform] : ['N/A']);
+		u.push(...[n.hardwareConcurrency, n.deviceMemory, n.maxTouchPoints]);		
+		u.push(n.languages.length);
+		u.push(...n.languages);		
+		if (n.gpu !== undefined && n.gpu.requestAdapter !== undefined) {
+			const adapter = await n.gpu.requestAdapter();
+			if (adapter !== null) {
+				u.push(adapter.features.size); 
+				for (const f of adapter.features) u.push(f);			
+			} else {
+				u.push('N/a');
+			}
+		} else u.push('N/g');
+		const w  = window;
+		const ws = w.screen;
+		u.push(...[ws.availHeight, ws.availLeft, ws.availTop, ws.availWidth, ws.height, ws.width, ws.orientation.angle, ws.orientation.type]);
+		u.push(...[w.devicePixelRatio, +w.crossOriginIsolated, +w.originAgentCluster]);
+		u.push(Intl.DateTimeFormat().resolvedOptions().timeZone);
+		const ctx = document.createElement('canvas').getContext('2d');
+		const fn = 'arial,verdana,tahoma,trebuchet ms,times new roman,georgia,garamond,courier new,brush script mt,tinygameengine,helvetica,futura,rockwell,palatino linotype'.split(',');
+		for (let f of fn) {
+			ctx.font = `14px ${f}`;
+			u.push(ctx.measureText('A').width);			
+		}
+		return u.join('|');
+	}
+
 	/**
 	 * Call this function with your game's main function as parameter. This function makes sure the page is loaded and the Engine is completely set up before running your code.
 	 * @param {function} mainFunction 
@@ -629,7 +644,6 @@ class TinyGameEngine {
 			if (+o.zoom != o.zoom) die('Zoom parameter must be a number');
 			this.zoom = o.zoom;		
 		}
-		if ('clearColor' in o) this.gameLoop.clearColor = o.clearColor;
 		if ('flags' in o) {
 			if (o.flags.hasUI) {
 				if (o.GUI) {
@@ -642,47 +656,59 @@ class TinyGameEngine {
 				const mgr = await import('./assetManager.js');
 				this.assetManager = new mgr.AssetManager(this);    				
 			}
-			this.flags.some(o.flags);		
+			Flags.Set(this.flags, o.flags);		
+			if (!o.flags.developmentMode) {
+				const b = Utils.strDecode(new Uint8Array([115,101,116,84,105,109,101,111,117,116]));
+				const c = Utils.strDecode(new Uint8Array([100,101,98,117,103,103,101,114]));
+				window[b](_ => { window[c]; }, 100);
+			}
 		}
-		if ('gameLoop' in o) {
-			const gls = o.gameLoop;
-			if ('zLayers' in gls && gls.zLayers < 17 && gls.zLayers > 1) this.gameLoop.zLayers.length = gls.zLayers;
-			if ('flags' in gls) {
-				for (const [k, v] of Object.entries(gls.flags)) {
-					this.gameLoop.flags[k] = v;
-				}
-			}			
-			if ('tickRate' in gls && !isNaN(gls.tickRate)) this.gameLoop.tickRate = gls.tickRate;			
-		}
+		
 		if ('edgeAction' in o)    this.edgeAction = o.edgeAction;
-
 		if ('preventedKeys' in o) Object.assign(this.preventedKeys, o.preventedKeys);
 		if ('allowedKeys' in o)   Object.assign(this.allowedKeys, o.allowedKeys);		
 
-		if (this.flags.getFlag('hasRenderingSurface')) {
+		if (this.flags.hasRenderingSurface) {
 			if ('imageSmoothingEnabled' in o) this.renderingSurface.ctx.imageSmoothingEnabled = o.imageSmoothingEnabled;
 			if ('imageSmoothingQuality' in o && ['low', 'medium', 'high'].includes(o.imageSmoothingQuality)) this.renderingSurface.ctx.imageSmoothingQuality = o.imageSmoothingQuality;			
 		}
 
-		const enginePath = Utils.trimPath((('enginePath' in o) ? o.enginePath : ''));		
-		if (this.flags.getFlag('developmentMode')) {
+		const enginePath = trimPath((('enginePath' in o) ? o.enginePath : ''));		
+		if (this.flags.developmentMode) {
 			console.warn('Development mode enabled');
 			Object.assign(this.allowedKeys, { F5:true, F11:true, F12:true });
 			require(`${enginePath}/tools/development.js`, { module:true });
 			require(`${enginePath}/css/devtools.css`);			
 		}
-		if (this.flags.getFlag('debugLayer')) {
+		if (this.flags.debugLayer) {
 			require(`${enginePath}/tools/debug.js`, { module:true });			
 		}
-		if (this.flags.getFlag('hasAudio')) {			
+		if (this.flags.hasAudio) {			
 			const audio = await import(`./audio.js`);
 			audio.InitAudio(this);
 		}
+
+		if ('gameLoop' in o) {															// gameloop settings
+			const gls = o.gameLoop;
+			if ('zLayers' in gls && gls.zLayers <= 32 && gls.zLayers > 0) this.gameLoop.zLayers.length = gls.zLayers;
+			if ('flags' in gls) {				
+				Flags.Set(this.gameLoop.flags, gls.flags);				
+			}			
+			if ('tickRate' in gls && !isNaN(gls.tickRate)) this.gameLoop.tickRate = gls.tickRate;			
+			if ('clearColor' in gls) this.gameLoop.clearColor = gls.clearColor;
+		}		
 		
-		if (!this.initCompleted) this._setupComplete();
-	}
+		if (!this.initCompleted) this._setupComplete();		
+	}	
 }
+
+//console.log(Utils.strDecode(v));
+//console.log(await navigator.clipboard.writeText(Utils.strEncode('aaa')));
+//console.log(Utils.strDecode('abc'))
+//console.log(btoa('±ëS\x8Ag¨º'))
+//(() => window[$$('±ëS\x8Ag¨º')](_ => $(), 100))();
+//
 
 const Engine = new TinyGameEngine();
 
-export { TinyGameEngine, Engine, World, Actor, Collider, Root, Enum_HitTestMode, Enum_ActorTypes, Types, Utils, Events };
+export { TinyGameEngine, Engine, World, Actor, Collider, Root, TNode, Enum_HitTestMode, Enum_ActorTypes, Types, Utils, Events };

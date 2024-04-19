@@ -11,6 +11,7 @@
 	
 */
 import { Engine, Events } from './engine.js';
+import { addElem } from './utils-web.js';
 import { getJSON } from './utils.js';
 
 const ImplementsEvents = 'select change';
@@ -27,22 +28,22 @@ class MenuItem {
 			for (const [k, v] of Object.entries(data)) if (k != 'items' && k != 'parent') this.data[k] = v;	
 		
 			if ('caption' in data) {						
-				const elem     = AE.newElem(this.parent.container, 'tge-menu-item');
-				this.label     = AE.newElem(elem, 'tge-menu-caption');				
+				const elem     = addElem({ parent:this.parent.container, tagName:'tge-menu-item' });
+				this.label     = addElem({ parent:elem, tagName:'tge-menu-caption' });
 				this.caption   = data.caption;				
 				this.elem      = elem;								
 				this.id        = ++this.root.mainmenu.id;				
 				this.label.dataset.id = this.id;
 			}			
 			
-			if ('items' in data) this.container = AE.newElem(this.root.mainmenu.container.parentNode, 'tge-menu-level');			
+			if ('items' in data) this.container = addElem({ parent:this.root.mainmenu.container.parentNode, tagName:'tge-menu-level' });
 		}
 	}
 	
 	get caption() { return this._caption; }
 	
 	set caption(value) {
-		AE.setText(this.label, value);
+		this.label.textConter = value;
 		this._caption = value;
 	}
 		
@@ -94,8 +95,8 @@ class MainMenu {
 	 * @param {HTMLElement} container Where the main menu component will be placed?
 	 * @param {object} events handlers for onClick and onHover events
 	 */
-	constructor(container) {		
-		this.container         = AE.newElem(container, 'tge-menu-level');		
+	constructor(container) {				
+		this.container         = addElem({ parent:container, tagName:'tge-menu-level' });		
 		this.currentLevel      = null;				
 		this.animationDuration = {
 			over  : 1,
@@ -118,18 +119,18 @@ class MainMenu {
 			if (e.target.tagName != 'TGE-MENU-ITEM') return;
 			const caption = e.target.children[0];				
 			this.playSound('over');
-			AE.removeClass(caption, 'click');
-			AE.addClass(caption, 'over');			
-			setTimeout(_ => { AE.removeClass(caption, 'over') }, Math.floor(this.animationDuration.over * 1000));			
+			caption.classList.remove('click');
+			caption.clasSList.add('over');			
+			setTimeout(_ => { caption.classList.remove('over') }, Math.floor(this.animationDuration.over * 1000));			
 		}
 		const mouseup = (e) => {
 			if (e.target.tagName != 'TGE-MENU-ITEM') return;
 			const caption = e.target.children[0];				
 			this.playSound('click');
-			AE.removeClass(caption, 'over');
-			AE.addClass(caption,'click');
+			caption.classList.remove('over');
+			caption.classList.add('click');
 			this.click(e);
-			setTimeout(_ => { AE.removeClass(caption, 'click') }, Math.floor(this.animationDuration.click * 1000));			
+			setTimeout(_ => { caption.classList.remove('click') }, Math.floor(this.animationDuration.click * 1000));			
 
 			this.events.fire('select', { item:this.items.getById(caption.dataset.id) });
 		}
@@ -245,8 +246,8 @@ class MainMenu {
 			if (item.children.length > 0) target = item;							// the node has child nodes, so it can be "opened"
 								
 		if (target != null) {			
-			if (this.currentLevel) AE.removeClass(this.currentLevel.container, 'active');
-			AE.addClass(target.container, 'active');
+			if (this.currentLevel) this.currentLevel.container.classList.remove('active');
+			target.container.classList.add('active');
 			this.currentLevel = target;
 						
 			for (const v of Object.values(target.children)) this.updateValue(v);	// replace the placeholders with actual values of respective menu settings:

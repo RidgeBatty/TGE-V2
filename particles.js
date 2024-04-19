@@ -19,9 +19,8 @@
 import { CanvasSurface } from './canvasSurface.js';
 import { Engine, Types } from './engine.js';
 import { EventBroadcaster } from './eventBroadcaster.js';
-import { wrapBounds, preloadImages, imgDims } from './utils.js';
+import { wrapBounds, preloadImages, imgDims, getJSON } from './utils.js';
 import { Polygon } from './particleShapes.js';
-import { getJSON } from './utils.js';
 
 const { Vector2:Vec2, Color } = Types;
 const Filters = {
@@ -33,7 +32,7 @@ const Filters = {
 	'saturate'    : '',
 	'sepia'       : ''
 }
-const ParticleShapes = ['none', 'circle', 'square', 'ring', 'triangle', 'polygon', 'star', 'custom'];
+const ParticleShapes = ['none', 'circle', 'box', 'ring', 'triangle', 'polygon', 'star', 'custom'];
 
 class ParticleData {
 	constructor(p) {
@@ -71,6 +70,20 @@ const deserializeColorProperty = (prop, o) => {
 	if (o[prop] == null) return null;
 	if (Array.isArray(o[prop])) return o[prop].map(e => Color.FromCSS(e));			   // deserialize an array of colors		
 	return Color.FromCSS(o[prop]);																// deserialize single color
+}
+
+const deepCopy = (o) => {
+	if (typeof o !== 'object' || o === null) return o;		
+
+	const result = Array.isArray(o) ? [] : {};
+	for (let key in o) {
+		if (key == 'surface') return o;
+		if (key == 'img' && o.img instanceof Image) return o;
+
+		let value = o[key];
+		result[key] = deepCopy(value);
+	}
+	return result;
 }
 class Emitter extends EventBroadcaster {
 	/**
@@ -154,21 +167,7 @@ class Emitter extends EventBroadcaster {
 	 * DO NOT CALL MANUALLY!
 	 * Set initial state for this emitter. Called internally by Emitter.start()
 	 */
-	async _initEmitter(params) {				
-		const deepCopy = (o) => {
-			if (typeof o !== 'object' || o === null) return o;		
-
-			const result = Array.isArray(o) ? [] : {};
-			for (let key in o) {
-				if (key == 'surface') return o;
-				if (key == 'img' && o.img instanceof Image) return o;
-
-				let value = o[key];
-				result[key] = deepCopy(value);
-			}
-			return result;
-		}
-
+	async _initEmitter(params) {						
 		this._params     = deepCopy(params);													// make a copy of the params object (excluding complex objects) so that params cannot be modified outside!
 				
 		this.name	     = ('name') in params ? params.name : null;
@@ -180,16 +179,15 @@ class Emitter extends EventBroadcaster {
 		this.emitCount   = params.emitCount || 0;												// 0 = emit unlimited number of particles
 		this.emitSurface = params.emitSurface || false;
 		this.emitMax     = ('emitMax' in params) ? params.emitMax : Infinity;					// how many particles to emit total?		
+		this.position    = ('position' in params) ? Vec2.FromStruct(params.position) : Vec2.Zero();
+		this.pivot	     = null;
 		this.activeParticleCount = 0;
 		this.compositeOperation  = ('compositeOperation' in params) ? params.compositeOperation : null;
 		this.destroyOnComplete   = ('destroyOnComplete' in params) ? params.destroyOnComplete : true;
-
-		if ('position' in params) this.position = Vec2.FromStruct(params.position);		
-		this.pivot	     = null;
 		
 		// different from emitter.isActive, which, when turned off, shuts down everything (including living particles)
 		// this controls whether new particles are being spawned during tick or not
-		this.spawnParticles   = ('spawnParticles' in params) ? params.spawnParticles : true;	
+		this.spawnParticles      = ('spawnParticles' in params) ? params.spawnParticles : true;	
 
 		this._emitLeft   = this.emitCount;						// internal counter for emitted particles
 		this._emitFrac   = 0;									// helper to keep track of the fractional part of emitted particles	
@@ -221,7 +219,7 @@ class Emitter extends EventBroadcaster {
 		if (params.initParticle) {
 			const shape = params.initParticle.shape;
 			if (shape) {
-				this.initFillColor = deserializeColorProperty('fillColor', shape);							
+				this.initFillColor = deserializeColorProperty('fillColor', shape);				
 			}
 			const textSettings = Object.assign({}, params.initParticle.textSettings);
 			if (textSettings) {
@@ -344,8 +342,6 @@ class Emitter extends EventBroadcaster {
 			}
 			case 'point': p.position = Vec2.Zero();	
 		}
-
-		if (this.pivot) p.position.add(this.pivot.clone().sub(this.position).rotate(-this.angle * Math.PI));
 		
 		// if particle has img defined, use it - otherwise try to fall back to img defined in emitter
 		p.img    = ('img' in init) ? init.img : this.img;		
@@ -363,7 +359,7 @@ class Emitter extends EventBroadcaster {
 		
 		p.lifeTime      = calc('life', init);
 		p.maxLife       = p.lifeTime;
-		p.angle         = calc('angle', init);				
+		p.angle         = init.angle == 'velocity' ? 'velocity' : calc('angle', init);				
 		p.rotation      = calc('rotation', init);
 		p.angularSpeed  = calc('angularSpeed', init);
 		p.angularWeight = calc('angularWeight', init);
@@ -389,7 +385,10 @@ class Emitter extends EventBroadcaster {
 		
 		// initial particle velocity
 		if ('velocity' in init) {
-			if (init.velocity == 'radial') p.velocity = p.position.clone().normalize().mulScalar(p.speed);				
+			if (init.velocity == 'radial') {
+				p.velocity = p.position.clone().normalize().mulScalar(p.speed * 20);
+				p.angle    = init.angle == 'velocity' ? p.velocity.toAngle() / Math.PI : p.angle;
+			}
 				else
 			if (init.velocity == 'square') {
 				const ang  = (Math.floor((wrapBounds(p.position.clone().toAngle(), 0, Math.PI * 2) + Math.PI * 0.25) / (Math.PI * 0.5)) % 4);
@@ -402,12 +401,14 @@ class Emitter extends EventBroadcaster {
 				p.velocity.mulScalar(p.speed);
 			}
 				else p.velocity = Vec2.FromStruct(init.velocity);										
-		} else
+		} else 
 			p.velocity   = Vec2.FromAngle(p.angle * Math.PI, p.speed);			
+			
 
 		if ('shape' in init) {
 			p.shape     = ParticleShapes.findIndex(e => e == init.shape.type);			
 			p.fillColor = calc('fillColor', init.shape);	
+			p.shapeSize = init.shape.size !== undefined ? init.shape.size : { x:1, y:1 };
 			
 			if (p.shape == 3) p.points = Polygon.Ring(calc('innerRadius', init.shape), calc('outerRadius', init.shape), Math.round(calc('points', init.shape)));
 			if (p.shape == 4) p.points = Polygon.Triangle(1);
@@ -479,17 +480,19 @@ class Emitter extends EventBroadcaster {
 			const m = 1 - p.lifeTime / p.maxLife;
 			if (p.evolveOpacity == 'lifetime') p.alpha = p.lifeTime / p.maxLife;			// opacity follows lifetime?
 			if (p.evolveForce)  p.velocity.add(p.evolveForce);
-			if (p.evolveAcceleration)  p.velocity.mulScalar(p.evolveAcceleration);			
+			if (p.evolveAcceleration)  p.velocity.mulScalar(p.evolveAcceleration);	
+			
+			// evolve color
 			if (this.evolveColorStops) {
 				const c1 = this.evolveColorStops[Math.floor(m * (this.evolveColorStops.length - 1))];
 				const c2 = this.evolveColorStops[Math.ceil(m * (this.evolveColorStops.length - 1))];				
-				p.outColor = Color.Lerp(c1, c2, m);						
+				p.outColor = Color.Lerp(c1, c2, m);										
 			} else
 			if (this.evolveTargetColor) {
 				if (p.fillColor) p.outColor = Color.Lerp(p.fillColor, p.evolveTint, m);
-				if (this.initTextColor) p.outColor = Color.Lerp(this.initTextColor, p.evolveTint, m);
+				if (this.initTextColor) p.outColor = Color.Lerp(this.initTextColor, p.evolveTint, m);				
 			} else {
-				p.outColor = p.fillColor;				
+				p.outColor = Color.FromCSS(p.fillColor);	
 			}
 
 			if (p.evolveScale) p.scale  *= p.evolveScale;
@@ -547,6 +550,7 @@ class Emitter extends EventBroadcaster {
 			pos.set(particle.position);											// set particle position
 			if (this.angle != 0) pos.rotate(this.angle * Math.PI);
 			pos.add(this.position);												// add emitter position
+			if (this.pivot) pos.sub(this.pivot.clone().rotate(this.angle * Math.PI));
 			
 			ctx.globalAlpha = particle.alpha;					
 			ctx.setTransform(particle.scale, 0, 0, particle.scale, pos.x, pos.y);
@@ -556,7 +560,7 @@ class Emitter extends EventBroadcaster {
 
 			// image 
 			if (particle.img) {
-				if (particle.tintColor) {											// colorization? particle.tintColor applies only to images and cannot evolve!
+				if (particle.tintColor) {											// image colorization? particle.tintColor applies only to images and cannot evolve!
 					tmp.size = particle._cachedSize;
 					
 					tmp.ctx.globalCompositeOperation = 'source-over';
@@ -577,10 +581,10 @@ class Emitter extends EventBroadcaster {
 
 			// shape
 			if (particle.shape) {
-				const fill = ('outColor' in particle) ? particle.outColor.css : particle.fillColor.css;				// outColor = calculated property, fillColor = css
+				const fill = (particle.outColor !== undefined) ? particle.outColor.css : particle.fillColor.css;				// outColor = calculated property, fillColor = css
 				if (particle.shape == 1) this.surface.drawCircle(Vec2.Zero(), 1, { fill });
-				if (particle.shape == 2) this.surface.drawRectangle(-1, -1, 2, 2, { fill });						
-				if (particle.shape == 3) this.surface.drawPolyCut(particle.points.a, particle.points.b, { fill });
+				if (particle.shape == 2) this.surface.drawRectangle(-1, -1, particle.shapeSize.x, particle.shapeSize.y, { fill });						
+				if (particle.shape == 3) this.surface.drawPolyCut(particle.points.a, [particle.points.b], { fill });
 				if (particle.shape >= 4) this.surface.drawPoly(particle.points, { fill });
 			}
 
@@ -620,6 +624,9 @@ class ParticleSystem {
 		this.fps      = 60;
 	}
 
+	/**
+	 * Removes this particlesystem from the gameLoop
+	 */
 	destroy() {
 		const p = Engine.gameLoop.particleSystems;
 		const f = p.findIndex(e => e == this);
@@ -630,6 +637,7 @@ class ParticleSystem {
 	}
 	
 	async addEmitter(params) {
+		if (params == null) throw new Error('Emitter createparams object expected.');
 		const emitter = new Emitter(this);		
 		await emitter._initEmitter(params);		
 		this.emitters.push(emitter);
@@ -647,10 +655,10 @@ class ParticleSystem {
 	}
 	
 	/**
-	 * The first parameter is either a string or an array of strings which contain the url to the file(s). Optional second parameters is a path prepended to all urls.
-	 * @param {string|[string]} urls 
-	 * @param {string} [path=string]
-	 * @returns {[object]} list of loaded json objects
+	  * Loads an emitter or a bunch of emitters from a file
+	 * @param {string|[string]} urls Either a string or an array of strings which contain urls to the file(s). 
+	 * @param {string} [path=string] Optional. A path prepended to all urls.
+	 * @returns {Promise<Map<string,Emitter>>} List of loaded json objects
 	 */
 	loadFromFile(urls, path = '') {
 		return new Promise((resolve, reject) => {
@@ -675,7 +683,7 @@ class ParticleSystem {
 	}
 	
 	/**
-	 * Destroys all emitters
+	 * Destroys all emitters, but does not delete the particlesystem
 	 */
 	clear() {
 		for (const e of this.emitters) e.destroy();

@@ -4,7 +4,7 @@
 	Written by Ridge Batty (c) 2020
 	
 */
-import * as Utils from './utils.js';
+import { preloadImages, getJSON } from './utils.js';
 import { Engine, Types } from './engine.js';
 import { CanvasSurface } from './canvasSurface.js';
 import { Layer } from './layer.js';
@@ -49,7 +49,7 @@ class Parallax {
 		let path = ('path' in o) ? o.path : this.defaultPath;
 		if (path.length > 0 && path[path.length - 1] != '/') path += '/';		
 		
-		const images = await Utils.preloadImages({ urls:o.layers.map(e => e.filename), path });
+		const images = await preloadImages({ urls:o.layers.map(e => e.filename), path });
 
 		let i = 0;
 		for (const layerData of o.layers) {
@@ -104,7 +104,7 @@ class Parallax {
 		return new Promise(async (resolve, reject) => {
 			try {
 				if ( !url ) throw 'URL must be specified';		
-				const result = await Utils.getJSON(url);					
+				const result = await getJSON(url);					
 				resolve(result);
 			} catch (e) {
 				reject(e);

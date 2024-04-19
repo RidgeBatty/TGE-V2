@@ -1,4 +1,4 @@
-import { Engine, Types } from './engine.js';
+import { Types } from './engine.js';
 import { sealProp } from "./utils.js";
 
 const Vector2     = Types.Vector2;

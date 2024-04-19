@@ -18,24 +18,24 @@ class ParticleEditor {
         this.particleSystem = new ParticleSystem(Engine);        
     }
 
-    fromParams(params) {
+    async fromParams(params) {
         console.log('Recreate the emitter');
         this.recreatePS();
 
-        const emitter = this.particleSystem.addEmitter(params);                
-        this.emitter = emitter;
+        const emitter = await this.particleSystem.addEmitter(params);                
+        this.emitter  = emitter;
 
-        emitter.analyze(params);        
+        //emitter.analyze(params);        
         emitter.position = Engine.dims.mulScalar(0.5);
         emitter.addEvent('tick', e => this._onEmitterTick(e));
         emitter.start(); 
     }
 
-    fromEditorContent(text) {
+    async fromEditorContent(text) {
         try {
             const p = Hjson.parse(text);
             this._text = text;
-            this.fromParams(p);
+            await this.fromParams(p);
         } catch (e) {              
             return e;            
         }
@@ -44,7 +44,7 @@ class ParticleEditor {
     async loadFromFile(f) {
         const params = await getJSON(f, true);
         this._text   = loadedJsonMap.get(params).text;
-        this.fromParams(params);
+        await this.fromParams(params);
     }
 
     parse(text, filename, recreate) {        

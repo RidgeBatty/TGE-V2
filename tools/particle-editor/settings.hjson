@@ -1,0 +1,21 @@
+{
+    rootElem:'game'
+    clearColor:'#111'
+    edgeAction:'wrap-around'
+    
+    flags:{ 
+        hasEdges:false
+        hasRenderingSurface:true
+        hasWorld:false 
+        hasUI:false        
+        developmentMode:false
+        preventKeyDefaults:false
+    }
+
+    gameLoop:{                                                      
+        flags: { 
+            collisionsEnabled:false
+            showColliders:false
+        } 
+    }    
+}

@@ -28,6 +28,7 @@ import { CustomLayer } from './customLayer.js';
 import { TileMap } from './tileMap.js';
 import { Box, Circle, Poly } from './physics.js';
 import { Flipbook } from './flipbook.js';
+import { CanvasSurface } from './canvasSurface.js';
 
 const { V2, Vector2 : Vec2, LineSegment, Rect, RECT } = Types;
 
@@ -74,8 +75,11 @@ class TileMapRenderer extends CustomLayer {
 	 */
 	constructor(params = {}) {		
 		super(Object.assign(params, { addLayer:true }));
-
+		
 		this.engine    		= ('engine' in params) ? params.engine : Engine;                    			// implementing it this way makes it easier to change the Engine reference if needed 		
+
+		this.world          = this.engine.world;
+
 		this.world.offset   = ('offset' in params) ? params.offset : this.engine.dims.mulScalar(0.5);
 		this.world.renderer = this;
 		this.target         = params.target;
@@ -88,7 +92,7 @@ class TileMapRenderer extends CustomLayer {
 		this.flags     = new Flags(this, {
 			ownerDraw     : true,
 			showColliders : true,			
-			clearBuffer   : false,			
+			clearBuffer   : ('clearBuffer' in params) ? params.clearBuffer : false,			
 			isometric     : ('isometric' in params) ? params.isometric : false,
 		});		
 		this.cursor    = V2(-1, -1);																// x/y coordinates of last selected map tile		
@@ -102,10 +106,8 @@ class TileMapRenderer extends CustomLayer {
 		this.tileSize           = 256;
 		this.onBeforeDraw       = null;																// fire a callback before drawing a frame
 				
-		this.updateViewport();																		// acquire canvasSurface
-		this.buffer.name        = 'TileMapRenderingBuffer';
-
-		this.engine.events.add('resize', _ => { 
+		this.buffer             = new CanvasSurface({ dims:this.engine.dims, name:'TileMapRenderingBuffer' });				
+		this.engine.events.add('resize', _ => { 			
 			this.buffer.setCanvasSize(this.engine.screen.width, this.engine.screen.height);
 		});		
 	}
@@ -143,8 +145,9 @@ class TileMapRenderer extends CustomLayer {
 		this.staticActors.length = 0;		
 	}
 
-	update() {				
-		if (this.flags.isometric) this.renderIsometric(); else this.renderAxisAligned();		
+	update() {					
+		if (this.flags.isometric) this.renderIsometric(); else this.renderAxisAligned();							
+		this.surface.drawImage(Vec2.Zero(), this.buffer.canvas);		
 	}
 
 	get renderPosition() {
@@ -205,6 +208,8 @@ class TileMapRenderer extends CustomLayer {
 	/**
 	 * Loads a map file in memory and then calls TileMap.LoadFromFile() which extracts tilemap data and texture information.
 	 * It then proceeds to parse static objects (and potentially other non-tilemap/texture data from the same file)
+	 * @param options Options object.
+	 * @param options.url URL of the map file.
 	 */
 	async loadMap(options) {																					
 		const o = await TileMap.LoadFromFile(options);														// load tilemap/texture data			
@@ -247,9 +252,9 @@ class TileMapRenderer extends CustomLayer {
 					if ('flipbooks' in o) actor.flipbooks = await Flipbook.Parse(o.flipbooks, actor);					// load flipbooks
 
 					if (o.colliders) {																					// create colliders (if any)
-						actor.hasColliders = true;
-						actor.colliderType = 'WorldStatic';
-						const colliders    = Collider.Parse(o.colliders);
+						actor.flags.hasColliders = true;
+						actor.colliderType 		 = 'WorldStatic';
+						const colliders    		 = Collider.Parse(o.colliders);
 						for (const c of colliders) actor.colliders.add(c);						
 					}						
 				});			
@@ -369,7 +374,7 @@ class TileMapRenderer extends CustomLayer {
 	 */
 	renderAxisAligned() {
 		const { map, canvas, position, world } = this;
-		
+	
 		const ctx    = this.buffer.ctx;		
 		const size   = this.tileSize;
 		const height = size * this.aspectRatio;																				// tile height
@@ -377,7 +382,7 @@ class TileMapRenderer extends CustomLayer {
 
 		ctx.resetTransform();
 		if (this.flags.clearBuffer) ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+		
 		this.events.fire('beforedraw', { renderer:this, ctx });
 
 		const isCustomDraw = this.events.names.includes('customdraw');
@@ -613,7 +618,7 @@ class TileMapRenderer extends CustomLayer {
 		}						
 	}
 
-	tick() {		
+	tick() {	
 		//console.log((Engine.gameLoop.tickCount / 60).toFixed());
 		const s = this.getViewportStaticActors();
 		for (const a of this.engine.gameLoop.actors) {

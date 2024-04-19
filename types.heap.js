@@ -1,3 +1,5 @@
+import { clamp } from "./utils.js";
+
 export class Heap {
     constructor(maxSize) {
         this.items     = [];
@@ -86,7 +88,7 @@ export class HeapItem {
     }
 
     set index(v) {
-        this._index = AE.clamp(v, 0, this.heap.count);
+        this._index = clamp(v, 0, this.heap.count);        
     }
 
     compareTo(item) {

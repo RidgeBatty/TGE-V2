@@ -6,7 +6,8 @@
 	
 */
 import { Rect, RECT, Vector2, Color } from "./types.js";
-import { downloadFile, isBoolean } from "./utils.js";
+import { isBoolean } from "./utils.js";
+import { downloadFile } from "./utils-web.js";
 class CanvasSurface {
 	/**
 	 * 

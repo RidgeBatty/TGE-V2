@@ -61,8 +61,8 @@ let controlLayer     = null;
 	Adds a layer (HTMLElement) for debug information (singleton)
 */
 const addLayer = (elem = Engine._rootElem) => {
-	debugLayer   = addElem({ parent:elem, class:'tge-debug' });	
-	controlLayer = addElem({ parent:elem, class:'tge-controls' });	
+	debugLayer   = addElem({ parent:elem, tagName:'tge-debug' });	
+	controlLayer = addElem({ parent:elem, tagName:'tge-controls' });	
 
 	debugLayer.innerHTML = '<h3>TGE Debug Layer</h3>';
 
@@ -202,7 +202,7 @@ function _box(div, x, y, w, h) {
 function addBox(corners, id, params) {
 	if (id == null || ID(id) == null) {
 		const relativeTo = (params && 'relativeTo' in params) ? params.relativeTo : Engine._rootElem;
-		var div = addElem({ parent:relativeTo, class:'tge-collider-bg-blue' });
+		var div = addElem({ parent:relativeTo, tagName:'tge-collider-bg-blue' });
 	} else var div = ID(id);
 	
 	_box(div, Math.min(corners[0].x, corners[1].x),
@@ -224,8 +224,8 @@ function addRect(rect, id, params) {
 function addCrosshair(x, y, id) {	
 	if (id == null || ID(id) == null) {
 		var div  = addElem({ parent:Engine._rootElem });
-		var vert = addElem({ parent:div, class:'tge-collider-bg-blue' });
-		var horz = addElem({ parent:div, class:'tge-collider-bg-blue' });
+		var vert = addElem({ parent:div, tagName:'tge-collider-bg-blue' });
+		var horz = addElem({ parent:div, tagName:'tge-collider-bg-blue' });
 		div.id   = id;		
 	} else {				
 		var div  = ID(id);		

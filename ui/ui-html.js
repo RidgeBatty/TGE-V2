@@ -4,7 +4,8 @@
  * 
  */
 import { Vector2 as Vec2, V2 } from "../types.js";
-import { getJSON, addElem, ID } from "../utils.js";
+import { getJSON } from "../utils.js";
+import { addElem, ID } from "../utils-web.js";
 import * as UIComponents from "./ui-html-components.js";
 
 class UI {

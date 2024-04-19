@@ -7,9 +7,11 @@
     Module for drawing individual frames of a video file on a canvasSurface, for more control over the graphics
 	
 */
-import * as Utils from './utils.js';
-import { Engine, Types } from './engine.js';
+import { preloadVideo } from './utils.js'; 
+import { addEvent } from './utils-web.js';
+import { Types } from './engine.js';
 import { CanvasSurface as Surface } from './canvasSurface.js';
+
 const Vec2 = Types.Vector2;
 
 class VideoStream {
@@ -19,7 +21,7 @@ class VideoStream {
 	}
 
 	async load(url, preload = false) {
-		this.elem = await Utils.preloadVideo({ url, muted:true, promise:preload });		
+		this.elem = await preloadVideo({ url, muted:true, promise:preload });		
 		return this.elem;
 	}
 
@@ -49,8 +51,8 @@ class VideoStream {
 					onFramePainted = resolve;				
 				});
 			}
-
-			AE.addEvent(v, 'seeked', _ => { 			
+			
+			addEvent(v, 'seeked', _ => { 			
 				const s = new Surface({ dims:{x:v.videoWidth, y:v.videoHeight } });			
 				s.drawImage(Vec2.Zero(), v);		
 				this.frames.push(s);			

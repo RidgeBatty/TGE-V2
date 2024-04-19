@@ -4,8 +4,7 @@
  * 
  */
  
-import { Vector2 as Vec2, V2, Rect, RECT } from '../types.js';
-import { addMethods, addPropertyListener, preloadImages } from '../utils.js';
+import { V2, RECT } from '../types.js';
 import { TButton } from './tbutton.js';
 import { TFocusControl } from './tfocusControl.js';
 

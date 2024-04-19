@@ -1,3 +1,6 @@
+import { isFunction } from "./utils.js";
+import { addElem, addEvent, style } from "./utils-web.js";
+
 /*
 
 	Videos (experimental)
@@ -18,8 +21,8 @@ export class Videos {
 		this.list    = [];
 		this.hash    = {};
 		this.path    = '';		
-
-		this.elem    = AE.newElem(this.actor.elem, 'tge-anim-container');		
+		
+		this.elem    = addElem({ parent:this.actor.elem, tagName:'tge-anim-container' });
 		this.onCompleteCallback = null;
 		
 		this.current = null;		// reference to current animation object
@@ -31,7 +34,7 @@ export class Videos {
 	}
 
 	loadFromObject(o, onComplete = function(){}) {
-		AE.removeChildren(this.elem);
+		this.elem.replaceChildren();
 		
 		this.list = [];
 		this.hash = {};
@@ -71,13 +74,13 @@ export class Videos {
 		video.style.display = 'none';
 	
 		// if video dimensions are not given explicitly in params, try to get them via metadata
-		AE.addEvent(video, 'loadedmetadata', () => {
-			if (!('size' in o)) AE.style(this.actor.elem, `width:${video.videoWidth}px; height:${video.videoHeight}px;`);
+		addEvent(video, 'loadedmetadata', () => {
+			if (!('size' in o)) style(this.actor.elem, `width:${video.videoWidth}px; height:${video.videoHeight}px;`);
 		});
-		
+				
 		// callback to be fired when video has ended
-		AE.addEvent(video, 'ended', () => { 
-			if (AE.isFunction(this.onCompleteCallback)) this.onCompleteCallback() 
+		addEvent(video, 'ended', () => { 
+			if (isFunction(this.onCompleteCallback)) this.onCompleteCallback() 
 		});
 		
 		const opts = this.cache ? { cache: this.cache } : null;
@@ -88,13 +91,13 @@ export class Videos {
 			 
 			 // Temporarily removing this because the animations can have different dimensions and thus cannot be used to set the actor dimensions!			 			 
 			 //AE.style(_this.actor.elem, `width:${o.size.x}px; height:${o.size.y}px; `);			 
-			 
-			 AE.style(video, `width:${o.size.x}px; height:${o.size.y}px; margin-left:${o.offset.x}px; margin-top:${o.offset.y}`);			 
+			 			 
+			 style(video, `width:${o.size.x}px; height:${o.size.y}px; margin-left:${o.offset.x}px; margin-top:${o.offset.y}`);			 
 			 _this.actor.refresh();
 
 			 _this.elem.appendChild(video);
-			 
-			 if (AE.isFunction(onLoaded)) onLoaded(obj);
+			 			 
+			 if (isFunction(onLoaded)) onLoaded(obj);
 		 });
 	}
 	
@@ -130,7 +133,7 @@ export class Videos {
 	}
 	
 	play(onStart) {
-		if (this.current.video.paused) this.current.video.play().then(_ => { if (AE.isFunction(onStart)) onStart(); });
+		if (this.current.video.paused) this.current.video.play().then(_ => { if (isFunction(onStart)) onStart(); });
 	}
 	
 	/*

@@ -7,6 +7,7 @@
  */
 
 import { Utils, Engine } from "../engine.js";
+import { style } from "../utils-web.js";
 
 /**
  * Adds a global function in Window scope which allows easy debugging of any variable in real time
@@ -14,7 +15,7 @@ import { Utils, Engine } from "../engine.js";
  * @param {string} name (optional) add a name for the variable if you want to display several different variables instead of a single one
  * @param {string} style (optional) adds any CSS styling to a named variable
  */
-window.showMe = (text, name = '', style) => {
+window.showMe = (text, name = '', cssStyle) => {
     let el = Engine._rootElem.querySelector('tge-showme');
     if (!el) el = Utils.addElem({ parent:Engine._rootElem, type:'tge-showme' });
 
@@ -25,7 +26,8 @@ window.showMe = (text, name = '', style) => {
             ch.dataset['showme'] = name;
         }
         ch.textContent = name + ': ' + text;
-        if (style) AE.style(ch, style);
+        
+        if (cssStyle) style(ch, cssStyle);
         return ch;
     }
 

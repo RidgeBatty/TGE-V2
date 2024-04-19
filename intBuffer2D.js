@@ -48,6 +48,10 @@ export class IntBuffer2D {
 
     fill(i) { this.buffer.fill(i); };
 
+    /**
+     * 
+     * @param {function} e Arguments (x, y, intPixel)
+     */
     walk(e) {
         for (let y = 0; y < this.size.y; y++)
             for (let x = 0; x < this.size.x; x++) e(x, y, this.getPixel(x, y));
@@ -100,6 +104,13 @@ export class IntBuffer2D {
         }
     }
 
+    /**
+     * 
+     * @param {Vector2} i1 
+     * @param {Vector2} i2 
+     * @param {Rect} edges 
+     * @returns 
+     */
     bresenhamLine(i1, i2, edges) {
         const coords = [];
 
@@ -131,6 +142,14 @@ export class IntBuffer2D {
         return coords;
     }
 
+    drawVerticalLine(start, end, x, color) {
+        for (let i = start; i < end; i++) this.setPixel(x, i, color);
+    }
+
+    drawHorizontalLine(start, end, y, color) {
+        for (let i = start; i < end; i++) this.setPixel(i, y, color);
+    }
+
     /**
      * Mirrors the whole buffer across x or y axis (naive, unoptimized)
      * @param {string} axis "x" or "y"
@@ -158,8 +177,8 @@ export class IntBuffer2D {
         }
     }
 
-    createTexture(name) {
-        const t = new Texture(name, this.size);
+    createTexture(name, preferOffscreenCanvas) {
+        const t = new Texture(name, this.size, preferOffscreenCanvas);
         t.pixelWalkMode = 'int';
         t.walk((x, y, c) => {
             return this.getPixel(x, y);
@@ -174,6 +193,11 @@ export class IntBuffer2D {
         const idata = new Uint8ClampedArray(this.buffer.buffer);        
 
         canvasSurface.ctx.putImageData(new ImageData(idata, this.width, this.heighth), position.x, position.y);
+    }
+
+    static async FromFile(url) {
+        const t = await Texture.FromFile('./img/test1.png');
+        return new IntBuffer2D(t.intBuffer, V2(t.width, t.height));        
     }
     
     /**

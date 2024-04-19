@@ -7,6 +7,7 @@
 import { Vector2 as Vec2, V2, Rect, RECT } from '../types.js';
 import { TListitem } from './tlistItem.js';
 import { TFocusControl } from './tfocusControl.js';
+import { clamp } from '../utils.js';
 
 const ImplementsEvents = 'select';
 
@@ -98,8 +99,8 @@ export class TListbox extends TFocusControl {
         return this._scroll;
     }
 
-    set scroll(v) {
-        this._scroll = AE.clamp(v, 0, this.itemAreaSize.y - this.size.y);        
+    set scroll(v) {        
+        this._scroll = clamp(v, 0, this.itemAreaSize.y - this.size.y);        
     }
     
     draw() {    

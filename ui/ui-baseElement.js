@@ -1,5 +1,7 @@
 import { Vector2 as Vec2, V2 } from "../types.js";
 import { Events } from "../events.js";
+import { addElem, style } from "../utils-web.js";
+import { isNumeric } from "../utils.js";
 
 const UI_ELEMENT_ID_PREFIX = 'ui-';                                                         // this prefix is added to all ID's which are automatically added to all UI elements
 
@@ -10,12 +12,12 @@ class UBaseElement {
         if (!('owner' in o)) throw 'UI components must have owner specified.';
         if (!(o.owner || o.owner.objectType != 'UI') && !o.ui) throw 'Reference to UI object was not given when creating a new UI component.';
 
-        if (o.owner instanceof UBaseElement || o.owner.objectType == 'UI') {
-            if (o.parent) this.elem = AE.newElem(o.parent, o.tagName);            
-                else this.elem = AE.newElem(('body' in o.owner) ? o.owner.body : o.owner.elem, o.tagName); // if "parent" is not given, the parent element will be either owner.body (if present) or owner.elem
+        if (o.owner instanceof UBaseElement || o.owner.objectType == 'UI') {            
+            if (o.parent) this.elem = addElem({ parent:o.parent, tagName:o.tagName });
+                else this.elem = addElem({ parent:('body' in o.owner) ? o.owner.body : o.owner.elem, tagName:o.tagName }); // if "parent" is not given, the parent element will be either owner.body (if present) or owner.elem
         } else throw 'All UI components must have an owner';
             
-        if (o.className) AE.addClass(this.elem, o.className);
+        if (o.className) this.elem.classList.add(o.className);
 
         this.#owner    = o.owner;
         this.#ui       = o.ui || o.owner.ui || o.owner;
@@ -34,13 +36,13 @@ class UBaseElement {
         this._align    = '';
         this.align     = ('align' in o) ? o.align : '';
 
-        if ('height' in o) {
-            const h = AE.isNumeric(o.height) ? o.height + 'px' : o.height;
-            AE.style(this.elem, `height:${h}`);
+        if ('height' in o) {            
+            const h = isNumeric(o.height) ? o.height + 'px' : o.height;
+            style(this.elem, `height:${h}`);
         }
         if ('width' in o) {
-            const w = AE.isNumeric(o.width) ? o.width + 'px' : o.width;
-            AE.style(this.elem, `width:${w}`);
+            const w = isNumeric(o.width) ? o.width + 'px' : o.width;
+            style(this.elem, `width:${w}`);        
         }
 
         if ('margin' in o) this.margin = o.margin;
@@ -80,7 +82,7 @@ class UBaseElement {
             if (sp[0] == 'space')  a = 'space-between';
             if (sp[0] == 'right')  a = 'end';
 
-            AE.style(this.elem, 'justify-content:' + a);
+            style(this.elem, 'justify-content:' + a);
         } 
         if (sp.length > 1) {
             let a = 'center';
@@ -90,7 +92,7 @@ class UBaseElement {
             if (sp[1] == 'space')  a = 'space-between';
             if (sp[1] == 'bottom') a = 'end';
 
-            AE.style(this.elem, 'align-items:' + a);
+            style(this.elem, 'align-items:' + a);
         }
     }
 
@@ -98,10 +100,10 @@ class UBaseElement {
         v = v + '';
         const sp = v.split(' ');
         for (let i = 0; i < sp.length; i++) {
-            if (!AE.isNumeric(sp[i])) throw 'Margin must be a number, got: ' + sp[i];
+            if (!isNumeric(sp[i])) throw 'Margin must be a number, got: ' + sp[i];
             sp[i] += 'px';
         }        
-        AE.style(this.elem, `margin:${sp.join(' ')}`);
+        style(this.elem, `margin:${sp.join(' ')}`);
     }
 
     get align() {
@@ -116,7 +118,7 @@ class UBaseElement {
             return;
         }
         this._position.set(v);
-        AE.style(this.elem, `left:${v.x}px; top:${v.y}px`);
+        style(this.elem, `left:${v.x}px; top:${v.y}px`);
     }
 
     get position() {
@@ -126,7 +128,7 @@ class UBaseElement {
 
     set size(v) {
         this._size.set(v);
-        AE.style(this.elem, `width:${v.x}px; height:${v.y}px`);
+        style(this.elem, `width:${v.x}px; height:${v.y}px`);
     }
 
     get size() {

@@ -1,0 +1,25 @@
+{	                                                                        # at the root level you define the emitter settings
+    name: 'fire'                                                          # user defined name, ParticleSystem.emitterByName() can be used to find a named emitter
+    angle: 0                                                                # emitter rotation
+    type : 'circle'                                                         # circle emitter has several additional parameters (optional)
+    radius : 5                                                              # radius of spawn area    
+    position: { x: 540, y: 335 },                                           # NOTE! the position is the center point of the emitter
+    maxDrawCount: 70                                                       # draw max. 500 particles at any given time
+    emitSpeed: 7                                                           # emit 5 particles/frame        
+    initParticle: {                                                         # how particles are initialized at birth?                
+        shape: {
+            type: 'circle'
+        }
+        scale: { min:1, max:3 }
+        life:  { min:10, max:30 }
+        speed: { min:2, max:3 }
+        angle: { min:-0.1, max:0.1 }
+    }	
+    evolveParticle: {                                                       # how individual particles evolve during EVERY tick?
+        tint: { colorStops: ['white', 'yellow', 'orange', 'red', 'blue'] }
+        opacity: 'lifetime'                                                 # opacity tracks lifetime of particles (fade out)
+        acceleration : 1.02                                                # multiply particle speed by this scalar
+        scale : 1.04                                                       # multiply particle scale by this scalar
+    }
+    zIndex :1                                                               # define the render layer of the effect
+}

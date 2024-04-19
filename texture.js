@@ -11,8 +11,6 @@ import { Picture } from './picture.js';
 import * as Types from './types.js';
 const { Vector2 : Vec2, V2, Color } = Types;
 
-const textures = {};
-
 class Texture extends Picture {
 	/**
 	 * Creates a new Texture which may contain either an image or canvas (which gives access to pixel data) or both.
@@ -21,14 +19,14 @@ class Texture extends Picture {
 	 * @param {number} createCanvas.width 
 	 * @param {number} createCanvas.height
 	 */
-	constructor(name, createCanvas) {
+	constructor(name, createCanvas, preferOffscreenCanvas = true) {
 		super(name);
 
 		this.canvas   = null;
 		this.ctx      = null;				
 		this._imgData = null;
-		this.pixelWalkMode = 'rgba';			// Format for handling pixel data in .walk() method: "rgba" or "color" or "int"
-		this.cacheTextures = false;
+		this.pixelWalkMode = 'rgba';											// Format for handling pixel data in .walk() method: "rgba" or "color" or "int"
+		this.preferOffscreenCanvas = preferOffscreenCanvas;
 
 		if (createCanvas) {
 			if (Vec2.IsVector2(createCanvas)) this.createCanvas(createCanvas.x, createCanvas.y);
@@ -48,13 +46,25 @@ class Texture extends Picture {
 	}
 
 	createCanvas(w, h) {
-		try {			
-			this.canvas = new OffscreenCanvas(w, h);				
-		} catch(e) {
+		if (w == h == undefined) {
+			w = this.width;
+			h = this.height;
+		}
+
+		if (this.preferOffscreenCanvas) {
+			try {			
+				this.canvas = new OffscreenCanvas(w, h);
+			} catch(e) {
+				this.canvas = null;	
+			}				
+		}
+
+		if (this.canvas == null) {
 			this.canvas = document.createElement('canvas');
 			this.canvas.width  = w;
-			this.canvas.height = h;
-		}		
+			this.canvas.height = h;	
+		}
+
 		this.ctx = this.canvas.getContext('2d');		
 	}
 
@@ -71,9 +81,7 @@ class Texture extends Picture {
 			this.createCanvas(img.naturalWidth, img.naturalHeight);		
 
 			if (onBeforeDraw) onBeforeDraw(this.ctx, img);
-				else this.ctx.drawImage(img, 0, 0);				
-
-			if (this.cacheTextures) textures[this.name] = this;													// add to textures collection (TO-DO: a textureCollection object)			
+				else this.ctx.drawImage(img, 0, 0);							
 
 			resolve(this.image); 
 		});
@@ -198,10 +206,6 @@ class Texture extends Picture {
 			const b = await t.load(file);
 			resolve(t);
 		});
-	}
-
-	static ClearCache() {
-		textures = {};
 	}
 }
 

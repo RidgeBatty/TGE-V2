@@ -1,0 +1,22 @@
+{	                                                                        # at the root level you define the emitter settings
+    name: 'stars'                                                          # user defined name, ParticleSystem.emitterByName() can be used to find a named emitter
+    angle: 0                                                                # emitter rotation
+    type : 'box'                                                         # circle emitter has several additional parameters (optional)
+    size : { x:720, y:1 }
+    position: { x: 540, y: 355 },                                           # NOTE! the position is the center point of the emitter
+    maxDrawCount: 100                                                       # draw max. 500 particles at any given time
+    emitSpeed: 0.1                                                            # emit 5 particles/frame        
+    initParticle: {                                                         # how particles are initialized at birth?                
+        shape: {
+            type: 'box'
+            size: { x:2, y:2 }
+            fillColor: ['white', 'silver', 'gray']
+        }  
+        scale: { min:1, max:2 }
+        life:  { min:400, max:400 }
+        speed: { min:2.5, max:5 }
+        angularSpeed: 0.0,                              # angularSpeed and angularWeight can be used to create spirals
+
+    }	
+    zIndex :1                                                               # define the render layer of the effect
+}

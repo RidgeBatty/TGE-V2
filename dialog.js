@@ -8,7 +8,7 @@
 	
 */
 import { Engine } from './engine.js';
-
+import { addElem, ID, require } from './utils-web.js';
 class Dialog {
 	constructor(o) {		// o: { }
 		if (!('body' in o)) throw 'Required field "body" missing from data';
@@ -16,17 +16,18 @@ class Dialog {
 		
 		this.name  = o.name;
 		const elem = document.createElement(o.tagName || 'aw-dialog');
-		const head = AE.newElem(elem, 'div', 'head');
-		const body = AE.newElem(elem, 'div', 'body');
-		const over = AE.newElem(elem, 'div', 'overlay');
+		const head = addElem({ parent:elem, tagName:'div', class:'head' });
+		const body = addElem({ parent:elem, tagName:'div', class:'body' });
+		const over = addElem({ parent:elem, tagName:'div', class:'overlay' });
 		
 		if ('id' in o) elem.id = o.id;
-		AE.setText(head, o.head.caption);
+		head.textContent = o.head.caption;
 		this._fadeInProgress = false;
 		
 		Object.assign(this, { elem, head, body, parentElem:ID(o.parentElemId) });
-		
-		AE.freezeProp(this, 'components', {});
+				
+		this.components = {};
+		Object.freeze(this.components);
 		
 		this.createComponents(o);
 	}
@@ -38,7 +39,7 @@ class Dialog {
 		const src = o.body;
 		const trg = this.body;
 		
-		if ('caption' in src) AE.setText(trg, src.caption);
+		if ('caption' in src) trg.textContent = src.caption;
 		
 		if ('children' in src) {
 			for (const b of src.children) {
@@ -49,28 +50,28 @@ class Dialog {
 	}
 	
 	show() { this.parentElem.appendChild(this.elem); }	
-	hide() { if (this.elem.parentNode != null) AE.removeElement(this.elem); }
+	hide() { if (this.elem.parentNode != null) this.elem.remove(); }
 	
 	fadeOut(timeout = 0) {
 		if (this._fadeInProgress) return;
 		this.fadeInProgress = true;		
-		AE.addClass(this.elem, 'fade-out');
-		setTimeout(_ => { this.hide(); AE.removeClass(this.elem, 'fade-out'); this._fadeInProgress = false; }, timeout);
+		this.elem.classList.add('fade-out');
+		setTimeout(_ => { this.hide(); this.elem.classList.remove('fade-out'); this._fadeInProgress = false; }, timeout);
 	}
 	
 	fadeIn(timeout = 0) {
 		if (this._fadeInProgress) return;
 		this.fadeInProgress = true;
-		AE.removeClass(this.elem, 'fade-out');
+		this.elem.classList.remove('fade-out');
 		this.show();
-		AE.addClass(this.elem, 'fade-in');
-		setTimeout(_ => { AE.removeClass(this.elem, 'fade-in'); this._fadeInProgress = false; });
+		this.elem.classList.add('fade-in');
+		setTimeout(_ => { this.elem.classList.add('fade-in'); this._fadeInProgress = false; });
 	}
 		
 	addInput(o) {	// o:{ ?name:String, ?caption:String, ?type:String, ?parentElem:HTMLElement, ?default:String }
-		const elem  = AE.newElem(o.parentElem == null ? this.body : o.parentElem, 'div');
-		const label = AE.newElem(elem, 'label');
-		const input = AE.newElem(elem, 'input');
+		const elem  = addElem({ parent:o.parentElem == null ? this.body : o.parentElem });
+		const label = addElem({ parent:elem, tagName:'label' });
+		const input = addElem({ parent:elem, tagName:'input' });
 		
 		if ('name' in o) label.setAttribute('for', o.name);
 		if ('id' in o)   input.setAttribute('id', o.id);
@@ -79,17 +80,17 @@ class Dialog {
 		if ('default' in o) input.setAttribute('value', o.default);
 		if ('type' in o)    input.setAttribute('type', o.type);
 			else input.setAttribute('type', 'text');
-		if ('caption' in o) AE.setText(label, o.caption);
+		if ('caption' in o) label.textContent = o.caption;
 		
 		if ('name' in o) this.components[o.name] = { container:elem, label, input }
 	}
 	
 	addButton(o) { // o:{ ?name:String, ?caption:String, ?id:String, ?parentElem:HTMLElement }
-		const bt = AE.newElem(o.parentElem, 'button');
+		const bt = addElem({ parent:o.parentElem, tagName:'button' });
 		if ('name' in o) bt.setAttribute('name', o.name);		
 		if ('id' in o) bt.setAttribute('id', o.id);
 				
-		AE.setText(bt, o.caption);
+		bt.textContent = o.caption;
 		
 		if ('name' in o) this.components[o.name] = bt;		
 	}
@@ -103,7 +104,7 @@ class Dialog {
 				const d    = new Dialog(o);
 				resolve(d);
 			}			
-			AE.require(Engine.url + 'ext/hjson.min.js', { callback });		
+			require([Engine.url + 'ext/hjson.min.js'], { callback });		
 		});
 	}
 }

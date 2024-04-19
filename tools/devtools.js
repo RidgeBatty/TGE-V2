@@ -11,6 +11,7 @@ import { Controllers } from '../gameController.js';
 import { UI } from '../ui/ui-html.js';
 import { arraysEqual } from '../utils.js';
 import Debug from '../tools/debug.js';
+import { addEvent } from '../utils-web.js';
 
 const Vec2 = Types.Vector2;
 
@@ -88,10 +89,10 @@ const updateState = () => {
 }
 
 const installEventHandlers = () => {
-    AE.addEvent(window, 'keyup', (e) => onKeyUp(e));		
-    AE.addEvent(window, 'mouseup', (e) => onMouseUp(e));		
-    AE.addEvent(window, 'mousedown', (e) => onMouseDown(e));		
-    AE.addEvent(window, 'mousemove', (e) => onMouseMove(e));		
+    addEvent(window, 'keyup', e => onKeyUp(e));		
+    addEvent(window, 'mouseup', e => onMouseUp(e));		
+    addEvent(window, 'mousedown', e => onMouseDown(e));		
+    addEvent(window, 'mousemove', e => onMouseMove(e));		
     setInterval(updateState, 1000);
 }
 

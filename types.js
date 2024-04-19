@@ -1091,7 +1091,7 @@ class Vector2 extends VectorBase {
 	 * @returns {number} Actor.rotation angle
 	 */
 	toAngle() {
-		return Math.atan2(this.x, -this.y);
+		return Math.atan2(-this.x, this.y);
 	}
 
     static Add(a, b) {

@@ -5,10 +5,10 @@
 	CanvasSurface wrapped inside class with helper methods
 
 */
-import { Engine, Events, Types, Utils } from "./engine.js";
+import { Engine, Events, Types } from "./engine.js";
 import { CanvasSurface } from "./canvasSurface.js";
+import { ID, style, getPos } from "./utils-web.js";
 
-const { ID, style, getPos } = Utils;
 const { Rect, Vector2, Color } = Types;
 
 const ImplementsEvents = 'mousemove mouseup mousedown';

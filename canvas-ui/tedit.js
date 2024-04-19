@@ -6,6 +6,7 @@
  
 import { Vector2 as Vec2, V2, Rect, RECT } from '../types.js';
 import { TFocusControl } from './tfocusControl.js';
+import { clamp } from '../utils.js';
 
 const ImplementsEvents = 'change';
 const TEditTypes = 'number text password'.split(' ');
@@ -69,8 +70,8 @@ export class TEdit extends TFocusControl {
             } else {
                 const regex = /^-?\d*[.]?\d*$/;
                 if (!(regex.test(this._value))) num = this.min;
-            }        
-            num = AE.clamp(num, this.min, this.max);
+            }                    
+            num = clamp(num, this.min, this.max);
             this._value   = String(num);
             this.caretPos = this.caretPos;                          // make sure caret is not out of bounds
         }

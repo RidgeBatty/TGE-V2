@@ -8,7 +8,7 @@ import { Engine } from "../engine.js";
 import { Enum } from "../enum.js";
 import { UBaseElement } from "./ui-baseElement.js";
 import { addElem } from "./ui-html.js";
-import { remove } from "../utils.js";
+import { remove, sealProp } from "../utils.js";
 
 class UCaption extends UBaseElement {
     constructor(o) {
@@ -222,9 +222,9 @@ class UMenu extends UBaseElement {
 
         this.events.create('show close selectitem');
 
-        this.frame   = AE.newElem(this.elem, 'div', 'frame');
-        this.head    = AE.newElem(this.frame, 'div', 'head');
-        this.body    = AE.newElem(this.frame, 'div', 'body');
+        this.frame   = addElem({ parent:this.elem, tagName:'div', class:'frame' });
+        this.head    = addElem({ parent:this.frame, tagName:'div', class:'head' });
+        this.body    = addElem({ parent:this.frame, tagName:'div', class:'body' });
         this.items   = [];
         this.objectType = 'UMenu';
 
@@ -327,9 +327,9 @@ class UWindow extends UBaseElement {
 
         this.events.create('show close');
 
-        this.frame   = AE.newElem(this.elem, 'div', 'frame');
-        this.head    = AE.newElem(this.frame, 'div', 'head');
-        this.body    = AE.newElem(this.frame, 'div', 'body');
+        this.frame   = addElem({ parent:this.elem, tagName:'div', class:'frame' });
+        this.head    = addElem({ parent:this.frame, tagName:'div', class:'head' });
+        this.body    = addElem({ parent:this.frame, tagName:'div', class:'body' });
         this.cpTitle = new UCaption({ parent:this.head, owner:this, caption:o.caption });
         this.btClose = new UButton({ parent:this.head, owner:this, caption:'🗙', position:'auto', className:'close-window', behavior:'close-window' });
         this.objectType = 'UWindow';
@@ -447,8 +447,8 @@ class UCustomList extends UBaseElement {
         if ('caption' in o) this._caption = o.caption; else this._caption = null;
         if ('type' in o)    this._setListType(o.type, o.tagNames); else throw 'Type must be specified';
         
-        AE.sealProp(this, 'items');
-        AE.sealProp(this, 'events');
+        sealProp(this, 'items');
+        sealProp(this, 'events');
 
         const mouseup = e => {  
             const r = this.items.find(i => i.listElem.contains(e.target));
@@ -457,7 +457,7 @@ class UCustomList extends UBaseElement {
                 if (this.maxSelectedItems > 0) {
                     found = this.selection.find(i => i == r);
                     if (found) {
-                        AE.removeClass(found.listElem, 'selected');
+                        found.listElem.classList.remove('selected');
                         this.selection = this.selection.filter(i => i != found);
                     }
                 }
@@ -473,11 +473,11 @@ class UCustomList extends UBaseElement {
                 // change listElem attribute to selected if it's not already                
                 if (this.maxSelectedItems > 0) {
                     if (found == null && this.selection.length <= this.maxSelectedItems) {  
-                        AE.addClass(listElem, 'selected'); 
+                        listElem.classList.add('selected'); 
 
                         if (this.selection.length == this.maxSelectedItems) {                       // if we're selecting 1 item too much, we need to remove the previous selection first.
                             const lastSelected = this.selection.pop();                              // remove the item which was selected earlier!
-                            AE.removeClass(lastSelected.listElem, 'selected');                        
+                            lastSelected.listElem.classList.remove('selected');                        
                         }
 
                         this.selection.push(r);
@@ -594,7 +594,7 @@ class UCustomList extends UBaseElement {
 
     clearSelection() {
         this.selection.length = 0;
-        this.items.forEach(i => AE.removeClass(i.listElem, 'selected'));
+        this.items.forEach(i => i.listElem.classList.remove('selected'));
     }
 }
 

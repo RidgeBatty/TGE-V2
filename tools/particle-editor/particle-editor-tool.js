@@ -1,8 +1,9 @@
-import * as TGE from '../../engine.js';
+import { Engine, Types } from '../../engine.js';
+import { ID, addEvent } from '../../utils.js';
 import { ParticleEditor } from './particle-editor.js';
 
-const Engine = TGE.Engine;
-const Vec2   = TGE.Types.Vector2;
+const { V2, Vector2:Vec2 } = Types;
+
 const PE = new ParticleEditor();
 const types = [{
     description: 'JSON/HJSON',
@@ -10,21 +11,19 @@ const types = [{
 }];
 let   saveHandle;
 const resize = {
-    downPos : TGE.Types.Vector2,
+    downPos : Vec2,
     down    : false,
 }
+const caretPos = V2(0, 0);
 
 const main = async () => {
-    Engine.setRootElement('game');              
-    Engine.setFlags({ hasEdges:false, hasRenderingSurface:true, preventKeyDefaults:false });
-    Engine.preventedKeys = Object.assign({}, { 'F5':true })
-    Engine.gameLoop.clearColor = 'black';
+    await Engine.setup('./settings.hjson');
 
-    const d = await PE.loadFromFile('shape-emitter.hjson');
+    const d = await PE.loadFromFile('shape.emitter.hjson');
     ID('editor').textContent = PE._text;
-
-    AE.addEvent(ID('color'), 'change', (e) => { Engine.gameLoop.clearColor = e.target.value; });
-    AE.addEvent(ID('bt-panel'), 'click', async (e) => { 
+        
+    addEvent('color', 'change', (e) => { Engine.gameLoop.clearColor = e.target.value; });
+    addEvent('bt-panel', 'click', async (e) => { 
         const t = e.target.textContent;
         if (t == 'Font +') ID('editor').style.fontSize = (parseInt(getComputedStyle(ID('editor')).fontSize, 10) + 1) + 'px';
         if (t == 'Font -') ID('editor').style.fontSize = (parseInt(getComputedStyle(ID('editor')).fontSize, 10) - 1) + 'px';
@@ -35,48 +34,46 @@ const main = async () => {
         if (t == 'Load') { const file = await getFromFile(); console.log('Loaded file:', file.handle.name); if (file) ID('editor').value = file.data; saveHandle = file.handle; ID('filename').textContent = file.handle.name; compile(); }
         if (t == 'Clear') { ID('editor').value = ''; }
     });
-    AE.addEvent(ID('divider'), 'mousedown', async (e) => {    
+    addEvent(ID('divider'), 'mousedown', async (e) => {    
         resize.downPos = new Vec2(e.clientX, e.clientY);       
         resize.down    = true;
     });
-    AE.addEvent(window, 'keyup', async (e) => updateCaretPos());
-    AE.addEvent(window, 'mouseup', async (e) => { if (resize.down) Engine._onResizeWindow(); resize.down = false; updateCaretPos();});
-    AE.addEvent(window, 'mousemove', async (e) => {         
+    addEvent(window, 'keyup', async (e) => updateCaretPos());
+    addEvent(window, 'mouseup', async (e) => { if (resize.down) Engine.recalculateScreen(); resize.down = false; updateCaretPos();});
+    addEvent(window, 'mousemove', async (e) => {         
         if (resize.down) {
             const delta = Vec2.Sub(new Vec2(e.clientX, e.clientY), resize.downPos);
             ID('editor-frame').style.width = ID('editor-frame').offsetWidth + delta.x + 'px';
             resize.downPos = new Vec2(e.clientX, e.clientY);              
         }
     });
-    AE.addEvent(ID('divider'), 'mousedown', async (e) => {         
+    addEvent('divider', 'mousedown', async (e) => {         
         resize.downPos = new Vec2(e.clientX, e.clientY);       
         resize.down    = true;
     });
-    AE.addEvent(ID('editor'), 'input', (e) => compile());
+    addEvent('editor', 'input', (e) => compile());
 
     Engine.start();
 }     
 
 const updateCaretPos = () => {
     const lines = ID('editor').value.split('\n');
-    const s = ID('editor').selectionStart;
-    let pos  = 0;
-    let lnum = 0;
-    let pl   = 0;
-    for (const l of lines) {
-        const col = (s - pos - l.length);
-        
-        if (s < pos) { 
-            console.log(s - pos + pl - lnum + 1)
-            ID('caretpos').textContent = col + ':' + lnum; return 
+    const s     = ID('editor').selectionStart;
+    
+    let pos     = 0;
+    let lineNum = 1;    
+    for (const line of lines) {
+        pos += line.length + 1;
+
+        if (pos > s) {            
+            caretPos.x = (line.length + 1) + s - pos + 1;
+            caretPos.y = lineNum;
+            ID('caretpos').textContent = caretPos.x + ':' + caretPos.y; 
+            break;
         }
-        pl = l.length;
-        pos += l.length;
-        //console.log(s, pos - l.length)
-        
-        lnum++;
+                
+        lineNum++;        
     }
-    //ID('caretpos').textContent =     
 }
 
 const compile = () => {

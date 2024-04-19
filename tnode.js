@@ -6,10 +6,8 @@
 	This class is the ultimate ancestor class for stuff that can have a transform and can be parented to other objects
 */
 
-import * as Types from './types.js';	
+import { Vector2 as Vec2 } from './types.js';	
 import { isNumeric } from './utils.js';	
-
-const Vec2 = Types.Vector2;
 
 class TNode {
     constructor(o) {        

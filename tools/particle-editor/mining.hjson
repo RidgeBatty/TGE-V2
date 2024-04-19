@@ -1,0 +1,30 @@
+{	                                                                        # at the root level you define the emitter settings
+    name: 'mining'                                                          # user defined name, ParticleSystem.emitterByName() can be used to find a named emitter
+    angle: 0                                                                # emitter rotation
+    type : 'circle'                                                         # circle emitter has several additional parameters (optional)
+    radius : 10                                                              # radius of spawn area    
+    position: { x: 540, y: 335 },                                           # NOTE! the position is the center point of the emitter
+    maxDrawCount: 20                                                       # draw max. 500 particles at any given time
+    emitSpeed: 1                                                            # emit 5 particles/frame        
+    emitSurface: false
+    initParticle: {                                                         # how particles are initialized at birth?                
+        velocity: 'radial'
+        shape: {
+            type: 'box'
+            size: { x: 5, y: 5 }
+fillColor: ['silver', 'gray', 'white']
+        }
+        scale: { min:1, max:3 }
+        life:  { min:120, max:120 }
+        angle: 'velocity'
+        speed: { min:0.05, max:0.1 }
+        angularSpeed: 0.0,                              # angularSpeed and angularWeight can be used to create spirals
+    }	
+    evolveParticle: {                                                       # how individual particles evolve during EVERY tick?
+        opacity: 'lifetime'                                                 # opacity tracks lifetime of particles (fade out)
+        force : { x:0, y:0 },                                               # add constant force to particles
+        acceleration : 0.97                                                # multiply particle speed by this scalar
+        scale : 0.99                                                       # multiply particle scale by this scalar
+    }
+    zIndex :1                                                               # define the render layer of the effect
+}

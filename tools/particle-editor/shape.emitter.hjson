@@ -1,0 +1,30 @@
+{	                                                                        # at the root level you define the emitter settings
+    name: 'text-test'                                                          # user defined name, ParticleSystem.emitterByName() can be used to find a named emitter
+    angle: 0                                                                # emitter rotation
+    type : 'circle'                                                         # circle emitter has several additional parameters (optional)
+    radius : 20                                                              # radius of spawn area    
+    position: { x: 540, y: 335 },                                           # NOTE! the position is the center point of the emitter
+    maxDrawCount: 30                                                       # draw max. 500 particles at any given time
+    emitSpeed: 5                                                            # emit 5 particles/frame        
+    emitSurface: true
+    initParticle: {                                                         # how particles are initialized at birth?                
+        velocity: 'radial'
+        shape: {
+            type: 'box'
+            size: { x: 5, y: 20 }
+fillColor: 'red'
+        }
+        scale: 1
+        life:  { min:20, max:40 }
+        angle: 'velocity'
+        speed: { min:0.1, max:0.1 }
+        angularSpeed: 0.0,                              # angularSpeed and angularWeight can be used to create spirals
+    }	
+    evolveParticle: {                                                       # how individual particles evolve during EVERY tick?
+        opacity: 'lifetime'                                                 # opacity tracks lifetime of particles (fade out)
+        force : { x:0, y:0 },                                               # add constant force to particles
+        acceleration : 0.98                                                # multiply particle speed by this scalar
+        scale : 0.99                                                       # multiply particle scale by this scalar
+    }
+    zIndex :1                                                               # define the render layer of the effect
+}
