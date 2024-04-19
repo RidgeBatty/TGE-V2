@@ -1,5 +1,4 @@
 /private
-/experimental
+/experimental/
 /coverage
-/server-side
 /publish/node_modules
