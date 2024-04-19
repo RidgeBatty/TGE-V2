@@ -14,7 +14,9 @@ import { Events } from './events.js';
 
 import { Vector2 as Vec2 } from './types.js';
 import { HitTestFlag, Enum_HitTestMode } from './root.js';
-import { clamp, isObject, isFunction, sealProp } from './utils.js';
+import { clamp, isFunction, sealProp } from './utils.js';
+import { CanvasSurface } from './canvasSurface.js';
+import { Flags } from './flags.js';
 import { addEvent } from './utils-web.js';
 
 const ImplementsEvents = 'addactor removeactor activate deactivate';
@@ -22,21 +24,26 @@ const ImplementsEvents = 'addactor removeactor activate deactivate';
 class HitTestGroups { constructor() { Object.keys(HitTestFlag).forEach(e => this[e] = []); }; clear() { Object.keys(HitTestFlag).forEach(e => this[e].length = 0); } }
 
 class GameLoop {	
-	constructor(o = {}) {		
+	constructor(o = {}) {						
 		this.engine         = ('engine' in o) ? o.engine : null;
-		this.data           = {};	// user data
-		this._flags		    = { isRunning:false, showColliders:false, collisionsEnabled:false, showBoundingBoxes:false, tickPaused:false, doubleBuffering:false };
-		this.flags          = Object.seal(this._flags);  // flags
+		
+		this.flags		    = Flags.Create({ isRunning:false, showColliders:false, collisionsEnabled:false, showBoundingBoxes:false, tickPaused:false, doubleBuffering:false, screenSpaceCollisionOptimization:true }, { isProxied:false });
 		this.events         = new Events(this, ImplementsEvents);
+
+		/**		 
+		 * @type {import("./canvasSurface.js").CanvasSurface}
+		 */
 		this.surface        = this.engine.renderingSurface;
 		this.name			= 'name' in o ? o.name : null;
+		this.data           = {};								// user data
 		
 		this.actors         = [];
 		this.tickables      = [];
+		this.timers		    = [];		
 		this.zLayers        = [...Array(16).keys()].map(e => []);
 		this.clearColor     = ('clearColor' in o) ? o.clearColor : null;
 		
-		this.overlaps       = [];			// list of overlapping objects during the current frame, after overlap calculations
+		this.overlaps       = [];								// list of overlapping objects during the current frame, after overlap calculations
 		this.hitTestGroups  = new HitTestGroups();
 		this.overTests      = 0;
 		
@@ -46,9 +53,7 @@ class GameLoop {
 		this.onPanic        = ('onPanic' in o && typeof o.onPanic == 'function') ? o.onPanic : null;
 		this.onAfterRender  = ('onAfterRender' in o && typeof o.onAfterRender == 'function') ? o.onAfterRender : null;
 		this.onFlipBuffers  = ('onFlipBuffers' in o && typeof o.onFlipBuffers == 'function') ? o.onFlipBuffers : null;
-		this.onBeforeUpdateLayer = null;
-		this.onAfterUpdateLayer  = null;
-		this.timers		    = [];
+		this.onBeforeUpdateLayer = null;		
 		
 		// other:
 		this._lastTick		= 0;
@@ -56,6 +61,8 @@ class GameLoop {
 		this._tickRate      = ('tickRate' in o) ? 1000 / clamp(o.tickRate, 1, 1000) : 1000 / 60;	// ms
 		this._tickQueue	    = 0;
 		this.tickCount      = 0;
+		this.VSyncCount     = 0;
+		this._vsyncTime     = 0;
 		
 		this._frameStart    = null;
 		this.frameDelta     = 0;
@@ -64,7 +71,9 @@ class GameLoop {
 		this.frameTimes     = [];
 		this.requestID      = null;	
 
-		this.collisionCheckTime = 0;		// time spent checking for collisions/overlaps
+		this.collisionCheckTime			= 0;					// time spent checking for collisions/overlaps
+		this.overlapTestScreenSpaceSkip = 0;					// number overlap tests skipped based on screen space distance (calculated per tick)
+		this.screenSpaceSubdivs         = 4;					// 3 for minimal optimization, 12 recommended (assuming 12 subdivs and HD display, the subdivision size is 480 x 270 i.e. 4 x 4 partition)
 		
 		// handle browser throttling
 		let wasRunningBeforeVisibilityChange = false;
@@ -101,6 +110,7 @@ class GameLoop {
 			}
 			layer.length = 0;
 		}
+		if (!options.keepTimers) this.clearTimers();
 	}
 
 	/**
@@ -247,21 +257,6 @@ class GameLoop {
 	}
 
 	/**
-	 * 	Set multiple flags at once by providing an object, for example: 
-	 *	engine.setFlags({ hasWorld:true, hasEdges:true });
-     *	If a defined flag does not exist in the engine, the parameter is silently ignored.
-	 *	@param {object} o Key Value object where key is the flag name (string) and value is boolean.
-	 */		
-	 setFlags(o) {
-		const _this = this;
-		if (isObject(o)) Object.keys(o).forEach( key => { 
-			if (key in this.flags) {				
-				this.flags[key] = o[key];				// after the create functions are called!
-			}
-		});
-	}
-
-	/**
 	 * WARNING! For engine internal use. Adds an Actor into zLayers and actors collection and fires the gameLoop's addactor event.
 	 * @param {Actor} actor class instance
 	 */
@@ -307,7 +302,7 @@ class GameLoop {
 	 * @param {Vector2} o.rotation
 	 * @param {number} o.scale
 	 * @param {Vector2} o.dims Image dimensions
-	 * @param {boolean} o.hasColliders Image dimensions
+	 * @param {boolean} o.hasColliders set to true if the actor should have colliders
 	 * @returns {Actor|Player|Enemy|Projectile|Layer|Level}
 	 */
 	add(aType, o = {}) {		
@@ -352,22 +347,73 @@ class GameLoop {
 	}
 
 	/**
+	 * Renders a frame
+	 */
+	_render(timeStamp) {		
+		if (this._frameStart == null) this._frameStart = timeStamp;		
+		this.frameDelta = timeStamp - this._frameStart;		
+
+		this.surface.resetTransform();																		// reset transform (before ticks)		
+
+		if (this.clearColor) {			
+			const { width, height } = this.surface;					
+			if (this.clearColor == null) this.surface.ctx.clearRect(0, 0, width, height); 					// clear
+				else this.surface.drawRectangle(0, 0, width, height, { fill:this.clearColor });				// clear with color
+		}
+
+		if (this.onBeforeRender) this.onBeforeRender();		
+
+		let index = 0;
+		for (const layer of this.zLayers) {			
+			if (this.onBeforeUpdateLayer) this.onBeforeUpdateLayer(index);
+			for (let i = 0; i < layer.length; i++) {								
+				layer[i].update();								
+			}						
+			index++;
+		}
+
+		if (this.engine?.ui?.isCanvasUI) this.engine.ui.draw();												// GUI overlay
+
+		if (this.flags.doubleBuffering) {
+			this._frontBuffer.resetTransform();
+			if (this.onFlipBuffers) this.onFlipBuffers({ front:this._frontBuffer, back: this.surface });			
+			this._frontBuffer.drawImage(Vec2.Zero(), this.surface.canvas);
+		}
+
+		if (this.onAfterRender) this.onAfterRender({ front:this._frontBuffer, back: this.surface });				
+
+		// time delta and average fps calculations		
+		this.frameTimes[this.frameCount % 30] = this.frameDelta;			
+		this.frameCount++;			
+		this._frameStart = timeStamp;
+		this._oneShotRender = false;		
+	}
+
+	/**
 	 * DO NOT USE! This is called internally!
-	 */	
-	_render(timeStamp, doNotReschedule) {
-		if (!this._flags.isRunning && this._oneShotRender == false) {	  									// frame processing cannot be cancelled when isRunning is false - otherwise debugger will not be able to run its injected code
+	 */		
+	_vsync(timeStamp, doNotReschedule) {		
+		if (this.VSyncCount % 60 == 0) {
+			const p = performance.now();
+			this.monitorRefreshRate = Math.round(this.VSyncCount / (p - this._vsyncTime) * 1000);
+			this._vsyncTime = p;
+			this.VSyncCount = 0;
+		}
+		this.VSyncCount++;				
+		
+		if (!this.flags.isRunning && this._oneShotRender == false) {	  									// frame processing cannot be cancelled when isRunning is false - otherwise debugger will not be able to run its injected code
 			this._lastTickLen  = performance.now();
 			this._frameStart   = this._lastTick;
 			return;		
 		}
 				
 		// --- tick ---
-		const nextTick = this._lastTickLen + this._tickRate;
-		this._tickQueue = 1;
+		const nextTick = this._lastTickLen + this._tickRate;		
+		this._tickQueue = 0;
 		
-		if (timeStamp > nextTick) {
+		if (timeStamp > nextTick) {			
 			const timeSinceTick = timeStamp - this._lastTickLen;
-			this._tickQueue     = ~~(timeSinceTick / this._tickRate);
+			this._tickQueue     = ~~(timeSinceTick / this._tickRate);			
 		}
 		
 		if (this._tickQueue > 120) { 																		// handle tick timer panic when over 120 ticks are in queue
@@ -380,77 +426,21 @@ class GameLoop {
 			this._lastTickLen += this._tickRate;
 			this._tick();
 		}
-		
-		// --- render ---
-		this.surface.resetTransform();																	// reset transform (before ticks)
-		
-		if (this._frameStart == null) this._frameStart = timeStamp;		
-		this.frameDelta = timeStamp - this._frameStart;		
-		
-		if (this.clearColor) {			
-			const { width, height } = this.surface;					
-			if (this.clearColor == 'erase') this.surface.ctx.clearRect(0, 0, width, height); 				// clear
-				else this.surface.drawRectangle(0, 0, width, height, { fill:this.clearColor });				// clear with color
-		}
-		if (this.onBeforeRender) this.onBeforeRender();		
-		
-		let index = 0;
-		for (const layer of this.zLayers) {			
-			if (this.onBeforeUpdateLayer) this.onBeforeUpdateLayer(index);
-			for (let i = 0; i < layer.length; i++) {								
-				layer[i].update();								
-			}			
-			if (this.onAfterUpdateLayer) this.onAfterUpdateLayer(index);
-			index++;
-		}
 
-		if (this.engine?.ui?.isCanvasUI) this.engine.ui.draw();												// GUI overlay
-		
-		if (this.flags.doubleBuffering) {
-			if (this.onFlipBuffers) this.onFlipBuffers({ front:this._frontBuffer, back: this.surface });
-			this._frontBuffer.resetTransform();
-			this._frontBuffer.drawImage(Vec2.Zero(), this.surface.canvas);
-		}
+		if (this._tickQueue > 0) this._render(timeStamp);	
+			
+		if (doNotReschedule) return;		
 
-		if (this.onAfterRender) this.onAfterRender({ front:this._frontBuffer, back: this.surface });				
-		
-		// time delta and average fps calculations		
-		this.frameTimes[this.frameCount % 30] = this.frameDelta;			
-		this.frameCount++;			
-		this._frameStart = timeStamp;
-		this._oneShotRender = false;
-
-		if (doNotReschedule) return;
-		this.requestID = window.requestAnimationFrame(t => this._render(t));	// schedule next frame
-	}
-
-	/**
-	 * Removes an object from the z-layers. 
-	 * It will not be rendered by the gameLoop any more, but the object will remain in the memory and its .tick() method is still called automatically.
-	 * @param {Root} object Any root descendant which has an .update() method: actor, layer, etc.
-	 * @returns {number} Count of successfully removed objects. This can be used by the caller to verify that the object was indeed removed.
-	 */
-	removeFromZLayers(object) {
-		let deleteCount = 0;
-		for (const layer of this.zLayers) {
-			for (let i = layer.length; i--;) if (layer[i] === object) {
-				layer.splice(i, 1);
-				deleteCount++;
-			}
-		}
-		return deleteCount;
+		this.requestID = window.requestAnimationFrame(t => this._vsync(t));	// schedule next frame
 	}
 	
 	/**
 	 * DO NOT USE! This is called internally!
 	 */	
 	_tick(forceSingleTick) {	
-		if (this.flags.tickPaused && !forceSingleTick) return;
+		if (this.flags.tickPaused && !this.flags.isRunning && !forceSingleTick) return;
 
-		const groups = this.hitTestGroups;
-
-		if (!this.flags.isRunning && !forceSingleTick) return;
-		
+		const groups    = this.hitTestGroups;		
 		const tickStart = performance.now();
 				
 		// run the ticks:
@@ -472,7 +462,7 @@ class GameLoop {
 		if (this.flags.collisionsEnabled) {						
 			groups.clear();																						// clear hit test groups
 			for (const actor of actorsArray) {
-				if (actor.hasColliders && !actor.flags.isDestroyed) {
+				if (actor.flags.hasColliders && !actor.flags.isDestroyed) {
 					if (!actor.optimizedColliders || actor.optimizedColliders.length > 0) groups[actor.colliderType].push(actor);		// put all actors in their respective groups
 				}
 			}
@@ -481,16 +471,44 @@ class GameLoop {
 
 		// loop all actors in the gameloop		
 		const collisionCheckTime = performance.now();
+		this.overlapTestScreenSpaceSkip = 0; 
+
+		const ex = 1 / this.engine.dims.x * this.screenSpaceSubdivs;
+		const ey = 1 / this.engine.dims.y * this.screenSpaceSubdivs;
 
 		for (let i = 0; i < actorsArray.length; i++) {			
 			const actor = actorsArray[i];
 						
 			if (this.flags.collisionsEnabled && actor.flags.hasColliders && !actor.flags.isDestroyed) {
 				if (actor.optimizedColliders?.length == 0) continue;
+
+				const p1  = actor.renderPosition;
+				const p1x = Math.round(p1.x * ex);
+				const p1y = Math.round(p1.y * ey);
+				
 				for (const g of Object.keys(groups)) {															// loop through every hit test group
 					if (actor._hitTestFlag[g] != Enum_HitTestMode.Ignore) {										// can we ignore the whole group?
 						for (const o of groups[g]) {
 							if (o != actor && !o.flags.isDestroyed) {											// do not test against self and destroyed actors																
+
+								if (this.flags.screenSpaceCollisionOptimization) {
+									const p2  = o.renderPosition;
+									const p2x = Math.round(p2.x * ex);
+									const p2y = Math.round(p2.y * ey);
+
+									if ( !(  (											
+											(p1x >= p2x - 1) 	&& 
+											(p1x <= p2x + 1)
+										) && (											
+											(p1y >= p2y - 1)  	&& 
+											(p1y <= p2y + 1) 
+										) 
+										) ) {
+											this.overlapTestScreenSpaceSkip++;										
+											continue;
+										}
+								}
+
 								this.overlapTests++;								
 								actor._testOverlaps(o);
 								if (o.flags.isDestroyed) destroyed.push(o);
@@ -547,6 +565,7 @@ class GameLoop {
 	 */
 	pause(onBeforeTick) {
 		if (this.flags.isRunning) return this.stop();
+
 		// restart 
 		if (onBeforeTick) this.onBeforeTick = onBeforeTick;
 		this.start();
@@ -560,21 +579,28 @@ class GameLoop {
 		
 		this._lastTickLen    = performance.now();
 		this._frameStart     = this._lastTick;
+		this.VSyncCount 	 = 0;		
 		
-		try {			
-			this._render();			
+		try {				
+			this._vsync();			
 		} catch (e) {
 			window.cancelAnimationFrame(this.requestID);
 			console.error(e);
 		}
 	}
 
+	/**
+	 * Stops the gameloop immediately cancelling the animation frame
+	 */
 	stop() {
 		window.cancelAnimationFrame(this.requestID);
 		this.requestID       = null;
 		this.flags.isRunning = false;
 	}
 
+	/**
+	 * Tick once and render a frame with Vsync 
+	 */
 	step() {
 		if (this.flags.isRunning == false) {
 			this._tick(true); 
@@ -582,7 +608,8 @@ class GameLoop {
 			this._oneShotRender = true; 
 			this._lastTickLen   = performance.now();
 			this._frameStart    = this._lastTick;
-			this._render();
+			this.VSyncCount 	= 0;
+			this._vsync();
 		}
 	}
 
@@ -591,7 +618,7 @@ class GameLoop {
 	 */
 	update() {
 		this._oneShotRender = true;
-		this._render();
+		this._render(performance.now());
 	}
 
 	toString() {
@@ -606,19 +633,39 @@ class GameLoop {
 		}
 		return result;
 	}
+	
+	/**
+	 * Removes an object from the z-layers. 
+	 * It will not be rendered by the gameLoop any more, but the object will remain in the memory and its .tick() method is still called automatically.
+	 * @param {Root} object Any root descendant which has an .update() method: actor, layer, etc.
+	 * @returns {number} Count of successfully removed objects. This can be used by the caller to verify that the object was indeed removed.
+	 */
+	removeFromZLayers(object) {
+		let deleteCount = 0;
+		for (const layer of this.zLayers) {			
+			for (let i = layer.length; i--;) if (layer[i] === object) {
+				layer.splice(i, 1);
+				deleteCount++;
+			}
+		}
+		return deleteCount;
+	}
 
 	/**
 	 * Set up double buffering
 	 * @param {object} o parameters object
 	 * @param {CanvasSurface} o.front Front buffer (defaults to Engine.renderingSurface)
-	 * @param {CanvasSurface} o.back Back buffer. All gameLoop rendering is done in the given buffer
+	 * @param {CanvasSurface|CanvasSurfaceCreateParams} o.back Back buffer OR optionally create params to send to CanvasSurface constructor. All gameLoop rendering will be done in the given buffer
 	 * @param {function} o.onRender Optional callback to be fired when the backbuffer is about to be rendered
 	 */
 	enableDoubleBuffering(o) {
 		this.flags.doubleBuffering = true;
 		this._frontBuffer  = ('front' in o) ? o.front : this.engine.renderingSurface;
-		this.surface       = o.back;
+		
+		this.surface = (o.back.toString() != '[CanvasSurface]') ? new CanvasSurface(o.back) : o.back;		
 		if ('onRender' in o) this.onFlipBuffers = o.onRender;
+
+		return this.surface;
 	}
 
 	/**

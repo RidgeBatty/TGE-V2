@@ -13,7 +13,7 @@
 import { Collider } from './collider.js';
 import * as Types from './types.js';	
 import { TNode } from './tnode.js';
-import { sealProp } from './utils.js';
+import { addPropertyListener, sealProp } from './utils.js';
 
 const Vec2 = Types.Vector2;
 
@@ -69,7 +69,7 @@ class Root extends TNode {
 		
 		this.owner        = o.owner;		
 		this.createParams = Object.assign({}, o);
-		this.createParams.toString = function(){ return '[ActorCreateParams]' };
+		this.createParams.toString = function(){ return '[RootCreateParams]' };
 						
 		this.data         = ('data' in o) ? o.data : {}; // user data			
 		this.renderHints  = { showColliders:false };
@@ -83,13 +83,23 @@ class Root extends TNode {
 		
 		this._defaultColliderType = o.colliderType ? o.colliderType : 'WorldDynamic';	// override in descendant class to change the default		
 
-		sealProp(this, 'name', ('name' in o) ? o.name : '');			
+		sealProp(this, 'name', ('name' in o) ? o.name : '');					
 		
 		this._createCollisionChannels();
+
+		addPropertyListener(this.flags, 'hasColliders', e => {
+			if (e === true) {
+				this._enableColliders();				
+			} else {
+				this.colliders = null;
+			}			
+		});
+
+		if ('hasColliders' in o) this.flags.hasColliders = o.hasColliders;					// get colliders flag state from create parameters		       
 	}
 	
 	get world() {
-		return this?.owner?.engine?.world;
+		return this?.engine?.world;
 	}
 
 	get hitTestFlag() {
@@ -101,26 +111,25 @@ class Root extends TNode {
 		this._hitTestFlag  = Object.assign({}, HitTestFlag);
 	}
 	
-	get hasColliders() { return this.flags.hasColliders; }		
-	set hasColliders(value) {	
-		if (value === true && this.flags.hasColliders == false) {
-			this.colliders = new Collider({ owner:this });
-			this._createCollisionChannels();
-			this.flags.hasColliders = true;
-		}
+	_enableColliders() {	
+		if (this.colliders != null) return;
+		this.colliders = new Collider({ owner:this });
+		this._createCollisionChannels();		
 	}
 	
 	get colliderType() {
 		return this._hitTestGroup;
 	}
+	
 	set colliderType(name) {
 		if (name in this._hitTestFlag) this._hitTestGroup = name;			
 			else throw 'Invalid ColliderType "' + String(name) + '".';
 	}
 	
-	/*
-		How this actor should interact with "otherActor" when collision occurs
-	*/
+	/**
+	 * How this actor should interact with "otherActor" when collision occurs?
+	 * @param {Actor} otherActor An instance of Actor class
+	 */
 	getCollisionResponse(otherActor) {
 		return this._hitTestFlag[otherActor._hitTestGroup];		
 	}
@@ -153,4 +162,4 @@ class Root extends TNode {
 	}
 }
 
-export { Root, Enum_HitTestMode, HitTestFlag, Transform }
+export { Root, TNode, Enum_HitTestMode, HitTestFlag, Transform }

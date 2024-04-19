@@ -18,7 +18,7 @@ class World {
         this.renderer = null;
 
         this.engine.world = this;
-        this.engine.flags.setFlag('hasWorld');
+        this.engine.flags.hasWorld = true;
 
         sealProp(this, 'data', {});
     }

@@ -1,85 +1,82 @@
-/**
- * 
- * CustomLayer is a template for rendering custom content on backbuffer CanvasSurface which can then be flipped on (any) other CanvasSurface in update() method.
- * CustomLayer respects Engine.gameLoop.zLayers
- * 
- */
-import { CanvasSurface } from './canvasSurface.js';
-import { Engine, Root } from './engine.js';
+import { Engine, TNode } from './engine.js';
 import { V2, Vector2 as Vec2, RECT } from './types.js';
 
-class CustomLayer extends Root {
+/**
+* CustomLayer is a lightweight container for drawable objects.
+* Several objects which do not own their surface can be pointed to customLayer's surface to draw. Once complete, the gameLoop will render the result.
+* @extends {TNode}
+*/
+class CustomLayer extends TNode {
     /**
      * Creates a new customLayer which has an internal backbuffer canvas "buffer". The buffer is flipped on the "surface" during gameLoop.update().
 	 * The default "surface" is Engine.renderingSurface.
      * @param {object} o  
-	 * @param {GameLoop?} o.owner Optional reference to the owning gameLoop
-	 * @param {number?} o.zIndex
+	 * @param {GameLoop?} o.owner Optional. Reference to the owning gameLoop.
 	 * @param {boolean?} o.addLayer Should the layer be added in the gameLoop zLayers? (Default=false)
+	 * @param {number?} o.zIndex Optional. This layer will be placed at zIndex depth in gameLoop zLayers.	 
      */
 	constructor(o = {}) {		
         super(o);
 
-		this.owner   		 = o.owner || Engine.gameLoop;       
+		this.name			 = o.name;
+		this.owner   		 = o.owner || Engine.gameLoop;       										// owner is a gameLoop instance
 		this.engine  		 = o.engine || Engine;
         this.zIndex  		 = ('zIndex' in o) ? o.zIndex : 1;		
-		this.surface 		 = ('surface' in o) ? o.surface : this.engine.renderingSurface;
-		this._buffer         = ('buffer' in o) ? o.buffer : null;																// backbuffer reference (draw on this surface)
-		this._bufferSize     = null;
-		this._resetTransform = ('resetTransform' in o) ? o.resetTransform : false;
-		this._bufferScale    = 1;
-        
-        if ('addLayer' in o && o.addLayer == true) {
-            this.owner.zLayers[this.zIndex].push(this);
-        }
+		this.surface 		 = ('surface' in o) ? o.surface : this.owner.surface;						// internal draw target		
+		this.filter          = 'none';
+		this.renderables     = [];
+		this.resetTransform  = true;
+
+		this.onBeforeUpdate  = null;
+		this.onBeforeTick    = null;
+        this.onBeforeRender  = null;
+
+        if ('addLayer' in o && o.addLayer == true) this.owner.zLayers[this.zIndex].push(this);        
 	}
 
-	get resetTransform() { return this._resetTransform }
-	set resetTransform(v) { if (typeof v == 'boolean') this._resetTransform = v; }
-
-	get viewport() {
-		return RECT(0, 0, this._buffer.width, this._buffer.height);
-	}
-
-	get buffer() {
-		return this._buffer;
-	}
-
-    destroy() {
-        this.owner.removeFromZLayers(this);        
-    }
-    
-	/**
-	 * Call this to update the dimensions of the internal buffer surface. 
-	 * First call will automatically create the buffer surface if it doesn't exist already.
-	 */
-    updateViewport() {
-        const { engine, _bufferSize, _bufferScale } = this;
-
-		const width  = Math.floor((_bufferSize ? _bufferSize.x : engine.viewport.width) * _bufferScale);
-		const height = Math.floor((_bufferSize ? _bufferSize.y : engine.viewport.height) * _bufferScale);
-				
-		if (this._canvas == null) {			
-			this._buffer      = new CanvasSurface({ dims:V2(width, height), preferOffscreenCanvas:true });			
-			this._buffer.name = 'CustomRenderingBuffer';
-		} else {
-			this._buffer.setCanvasSize(width, height);
+	add(renderable) {		
+		const _d    = renderable.destroy;
+		const _this = this;
+		renderable.destroy = () => {			
+			_this.renderables = _this.renderables.filter(f => f != renderable);
+			_d();
 		}
+		this.renderables.push(renderable);
 	}
 
-	/** override */
-	tick() {  
-        
+	/**
+	 * Destroys the customLayer and removes it from the gameLoop's zLayers.
+	 */
+    destroy() {
+		this.renderables.length = 0;
+        const l = this.owner.removeFromZLayers(this);        		
+    }
+
+	/** 
+	 * Override tick() in descendant class. Automatically called if this layer is added in the gameLoop.
+	 */
+	tick() {  		
+		if (this.onBeforeTick) this.onBeforeTick({ layer:this });
+		for (const r of this.renderables) r.tick();
 	}
 
-	flip() {
-		if (this.resetTransform) this.surface.resetTransform();     
-		this.surface.ctx.drawImage(this._buffer.canvas, 0, 0, this.surface.width, this.surface.height);		
-	}
+	/**
+	 * Flips the internal buffer surface on the frontBuffer surface. Automatically called if this layer is added in the gameLoop.
+	 */
+	update() {   		
+		const { surface } = this;
 
-	update() {   
-		this._buffer.ctx.clearRect(0, 0, this._buffer.width, this._buffer.height);
-		this.flip();
+		if (this.onBeforeUpdate) this.onBeforeUpdate({ layer:this });
+
+		if (this.resetTransform) surface.resetTransform();
+		if (this.filter != 'none') surface.ctx.filter = this.filter;
+
+		for (const r of this.renderables) {
+			if (this.onBeforeRender) this.onBeforeRender({ layer:this, surface, renderable:r });			
+			r.update();
+		}
+		
+		if (this.filter != 'none') surface.ctx.filter = 'none';				
 	}
 }
 

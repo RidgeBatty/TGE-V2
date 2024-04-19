@@ -1,5 +1,5 @@
 /**
- * 
+ * @desc
  * AssetMananger for TGE
  * =====================
  * 
@@ -42,7 +42,7 @@ const setDef = (target, source, field, useDefault) => {
         return;
     }
     if (field in source) target[field] = src;
-        else if (useDefault) target[field] = useDefault;
+        else if (useDefault != undefined) target[field] = useDefault;
 }
 
 class AssetManager {
@@ -63,6 +63,7 @@ class AssetManager {
             actors        : [],
             images        : [],
             emitterParams : [],                                                  // particle system emitter parameters
+            audio         : [],
         };
 
         if (assignAsDefault) this.engine.assetManager = this;
@@ -95,7 +96,7 @@ class AssetManager {
      * @param {object} o Parameters of AssetManager.load() call
      * @returns 
      */
-    async deserializeActor(data, o) {
+    async parseActor(data, o) {
         const params = data.params;  
 
         setDef(params, params, 'position');
@@ -105,16 +106,24 @@ class AssetManager {
         setDef(params, params, 'offset');
         setDef(params, params, 'origin');
         setDef(params, params, 'imgUrl');
+        setDef(params, params, 'imageReload', false);                                              // this will cause the actor to delete the "imgUrl" property after the image is loaded (effectively causing all clones to recycle the image object)
 
         // check if a custom constructor was given to this actor (or not, in which case use the built-in actor types)
         if ('class' in data && 'constructors' in o && o.constructors[data.class]) {             
             var actor = new o.constructors[data.class](params);                           
         } else 
-            var actor = Engine.gameLoop.createTypedActor(params.type, params);
+            var actor = Engine.gameLoop.createTypedActor(params.type, params);        
 
-        if (this.onDeserialize) this.onDeserialize(actor, data, o);
+        if (this.onDeserialize) this.onDeserialize(actor, data, o);                                 // callback when AssetManager is about to deserialize an actor
         
         if (data.data) actor.data = data.data;                                                      // user data        
+
+        if (Array.isArray(data.audio)) {                                                            // audio files
+            for (const a of data.audio) {
+                Engine.audio.add(a);
+                actor.addAudio(a);
+            }
+        }
         if (data.flipbooks) actor.flipbooks = await Flipbook.Parse(data.flipbooks, actor);          // create flipbooks
 
         if (data.colliders) {                                                                       // create colliders
@@ -146,8 +155,8 @@ class AssetManager {
     }
 
     /**
-     * 
-     * @param {object} o 
+     * Loads an asset using ".asset.hjson" file
+     * @param {object} o parameters object
      * @param {string} o.url URL to ".asset.hjson" file
      * @param {object} options Optional "options" object which is sent to the deserialization method
      * @returns 
@@ -156,21 +165,36 @@ class AssetManager {
     async loadAsset(o, options) {
         const s = await getJSON(o.url);                
         if (s.type == 'actor') {
-            const actor = await this.deserializeActor(s.data, options);
-            return this.assets.actors.push(actor);            
+            if (this.getAssetByName(s.data.params.name) == null) {
+                const actor = await this.parseActor(s.data, options);
+                return this.assets.actors.push(actor);            
+            } else {
+                console.warn('Duplicate actor:', s.data.params.name);
+            }
+            return null;
         } 
         if (s.type == 'images') {
             const names  = s.data.map(e => e.name);
             const data   = s.data.map(e => e.data);
-            const images = await preloadImages({ urls:s.data.map(e => e.url) });
+            const path   = s.path ? s.path : '';
+            const images = await preloadImages({ path, urls:s.data.map(e => e.url) });
+            const result = [];
             for (let i = 0; i < images.length; i++) {
-                this.assets.images.push({ name:names[i], image:images[i], data:data[i] });
+                result.push({ name:names[i], image:images[i], data:data[i] });
+                this.assets.images.push(o);
             }
-            return;
+            return result;
         } 
         throw 'Only object types "actor" and "images" is supported by the AssetManager';
     }
 
+    /**
+     * Loads a bunch of ".asset.hjson" files
+     * @param {object} o 
+     * @param {string} o.path Optional. Path shared by urls
+     * @param {array} o.urls Array of urls
+     * @param {*} options 
+     */
     async load(o, options) {
         if ('urls' in o) {
             for (const u of o.urls) {
@@ -191,7 +215,7 @@ class AssetManager {
     spawn(asset, o = {}) {
         if (typeof asset == 'string') {
             const test = this.getAssetByName(asset);
-            if (test == null) throw 'Asset not found: ' + asset;            
+            if (test == null) throw new Error('Asset not found: ' + asset);
             asset = test;                                                               // proceed to (attempt to) create the actor 
         }
         if (asset instanceof Actor) {      

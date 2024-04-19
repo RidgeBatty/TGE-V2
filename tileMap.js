@@ -1,3 +1,11 @@
+/**
+ * Abstract TileMap container for tile data.
+ * Features:
+ * 	- Collection of tile images (Texture class)
+ *  - Supports overlays, 0..1 overlay(s) per tile
+ *  - Supports colliders, which are not linked to tiles. They have their own coordinate system
+ *  - Can load itself from tilemap file.
+ */
 import { Texture } from './texture.js';	
 import { getJSON } from './utils.js';
 import { Collider } from './collider.js';
@@ -11,7 +19,7 @@ class TileMap {
 		this.textures  = [];
 		this.overlays  = [];
 		this.colliders = {};
-		this.origin    = '';
+		this.origin    = '';															// for editor???
 		this.outOfBoundsId       = -1;													// return this number for a tile when the coordinates are out of map bounds
 		this.outOfBoundsCallback = null;												// call this function when tile access is out of bounds
 
@@ -64,6 +72,12 @@ class TileMap {
 		return this.textures.length - 1;	
 	}
 
+	/**
+	 * Reads the contents of the full tile (upper and lower byte) at once
+	 * @param {*} x 
+	 * @param {*} y 
+	 * @returns 
+	 */
 	tileAt(x, y) {
 		if (y < 0 || y >= this.height || x < 0 || x >= this.width) {
 			if (this.outOfBoundsCallback) this.outOfBoundsCallback(x, y);
@@ -72,12 +86,29 @@ class TileMap {
 		return this.tiles[y * this.size.x + x];
 	}
 
+	/**
+	 * Writes the contents of the full tile (upper and lower byte) at once
+	 * @param {*} x 
+	 * @param {*} y 
+	 * @param {*} v 
+	 * @returns 
+	 */
 	setTileAt(x, y, v) {		
 		if (y < 0 || y >= this.height || x < 0 || x >= this.width) {
 			if (this.outOfBoundsCallback) this.outOfBoundsCallback(x, y);
 			return this.outOfBoundsId;
 		}			
 		this.tiles[y * this.size.x + x] = v;
+	}
+
+	baseTileAt(x, y) {
+		const t = this.tileAt(x, y);
+		return (t & 0xFF);
+	}
+
+	setBaseTileAt(x, y, o) {
+		const tile = this.tileAt(x, y);				
+		this.setTileAt(x, y, (tile & 0x0000FF00) + (o & 0xFF));
 	}
 
 	overlayAt(x, y) {
@@ -87,7 +118,7 @@ class TileMap {
 
 	setOverlayAt(x, y, o) {
 		const tile = this.tileAt(x, y);		
-		this.setTileAt(x, y, (tile & 0x000000FF) + (o << 8));
+		this.setTileAt(x, y, (tile & 0xFF) + (o << 8));
 	}
 
 	/**

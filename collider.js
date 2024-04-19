@@ -9,7 +9,7 @@
 
 */
 import { Transform } from './root.js';
-import { Root, Actor, Types, Utils } from './engine.js';
+import { TNode, Actor, Types, Utils } from './engine.js';
 import { PhysicsShape, Circle, AABB, Box, Enum_PhysicsShape, Poly } from './physics.js';
 
 const { Vector2:Vec2, Rect, V2 } = Types;
@@ -21,11 +21,11 @@ class Collider {
 	 * @param {Vector2=} o.position
 	 * @param {Vector2=} o.pivot
 	 * @param {number=} o.scale
-	 * 	Do not create instances of Collider! Set Actor.hasColliders = true (inherited from Root) to enable use of colliders.
+	 * 	Do not create instances of Collider! Set Actor.flags.hasColliders = true (inherited from Root) to enable use of colliders.
 	 */	
 	constructor(o) {
 		if ('owner' in o) {
-			if ( !(o.owner instanceof Actor || o.owner instanceof Root)) throw 'Collider owner must be either an Actor or Root component';
+			if ( !(o.owner instanceof Actor || o.owner instanceof TNode)) throw 'Collider owner must be either an Actor or TNode component';
 			this.actor = o.owner;
 		} else { // we don't actually need an owner, we just need the following properties for the collider to work:
 			this.actor = Object.assign({}, new Transform());	
@@ -92,17 +92,24 @@ class Collider {
 		return result;
 	}
 
+	/**
+	 * Removes the given PhysicsShape from the internal array. If object is not found, does nothing.
+	 * @param {PhysicsShape} object 
+	 */
 	remove(object) {
 		const i = this.objects.indexOf(object);
 		if (i > -1) this.objects.splice(i, 1);
 	}
 	
+	/**
+	 * Destroys all PhysicsShapes in the internal array (but does not remove itself from the actor)
+	 */
 	destroy() {
 		this.objects.length = 0;
 	}
 	
 	/**
-	 * 
+	 * Adds a new PhysicsShape in the internal array
 	 * @param {PhysicsShape} p 
 	 */
 	add(p) {
@@ -121,18 +128,18 @@ class Collider {
 	}
 	
 	/**
-	 * Updates the collider visualizations. If required HTML and SVG elements do not exist, they will be created.		
+	 * Updates the collider visualizations.		
 	*/
 	update() {	
 		const actor     = this.actor;
-		const colliders = actor.optimizedColliders ? actor.optimizedColliders : actor.colliders.objects;
+		const objects   = actor.optimizedColliders ? actor.optimizedColliders : actor.colliders.objects;
 		
 		const gameLoop  = actor.owner;
 		const s 		= gameLoop.surface;
 		const scale     = this.scale * this.actor.scale;
-		
-		for (var i = 0; i < colliders.length; i++) {			
-			var c   = colliders[i];			
+			
+		for (var i = 0; i < objects.length; i++) {			
+			var c   = objects[i];			
 			var cp  = actor.renderPosition;
 			var pos = Vec2.Zero();
 			
@@ -143,8 +150,9 @@ class Collider {
 			s.ctx.scale(scale, scale);
 			s.ctx.translate(c.position.x, c.position.y);			
 			s.ctx.rotate(c.angle);
+
+			const fill = c.isOverlapped ? this.hilite : this.color;		
 	
-			const fill = actor.isOverlapped ? this.hilite : this.color;
 			switch (c.type) {				
 				case Enum_PhysicsShape.Poly:					
 					s.drawPoly(c.points, { stroke:'black', fill });
@@ -162,9 +170,9 @@ class Collider {
 		}
 	}
 	
-	/**
-	 * @param {Actor} otherActor
+	/**	 
 	 * Checks whether this Actor's colliders overlap with otherActor's colliders
+	 * @param {Actor} otherActor
 	 */
 	resolveOverlap(otherActor) {				
 		// can we get any optimization?
@@ -215,9 +223,9 @@ class Collider {
 					b.isOverlapped = true;				
 				}					
 			}
-		}	
+		}
 
-		return result;
+		return result; // if atleast one shape overlaps from either actor, this will be set true
 	}
 
 	/**

@@ -1,7 +1,7 @@
 /**
  @module Actor	
  @author Ridge Batty
- @desc   Actor is the base class for an Object that can be placed or spawned in a level. 
+ @desc   Actor is the base class for an Object that can be placed or spawned in a level.  
 */
 
 import { Types, Root, Events } from "./engine.js";
@@ -39,8 +39,8 @@ const Enum_ActorTypes = {
 * @desc This class is the ancestor class for arcade game objects.
 * @extends {Root}
 */
-class Actor extends Root { 
-	/**
+class Actor extends Root { 	
+	/**	  
 	 * @param {Object} [o={}] Parameter object.
 	 * @param {GameLoop} o.owner Reference to GameLoop which owns this Actor.
 	 * @param {Vector2} o.position Position of the Actor in screen coordinates.
@@ -53,20 +53,15 @@ class Actor extends Root {
 	 * @param {*} o.data Reference to user defined data. Defaults to an empty object.
 	 * @param {string} o.name User defined name for the object. Not managed. Please use unique names to make search function work correctly.	 	  
 	 */
+		
 	constructor(o = {}) {
 		super(o);
 
 		this._uid = actorUID++;
 		/**
-		 * @type {Vector2}
+		 * @type {Types.Vector2}
 		 */
 		this.position;
-
-		/**
-		 * Position of the actor before collision test (done automatically by the gameLoop)
-		 * @type {Vector2}
-		 */
-		this.lastPosition;				
 
 		/**
 		 * @type {number}
@@ -79,9 +74,15 @@ class Actor extends Root {
  		this.scale;
 
 		/** 
-		 * @member {Object} 
+		 * @type {Object} 
 		 */
 		this.renderHints = Object.assign(this.renderHints, { showBoundingBox:false, fixedScale:false, fixedRotation:false, mirrorY:false, mirrorX:false });
+
+		/** 
+		 * @typedef {import('./flipbook.js').Flipbook} Flipbook
+		 * @type {[Flipbook]}
+		 */	
+		this.flipbooks;
 
 		/**
 		 * Flags
@@ -154,8 +155,7 @@ class Actor extends Root {
 		this.isVisible       = ('isVisible' in o) ? o.isVisible : this.isVisible;
 		this.offset          = ('offset' in o) ? o.offset : Vec2.Zero();
 		
-		if ('hasColliders' in o) this.hasColliders = o.hasColliders;						// get colliders flag state from create parameters		       
-		if ('size' in o)		 this.size         = o.size;
+		if ('size' in o)		 this.size         		 = o.size;
 		
 		Mixin(this, ImageOwner, o);															// if actor's createparams contain "img" or "imgUrl", the image will be assigned/loaded
 	}
@@ -226,6 +226,11 @@ class Actor extends Root {
 		return this._target;
 	}
 
+	addAudio(o) {
+		if (this.audio === undefined) this.audio = [];
+		this.audio.push(o);		
+	}
+
 	addTimer(o) {
 		return this.owner.addTimer(Object.assign(o, { actor:this }));
 	}
@@ -247,12 +252,12 @@ class Actor extends Root {
 	 * @param {PhysicsShape} o 
 	 */
 	addCollider(o) {
-		this.hasColliders = true;
+		this.flags.hasColliders = true;
 		this.colliders.add(o);
 	}	
 
 	_clickEventHandler(e) {		// called by Engine when mouseup is fired
-		if (this.hasColliders) {						
+		if (this.flags.hasColliders) {						
 			if (this.colliders.isPointInside(e.position)) {
 				const hitPosition = e.position;				
 				this.events.fire('click', { hitPosition });
@@ -307,7 +312,9 @@ class Actor extends Root {
 
 		actor.renderHints = Object.assign({}, this.renderHints);
 		actor.isVisible   = this.isVisible;
-		actor.movement    = {...this.movement};									// shallow clone: TO-DO: make movement a class and add clone() method in it!
+		actor.movement.copy(this.movement);
+
+		if (this.audio) actor.audio = [...this.audio];							// clone audio samples (ref only)
 				
 		if (this.colliders) {													// clone colliders
 			actor.flags.hasColliders = false;
@@ -401,7 +408,7 @@ class Actor extends Root {
 		if (this.filter) c.filter = 'none';
 		if (c.globalAlpha != 1) c.globalAlpha = 1;
 
-		if (this.hasColliders && this.renderHints.showColliders && this.owner.flags.showColliders) this.colliders.update();			
+		if (this.flags.hasColliders && this.renderHints.showColliders && this.owner.flags.showColliders) this.colliders.update();			
 		if (this.owner.flags.showBoundingBoxes && this.renderHints.showBoundingBox && this.onDrawBoundingBox) this.onDrawBoundingBox(this);		
 	}
 
@@ -535,11 +542,13 @@ class Actor extends Root {
 					if (this.onEndOverlap) this.onEndOverlap(a);
 					this.events.fire('endoverlap', a);
 					this.overlaps = this.overlaps.filter(e => e == this);
+					this.colliders.endOverlap();
 
 					const b = { otherActor:this };
 					if (other.onEndOverlap) other.onEndOverlap(b);
 					other.events.fire('endoverlap', b);
 					other.overlaps = other.overlaps.filter(e => e == other);					
+					other.colliders.endOverlap();					
 				}				
 			}
 		} catch (e) {
