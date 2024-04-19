@@ -1,8 +1,0 @@
-# hello world
-# testing
-# this is for real
-14 * 2 + 7 * ((256 + 1) * 5 + 70)
-if (2 < 5) then 5+5 else 10
-func hello(a, b, c) {
-    5
-}
